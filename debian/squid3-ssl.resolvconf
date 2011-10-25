@@ -1,0 +1,6 @@
+#!/bin/sh
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Make squid aware of changes to resolv.conf
+invoke-rc.d squid3 reload || true
