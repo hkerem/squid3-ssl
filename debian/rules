@@ -4,12 +4,11 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/dpatch.mk
 
-INSTALLDIR := $(CURDIR)/debian/tmp
+#INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid3
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
-DEB_INSTALL_DOCS_squid3-ssl-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html \
-						SPONSORS 
+#DEB_INSTALL_DOCS_squid3-ssl-common := CONTRIBUTORS CREDITS QUICKSTART RELEASENOTES.html SPONSORS 
 
 DEB_CONFIGURE_EXTRA_FLAGS := --datadir=/usr/share/squid3 \
 		--sysconfdir=/etc/squid3 \
