@@ -71,7 +71,7 @@ install/squid3-ssl::
 	mv $(INSTALLDIR)/usr/share/man/man8/ext_unix_group_acl.8 $(INSTALLDIR)/usr/share/man/man8/squid3_ext_unix_group_acl.8
 	mv $(INSTALLDIR)/usr/share/man/man8/cachemgr.cgi.8 $(INSTALLDIR)/usr/share/man/man8/squid3_cachemgr.cgi.8
 	mv $(INSTALLDIR)/usr/share/man/man8/digest_file_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_digest_file_auth.8
-	mv $(INSTALLDIR)/usr/share/man/man8/squid3.8 $(INSTALLDIR)/usr/share/man/man8/squid3.8
+	mv $(INSTALLDIR)/usr/share/man/man8/squid.8 $(INSTALLDIR)/usr/share/man/man8/squid3.8
 	mv $(INSTALLDIR)/usr/share/man/man8/basic_sasl_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_basic_sasl_auth.8
 	mv $(INSTALLDIR)/usr/share/man/man8/negotiate_kerberos_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_negotiate_kerberos_auth.8
 	mv $(INSTALLDIR)/usr/share/man/man8/basic_ldap_auth.8 $(INSTALLDIR)/usr/share/man/man8/squid3_basic_ldap_auth.8
