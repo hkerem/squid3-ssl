@@ -5,40 +5,40 @@
 ## DP: Fix path for cachemgr.cgi default configuration file
 
 @DPATCH@
-diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/tools/Makefile.am squid3/tools/Makefile.am
---- squid3~/tools/Makefile.am	2010-04-01 02:40:45.000000000 +0200
-+++ squid3/tools/Makefile.am	2010-04-12 15:03:47.000000000 +0200
-@@ -23,7 +23,7 @@
- man_MANS = \
- 	squidclient.1
+diff -urNad squid-3.2.0.13~/tools/Makefile.am squid-3.2.0.13/tools/Makefile.am
+--- squid-3.2.0.13~/tools/Makefile.am	2011-10-25 20:45:01.000000000 -0700
++++ squid-3.2.0.13/tools/Makefile.am	2011-10-25 20:45:28.670750879 -0700
+@@ -68,7 +68,7 @@
+ 
+ ## ##### cachemgr.cgi  #####
  
 -DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 +DEFAULT_CACHEMGR_CONFIG = /etc/squid/cachemgr.conf
  
- squidclient_SOURCES = squidclient.cc
- cachemgr__CGIEXT__SOURCES = cachemgr.cc
-@@ -42,6 +42,7 @@
- $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ libexec_PROGRAMS = cachemgr$(CGIEXT)
+ 
+@@ -91,6 +91,7 @@
+ ## Shared
  
  install-data-local:
 +	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
  	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
  	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
-diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3~/tools/Makefile.in squid3/tools/Makefile.in
---- squid3~/tools/Makefile.in	2010-04-01 02:40:45.000000000 +0200
-+++ squid3/tools/Makefile.in	2010-04-12 15:04:32.000000000 +0200
-@@ -291,7 +291,7 @@
- man_MANS = \
- 	squidclient.1
+diff -urNad squid-3.2.0.13~/tools/Makefile.in squid-3.2.0.13/tools/Makefile.in
+--- squid-3.2.0.13~/tools/Makefile.in	2011-10-25 20:45:01.000000000 -0700
++++ squid-3.2.0.13/tools/Makefile.in	2011-10-25 20:46:52.585430409 -0700
+@@ -431,7 +431,7 @@
+ 	test_tools.cc \
+ 	time.cc
  
 -DEFAULT_CACHEMGR_CONFIG = $(sysconfdir)/cachemgr.conf
 +DEFAULT_CACHEMGR_CONFIG = /etc/squid/cachemgr.conf
- squidclient_SOURCES = squidclient.cc
- cachemgr__CGIEXT__SOURCES = cachemgr.cc
- cachemgr__CGIEXT__CXXFLAGS = -DDEFAULT_CACHEMGR_CONFIG=\"$(DEFAULT_CACHEMGR_CONFIG)\" $(AM_CXXFLAGS)
-@@ -879,6 +879,7 @@
- $(OBJS): $(top_srcdir)/include/version.h ../include/autoconf.h
+ cachemgr__CGIEXT__SOURCES = cachemgr.cc \
+ 	stub_debug.cc \
+ 	test_tools.cc \
+@@ -1234,6 +1234,7 @@
+ 	$(SUBSTITUTE) < $(srcdir)/cachemgr.cgi.8.in > $@
  
  install-data-local:
 +	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
