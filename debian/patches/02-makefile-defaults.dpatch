@@ -1,6 +1,13 @@
-diff -Nur squid-3.2.0.13.orig/configure squid-3.2.0.13/configure
---- squid-3.2.0.13.orig/configure	2011-10-13 18:49:52.000000000 -0700
-+++ squid-3.2.0.13/configure	2011-10-25 20:26:25.288571488 -0700
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 02-makefile-defaults.dpatch by Luigi Gangitano <luigi@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Change default file locations for debian
+
+@DPATCH@
+diff -urNad squid-3.2.0.13~/configure squid-3.2.0.13/configure
+--- squid-3.2.0.13~/configure	2011-10-13 18:49:52.000000000 -0700
++++ squid-3.2.0.13/configure	2011-10-25 20:43:21.595873231 -0700
 @@ -18382,7 +18382,7 @@
  
  
@@ -10,9 +17,9 @@ diff -Nur squid-3.2.0.13.orig/configure squid-3.2.0.13/configure
  
  # Check whether --with-swapdir was given.
  if test "${with_swapdir+set}" = set; then :
-diff -Nur squid-3.2.0.13.orig/src/Makefile.in squid-3.2.0.13/src/Makefile.in
---- squid-3.2.0.13.orig/src/Makefile.in	2011-10-13 18:47:47.000000000 -0700
-+++ squid-3.2.0.13/src/Makefile.in	2011-10-25 20:26:46.685482177 -0700
+diff -urNad squid-3.2.0.13~/src/Makefile.in squid-3.2.0.13/src/Makefile.in
+--- squid-3.2.0.13~/src/Makefile.in	2011-10-25 20:19:16.000000000 -0700
++++ squid-3.2.0.13/src/Makefile.in	2011-10-25 20:41:48.785844863 -0700
 @@ -2388,7 +2388,7 @@
  DEFAULT_PREFIX = $(prefix)
  DEFAULT_CONFIG_DIR = $(sysconfdir)
