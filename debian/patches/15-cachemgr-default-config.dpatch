@@ -21,7 +21,7 @@ diff -urNad squid-3.2.0.13~/tools/Makefile.am squid-3.2.0.13/tools/Makefile.am
  ## Shared
  
  install-data-local:
-+	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
++	test -z "/etc/squid3" || $(MKDIR_P) "$(DESTDIR)/etc/squid3"
  	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
  	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
@@ -41,7 +41,7 @@ diff -urNad squid-3.2.0.13~/tools/Makefile.in squid-3.2.0.13/tools/Makefile.in
  	$(SUBSTITUTE) < $(srcdir)/cachemgr.cgi.8.in > $@
  
  install-data-local:
-+	test -z "/etc/squid" || $(MKDIR_P) "$(DESTDIR)/etc/squid"
++	test -z "/etc/squid3" || $(MKDIR_P) "$(DESTDIR)/etc/squid3"
  	$(INSTALL_DATA) $(srcdir)/cachemgr.conf $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG).default
  	@if test -f $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG) ; then \
  	        echo "$@ will not overwrite existing $(DESTDIR)$(DEFAULT_CACHEMGR_CONFIG)" ; \
