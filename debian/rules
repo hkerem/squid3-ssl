@@ -4,8 +4,7 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/dpatch.mk
 
-#INSTALLDIR := $(CURDIR)/debian/squid3-ssl
-INSTALLDIR=$(CURDIR)/debian/squid3-ssl
+INSTALLDIR := $(CURDIR)/debian/tmp
 datadir=/usr/share/squid3
 
 DEB_DH_INSTALL_SOURCEDIR := $(INSTALLDIR)
