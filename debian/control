@@ -8,7 +8,7 @@ Build-Depends: libldap2-dev, libpam0g-dev, libdb-dev, dpatch (>= 2.0.9), cdbs, l
 
 Package: squid3-ssl
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), squid3-ssl-common (= ${source:Version}), lsb-base
+Depends: ${shlibs:Depends}, ${misc:Depends}, netbase, adduser, logrotate (>= 3.5.4-1), lsb-base
 Suggests: resolvconf (>= 0.40), smbclient, ufw
 Conflicts: squid3, squid3-common, squid3-client, squidclient, squid3-client, squidclient, squid3-ssl-common, squidclient-ssl, squid3-ssl-cgi
 Provides: squid3, squid3-common, squid3-client, squidclient, squid3-client, squidclient, squid3-ssl-common, squidclient-ssl, squid3-ssl-cgi
