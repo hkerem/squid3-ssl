@@ -67,6 +67,13 @@ start () {
 		$DAEMON -z
 	fi
 
+	# Create ssl_db if does not exists
+	if [ ! -d "/var/lib/ssl_db" ];
+	then
+		/usr/lib/squid3/ssl_crtd -c -s /var/lib/ssl_db
+		chown -R proxy.proxy /var/lib/ssl_db
+	fi
+
 	umask 027
 	ulimit -n 65535
 	cd $cache_dir
