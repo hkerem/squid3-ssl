@@ -7,6 +7,8 @@ etc/squid3/errorpage.css
 etc/squid3/squid.conf
 etc/squid3/errorpage.css.default
 etc/squid3/msntauth.conf.default
+etc/squid3/cachemgr.conf
+etc/squid3/cachemgr.conf.default
 etc/resolvconf
 etc/resolvconf/update-libc.d
 etc/resolvconf/update-libc.d/squid3
@@ -15,9 +17,6 @@ etc/ufw/applications.d
 etc/ufw/applications.d/squid3
 etc/init.d
 etc/init.d/squid3
-etc/squid
-etc/squid/cachemgr.conf
-etc/squid/cachemgr.conf.default
 etc/logrotate.d
 etc/logrotate.d/squid3
 usr
