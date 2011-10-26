@@ -1,14 +1,14 @@
 etc
 etc/squid3
-etc/squid3/mime.conf.default
-etc/squid3/squid.conf.default
+etc/squid3/mime.conf.default /usr/share/squid3/examples/mime.conf
+etc/squid3/squid.conf.default /usr/share/squid3/examples/squid.conf
 etc/squid3/msntauth.conf
 etc/squid3/errorpage.css
 etc/squid3/squid.conf
-etc/squid3/errorpage.css.default
-etc/squid3/msntauth.conf.default
+etc/squid3/errorpage.css.default  /usr/share/squid3/examples/errorpage.css
+etc/squid3/msntauth.conf.default  /usr/share/squid3/examples/msnauth.conf
 etc/squid3/cachemgr.conf
-etc/squid3/cachemgr.conf.default
+etc/squid3/cachemgr.conf.default  /usr/share/squid3/examples/cachemgr.conf
 etc/resolvconf
 etc/resolvconf/update-libc.d
 etc/resolvconf/update-libc.d/squid3
