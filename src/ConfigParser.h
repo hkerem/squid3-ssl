@@ -36,7 +36,7 @@
 #ifndef SQUID_CONFIGPARSER_H
 #define SQUID_CONFIGPARSER_H
 
-#include "squid.h"
+#include "squid-old.h"
 
 /**
  * Limit to how long any given config line may be.
@@ -67,6 +67,9 @@ public:
     static void ParseBool(bool *var);
     static void ParseString(char **var);
     static void ParseString(String *var);
+    static void ParseQuotedString(char **var);
+    static void ParseQuotedString(String *var);
+    static const char *QuoteString(String &var);
     static void ParseWordList(wordlist **list);
     static char * strtokFile();
 };

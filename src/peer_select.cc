@@ -32,8 +32,9 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "DnsLookupDetails.h"
+#include "errorpage.h"
 #include "event.h"
 #include "PeerSelectState.h"
 #include "Store.h"
@@ -103,6 +104,8 @@ peerSelectStateFree(ps_state * psstate)
         psstate->entry->unlock();
         psstate->entry = NULL;
     }
+
+    delete psstate->lastError;
 
     cbdataFree(psstate);
 }
@@ -265,7 +268,8 @@ peerSelectDnsPaths(ps_state *psstate)
 
     void *cbdata;
     if (cbdataReferenceValidDone(psstate->callback_data, &cbdata)) {
-        callback(psstate->paths, cbdata);
+        callback(psstate->paths, psstate->lastError, cbdata);
+        psstate->lastError = NULL; // FwdState has taken control over the ErrorState object.
     }
 
     peerSelectStateFree(psstate);
@@ -316,7 +320,14 @@ peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, v
             psstate->paths->push_back(p);
         }
     } else {
-        debugs(44, 3, HERE << "Unknown host: " << fs->_peer ? fs->_peer->host : psstate->request->GetHost());
+        debugs(44, 3, HERE << "Unknown host: " << (fs->_peer ? fs->_peer->host : psstate->request->GetHost()));
+        // discard any previous error.
+        delete psstate->lastError;
+        psstate->lastError = NULL;
+        if (fs->code == HIER_DIRECT) {
+            psstate->lastError = new ErrorState(ERR_DNS_FAIL, HTTP_SERVICE_UNAVAILABLE, psstate->request);
+            psstate->lastError->dnsError = details.error;
+        }
     }
 
     psstate->servers = fs->next;
@@ -441,8 +452,10 @@ peerSelectFoo(ps_state * ps)
         if (Config.onoff.prefer_direct)
             peerGetSomeDirect(ps);
 
-        if (request->flags.hierarchical || !Config.onoff.nonhierarchical_direct)
+        if (request->flags.hierarchical || !Config.onoff.nonhierarchical_direct) {
             peerGetSomeParent(ps);
+            peerGetAllParents(ps);
+        }
 
         if (!Config.onoff.prefer_direct)
             peerGetSomeDirect(ps);
@@ -897,6 +910,7 @@ ps_state::ps_state() : request (NULL),
         direct(DIRECT_UNKNOWN),
         callback (NULL),
         callback_data (NULL),
+        lastError(NULL),
         servers (NULL),
         first_parent_miss(),
         closest_parent_miss(),

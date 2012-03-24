@@ -32,12 +32,14 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "cbdata.h"
 #include "DnsLookupDetails.h"
 #include "event.h"
 #include "mgr/Registration.h"
+#include "SquidDns.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
 #include "Store.h"
 #include "wordlist.h"
 
@@ -127,12 +129,12 @@ static struct _fqdn_cache_stats {
 /// \ingroup FQDNCacheInternal
 static dlink_list lru_list;
 
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 static HLPCB fqdncacheHandleReply;
 static int fqdncacheParse(fqdncache_entry *, const char *buf);
 #else
 static IDNSCB fqdncacheHandleReply;
-static int fqdncacheParse(fqdncache_entry *, rfc1035_rr *, int, const char *error_message);
+static int fqdncacheParse(fqdncache_entry *, const rfc1035_rr *, int, const char *error_message);
 #endif
 static void fqdncacheRelease(fqdncache_entry *);
 static fqdncache_entry *fqdncacheCreateEntry(const char *name);
@@ -339,7 +341,7 @@ fqdncacheCallback(fqdncache_entry * f, int wait)
 }
 
 /// \ingroup FQDNCacheInternal
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 static int
 fqdncacheParse(fqdncache_entry *f, const char *inbuf)
 {
@@ -415,7 +417,7 @@ fqdncacheParse(fqdncache_entry *f, const char *inbuf)
 
 #else
 static int
-fqdncacheParse(fqdncache_entry *f, rfc1035_rr * answers, int nr, const char *error_message)
+fqdncacheParse(fqdncache_entry *f, const rfc1035_rr * answers, int nr, const char *error_message)
 {
     int k;
     int ttl = 0;
@@ -491,18 +493,18 @@ fqdncacheParse(fqdncache_entry *f, rfc1035_rr * answers, int nr, const char *err
  * Callback for handling DNS results.
  */
 static void
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 fqdncacheHandleReply(void *data, char *reply)
 #else
-fqdncacheHandleReply(void *data, rfc1035_rr * answers, int na, const char *error_message)
+fqdncacheHandleReply(void *data, const rfc1035_rr * answers, int na, const char *error_message)
 #endif
 {
     fqdncache_entry *f;
     static_cast<generic_cbdata *>(data)->unwrap(&f);
     ++FqdncacheStats.replies;
     const int age = f->age();
-    statHistCount(&statCounter.dns.svc_time, age);
-#if USE_DNSSERVERS
+    statCounter.dns.svcTime.count(age);
+#if USE_DNSHELPER
 
     fqdncacheParse(f, reply);
 #else
@@ -577,8 +579,7 @@ fqdncache_nbgethostbyaddr(const Ip::Address &addr, FQDNH * handler, void *handle
     f->handlerData = cbdataReference(handlerData);
     f->request_time = current_time;
     c = new generic_cbdata(f);
-#if USE_DNSSERVERS
-
+#if USE_DNSHELPER
     dnsSubmit(hashKeyStr(&f->hash), fqdncacheHandleReply, c);
 #else
     idnsPTRLookup(addr, fqdncacheHandleReply, c);

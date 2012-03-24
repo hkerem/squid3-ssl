@@ -4,7 +4,7 @@
  * DEBUG: section 54    Interprocess Communication
  */
 
-#include "squid.h"
+#include "squid-old.h"
 
 #include "Store.h"
 #include "ipc/StoreMap.h"
@@ -46,7 +46,7 @@ Ipc::StoreMap::openForWriting(const cache_key *const key, sfileno &fileno)
         assert(s.state != Slot::Writeable); // until we start breaking locks
 
         // free if the entry was used, keeping the entry locked
-        if (s.waitingToBeFreed == true || s.state == Slot::Readable)
+        if (s.waitingToBeFreed || s.state == Slot::Readable)
             freeLocked(s, true);
 
         assert(s.state == Slot::Empty);

@@ -5,7 +5,7 @@
  * DEBUG: section 47    Store Directory Routines
  */
 
-#include "config.h"
+#include "squid.h"
 #include "IpcIoFile.h"
 #include "IpcIoIOStrategy.h"
 
@@ -26,6 +26,12 @@ DiskFile::Pointer
 IpcIoIOStrategy::newFile (char const *path)
 {
     return new IpcIoFile (path);
+}
+
+bool
+IpcIoIOStrategy::unlinkdUseful() const
+{
+    return true;
 }
 
 void

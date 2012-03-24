@@ -42,7 +42,7 @@
  * per storedir it should work just fine.
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "AIODiskIOStrategy.h"
 #include "AIODiskFile.h"
 #include "DiskIO/IORequestor.h"
@@ -98,6 +98,12 @@ AIODiskIOStrategy::sync()
 
     while (aq.aq_numpending)
         callback();
+}
+
+bool
+AIODiskIOStrategy::unlinkdUseful() const
+{
+    return false;
 }
 
 void

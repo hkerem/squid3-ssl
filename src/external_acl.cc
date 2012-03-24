@@ -40,7 +40,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "mgr/Registration.h"
 #include "ExternalACL.h"
 #include "ExternalACLEntry.h"
@@ -190,6 +190,7 @@ struct _external_acl_format {
 #endif
         EXT_ACL_EXT_LOG,
         EXT_ACL_TAG,
+        EXT_ACL_PERCENT,
         EXT_ACL_END
     } type;
     external_acl_format *next;
@@ -471,6 +472,8 @@ parse_externalAclHelper(external_acl ** list)
             format->type = _external_acl_format::EXT_ACL_EXT_LOG;
         else if (strcmp(token, "%TAG") == 0)
             format->type = _external_acl_format::EXT_ACL_TAG;
+        else if (strcmp(token, "%%") == 0)
+            format->type = _external_acl_format::EXT_ACL_PERCENT;
         else {
             debugs(0,0, "ERROR: Unknown Format token " << token);
             self_destruct();
@@ -744,6 +747,28 @@ ACLExternal::~ACLExternal()
     safe_free (class_);
 }
 
+static void
+copyResultsFromEntry(HttpRequest *req, external_acl_entry *entry)
+{
+    if (req) {
+#if USE_AUTH
+        if (entry->user.size())
+            req->extacl_user = entry->user;
+
+        if (entry->password.size())
+            req->extacl_passwd = entry->password;
+#endif
+        if (!req->tag.size())
+            req->tag = entry->tag;
+
+        if (entry->log.size())
+            req->extacl_log = entry->log;
+
+        if (entry->message.size())
+            req->extacl_message = entry->message;
+    }
+}
+
 static int
 aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 {
@@ -755,7 +780,14 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
 
     if (entry) {
         if (cbdataReferenceValid(entry) && entry->def == acl->def) {
-            /* Ours, use it.. */
+            /* Ours, use it.. if the key matches */
+            key = makeExternalAclKey(ch, acl);
+            if (strcmp(key, (char*)entry->key) != 0) {
+                debugs(82, 9, HERE << "entry key='" << (char *)entry->key << "', our key='" << key << "' dont match. Discarded.");
+                // too bad. need a new lookup.
+                cbdataReferenceDone(ch->extacl_entry);
+                entry = NULL;
+            }
         } else {
             /* Not valid, or not ours.. get rid of it */
             debugs(82, 9, HERE << "entry " << entry << " not valid or not ours. Discarded.");
@@ -824,25 +856,7 @@ aclMatchExternal(external_acl_data *acl, ACLFilledChecklist *ch)
     external_acl_message = entry->message.termedBuf();
 
     debugs(82, 2, "aclMatchExternal: " << acl->def->name << " = " << result);
-
-    if (ch->request) {
-#if USE_AUTH
-        if (entry->user.size())
-            ch->request->extacl_user = entry->user;
-
-        if (entry->password.size())
-            ch->request->extacl_passwd = entry->password;
-#endif
-        if (!ch->request->tag.size())
-            ch->request->tag = entry->tag;
-
-        if (entry->log.size())
-            ch->request->extacl_log = entry->log;
-
-        if (entry->message.size())
-            ch->request->extacl_message = entry->message;
-    }
-
+    copyResultsFromEntry(ch->request, entry);
     return result;
 }
 
@@ -905,8 +919,13 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
         switch (format->type) {
 #if USE_AUTH
         case _external_acl_format::EXT_ACL_LOGIN:
-            assert (ch->auth_user_request != NULL);
-            str = ch->auth_user_request->username();
+            // if this ACL line was the cause of credentials fetch
+            // they may not already be in the checklist
+            if (ch->auth_user_request == NULL && ch->request)
+                ch->auth_user_request = ch->request->auth_user_request;
+
+            if (ch->auth_user_request != NULL)
+                str = ch->auth_user_request->username();
             break;
 #endif
 #if USE_IDENT
@@ -1081,6 +1100,9 @@ makeExternalAclKey(ACLFilledChecklist * ch, external_acl_data * acl_data)
             break;
         case _external_acl_format::EXT_ACL_TAG:
             str = request->tag.termedBuf();
+            break;
+        case _external_acl_format::EXT_ACL_PERCENT:
+            str = "%";
             break;
         case _external_acl_format::EXT_ACL_UNKNOWN:
 
@@ -1461,7 +1483,7 @@ ACLExternal::ExternalAclLookup(ACLChecklist *checklist, ACLExternal * me, EAH * 
 #if USE_AUTH
             debugs(82, 4, "externalAclLookup: user=" << entry->user);
 #endif
-
+            copyResultsFromEntry(ch->request, entry);
         }
 
         callback(callback_data, entry);

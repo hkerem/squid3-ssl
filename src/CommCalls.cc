@@ -1,4 +1,4 @@
-#include "squid.h"
+#include "squid-old.h"
 #include "fde.h"
 #include "comm/Connection.h"
 #include "CommCalls.h"
@@ -43,7 +43,6 @@ CommAcceptCbParams::CommAcceptCbParams(void *aData):
         CommCommonCbParams(aData)
 {
 }
-
 
 /* CommConnectCbParams */
 
@@ -109,6 +108,12 @@ CommTimeoutCbParams::CommTimeoutCbParams(void *aData):
 {
 }
 
+/* FdeCbParams */
+
+FdeCbParams::FdeCbParams(void *aData):
+        CommCommonCbParams(aData)
+{
+}
 
 /* CommAcceptCbPtrFun */
 
@@ -128,7 +133,7 @@ CommAcceptCbPtrFun::CommAcceptCbPtrFun(const CommAcceptCbPtrFun &o):
 void
 CommAcceptCbPtrFun::dial()
 {
-    handler(params.fd, params.conn, params.flag, params.xerrno, params.data);
+    handler(params);
 }
 
 void
@@ -189,7 +194,7 @@ CommIoCbPtrFun::print(std::ostream &os) const
 
 /* CommCloseCbPtrFun */
 
-CommCloseCbPtrFun::CommCloseCbPtrFun(PF *aHandler,
+CommCloseCbPtrFun::CommCloseCbPtrFun(CLCB *aHandler,
                                      const CommCloseCbParams &aParams):
         CommDialerParamsT<CommCloseCbParams>(aParams),
         handler(aHandler)
@@ -199,7 +204,7 @@ CommCloseCbPtrFun::CommCloseCbPtrFun(PF *aHandler,
 void
 CommCloseCbPtrFun::dial()
 {
-    handler(params.fd, params.data);
+    handler(params);
 }
 
 void
@@ -227,6 +232,28 @@ CommTimeoutCbPtrFun::dial()
 
 void
 CommTimeoutCbPtrFun::print(std::ostream &os) const
+{
+    os << '(';
+    params.print(os);
+    os << ')';
+}
+
+/* FdeCbPtrFun */
+
+FdeCbPtrFun::FdeCbPtrFun(FDECB *aHandler, const FdeCbParams &aParams) :
+        CommDialerParamsT<FdeCbParams>(aParams),
+        handler(aHandler)
+{
+}
+
+void
+FdeCbPtrFun::dial()
+{
+    handler(params);
+}
+
+void
+FdeCbPtrFun::print(std::ostream &os) const
 {
     os << '(';
     params.print(os);

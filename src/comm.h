@@ -1,7 +1,7 @@
 #ifndef __COMM_H__
 #define __COMM_H__
 
-#include "squid.h"
+#include "squid-old.h"
 #include "AsyncEngine.h"
 #include "base/AsyncCall.h"
 #include "CommCalls.h"
@@ -56,8 +56,9 @@ SQUIDCEXTERN unsigned short comm_local_port(int fd);
 
 SQUIDCEXTERN int comm_udp_sendto(int sock, const Ip::Address &to, const void *buf, int buflen);
 SQUIDCEXTERN void commCallCloseHandlers(int fd);
-SQUIDCEXTERN int commSetTimeout(int fd, int, CTCB *, void *);
-extern int commSetTimeout(int fd, int, AsyncCall::Pointer &callback);
+
+/// clear a timeout handler by FD number
+extern void commUnsetFdTimeout(int fd);
 
 /**
  * Set or clear the timeout for some action on an active connection.
@@ -72,9 +73,9 @@ SQUIDCEXTERN void checkTimeouts(void);
 
 
 //typedef void IOACB(int fd, int nfd, Comm::ConnectionPointer details, comm_err_t flag, int xerrno, void *data);
-extern void comm_add_close_handler(int fd, PF *, void *);
+extern void comm_add_close_handler(int fd, CLCB *, void *);
 extern void comm_add_close_handler(int fd, AsyncCall::Pointer &);
-extern void comm_remove_close_handler(int fd, PF *, void *);
+extern void comm_remove_close_handler(int fd, CLCB *, void *);
 extern void comm_remove_close_handler(int fd, AsyncCall::Pointer &);
 
 

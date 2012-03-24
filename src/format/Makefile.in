@@ -56,7 +56,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libformat_la_LIBADD =
-am_libformat_la_OBJECTS = Format.lo Quoting.lo Tokens.lo
+am_libformat_la_OBJECTS = Config.lo Format.lo Quoting.lo Token.lo
 libformat_la_OBJECTS = $(am_libformat_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -309,12 +309,16 @@ COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libformat.la
 libformat_la_SOURCES = \
+	ByteCode.h \
+	Config.cc \
+	Config.h \
 	Format.cc \
 	Format.h \
 	Quoting.cc \
 	Quoting.h \
-	Tokens.cc \
-	Tokens.h
+	Token.cc \
+	Token.h \
+	TokenTableEntry.h
 
 all: all-am
 
@@ -377,9 +381,10 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Format.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Quoting.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Tokens.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Token.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

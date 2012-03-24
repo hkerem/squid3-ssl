@@ -35,7 +35,7 @@
 #ifndef SQUID_CLIENTSIDEREQUEST_H
 #define SQUID_CLIENTSIDEREQUEST_H
 
-#include "squid.h"
+#include "squid-old.h"
 #include "HttpHeader.h"
 #include "clientStream.h"
 #include "client_side.h"
@@ -180,6 +180,7 @@ private:
     virtual void noteAdaptationAnswer(const Adaptation::Answer &answer);
     void handleAdaptedHeader(HttpMsg *msg);
     void handleAdaptationBlock(const Adaptation::Answer &answer);
+    virtual void noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group);
 
     // BodyConsumer API, called by BodyPipe
     virtual void noteMoreBodyDataAvailable(BodyPipe::Pointer);
@@ -187,6 +188,8 @@ private:
     virtual void noteBodyProducerAborted(BodyPipe::Pointer);
 
     void endRequestSatisfaction();
+    /// called by StoreEntry when it has more buffer space available
+    void resumeBodyStorage();
 
 private:
     CbcPointer<Adaptation::Initiate> virginHeadSource;

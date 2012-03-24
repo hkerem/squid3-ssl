@@ -60,7 +60,11 @@ am__installdirs = "$(DESTDIR)$(libexecdir)"
 PROGRAMS = $(libexec_PROGRAMS)
 am_log_file_daemon_OBJECTS = log_file_daemon.$(OBJEXT)
 log_file_daemon_OBJECTS = $(am_log_file_daemon_OBJECTS)
-log_file_daemon_LDADD = $(LDADD)
+@ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
+am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_3 =
+log_file_daemon_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+	$(am__DEPENDENCIES_3)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
 am__depfiles_maybe = depfiles
@@ -301,6 +305,10 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
 COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 log_file_daemon_SOURCES = log_file_daemon.cc
+log_file_daemon_LDADD = \
+	-L$(top_builddir)/lib $(COMPAT_LIB) \
+	$(XTRA_LIBS)
+
 EXTRA_DIST = config.test
 all: all-am
 

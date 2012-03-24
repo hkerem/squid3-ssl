@@ -33,8 +33,10 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
+#include "SwapDir.h"
 #include "fde.h"
 #include "xusleep.h"
 
@@ -130,13 +132,13 @@ unlinkdUnlink(const char *path)
         return;
     }
 
-    statCounter.unlink.requests++;
+    ++statCounter.unlink.requests;
     /*
     * Increment this syscalls counter here, even though the syscall
     * is executed by the helper process.  We try to be consistent
     * in counting unlink operations.
     */
-    statCounter.syscalls.disk.unlinks++;
+    ++statCounter.syscalls.disk.unlinks;
     queuelen++;
 }
 
@@ -156,8 +158,7 @@ unlinkdClose(void)
         unlinkd_wfd = -1;
 
         unlinkd_rfd = -1;
-    } else
-        debugs(2, 0, "unlinkdClose: WARNING: unlinkd_wfd is " << unlinkd_wfd);
+    }
 
     if (hIpc) {
         if (WaitForSingleObject(hIpc, 5000) != WAIT_OBJECT_0) {
@@ -188,9 +189,25 @@ unlinkdClose(void)
 
 #endif
 
+bool
+unlinkdNeeded(void)
+{
+    // we should start unlinkd if there are any cache_dirs using it
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
+        const RefCount<SwapDir> sd = Config.cacheSwap.swapDirs[i];
+        if (sd->unlinkdUseful())
+            return true;
+    }
+
+    return false;
+}
+
 void
 unlinkdInit(void)
 {
+    if (unlinkd_wfd >= 0)
+        return; // unlinkd already started
+
     const char *args[2];
     Ip::Address localhost;
 
@@ -199,10 +216,10 @@ unlinkdInit(void)
     localhost.SetLocalhost();
 
     pid = ipcCreate(
-#if USE_POLL && defined(_SQUID_OSF_)
+#if USE_POLL && _SQUID_OSF_
               /* pipes and poll() don't get along on DUNIX -DW */
               IPC_STREAM,
-#elif defined(_SQUID_MSWIN_)
+#elif _SQUID_MSWIN_
               /* select() will fail on a pipe */
               IPC_TCP_SOCKET,
 #else
@@ -226,9 +243,8 @@ unlinkdInit(void)
 
     fd_note(unlinkd_rfd, "unlinkd -> squid");
 
-    commSetTimeout(unlinkd_rfd, -1, NULL, NULL);
-
-    commSetTimeout(unlinkd_wfd, -1, NULL, NULL);
+    commUnsetFdTimeout(unlinkd_rfd);
+    commUnsetFdTimeout(unlinkd_wfd);
 
     /*
     * unlinkd_rfd should already be non-blocking because of

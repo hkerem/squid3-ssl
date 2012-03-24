@@ -33,7 +33,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "Store.h"
 #include "MemObject.h"
 #include "MemStore.h"
@@ -324,6 +324,26 @@ storeDirSwapLog(const StoreEntry * e, int op)
            std::hex << std::uppercase << std::setfill('0') << std::setw(8) << e->swap_filen);
 
     dynamic_cast<SwapDir *>(INDEXSD(e->swap_dirn))->logEntry(*e, op);
+}
+
+void
+StoreController::getStats(StoreInfoStats &stats) const
+{
+    if (memStore)
+        memStore->getStats(stats);
+    else {
+        // move this code to a non-shared memory cache class when we have it
+        stats.mem.shared = false;
+        stats.mem.capacity = Config.memMaxSize;
+        stats.mem.size = mem_node::StoreMemSize();
+        stats.mem.count = hot_obj_count;
+    }
+
+    swapDir->getStats(stats);
+
+    // low-level info not specific to memory or disk cache
+    stats.store_entry_count = StoreEntry::inUseCount();
+    stats.mem_object_count = MemObject::inUseCount();
 }
 
 void
@@ -665,6 +685,10 @@ free_cachedir(SquidConfig::_cacheSwap * swap)
 void
 StoreController::reference(StoreEntry &e)
 {
+    // special entries do not belong to any specific Store, but are IN_MEMORY
+    if (EBIT_TEST(e.flags, ENTRY_SPECIAL))
+        return;
+
     /* Notify the fs that we're referencing this object again */
 
     if (e.swap_dirn > -1)
@@ -685,6 +709,10 @@ bool
 StoreController::dereference(StoreEntry & e)
 {
     bool keepInStoreTable = true; // keep if there are no objections
+
+    // special entries do not belong to any specific Store, but are IN_MEMORY
+    if (EBIT_TEST(e.flags, ENTRY_SPECIAL))
+        return keepInStoreTable;
 
     /* Notify the fs that we're not referencing this object any more */
 
@@ -757,7 +785,13 @@ void
 StoreController::handleIdleEntry(StoreEntry &e)
 {
     bool keepInLocalMemory = false;
-    if (memStore) {
+
+    if (EBIT_TEST(e.flags, ENTRY_SPECIAL)) {
+        // Icons (and cache digests?) should stay in store_table until we
+        // have a dedicated storage for them (that would not purge them).
+        // They are not managed [well] by any specific Store handled below.
+        keepInLocalMemory = true;
+    } else if (memStore) {
         memStore->considerKeeping(e);
         // leave keepInLocalMemory false; memStore maintains its own cache
     } else {
@@ -773,6 +807,8 @@ StoreController::handleIdleEntry(StoreEntry &e)
         destroyStoreEntry(static_cast<hash_link*>(&e));
         return;
     }
+
+    debugs(20, 5, HERE << "keepInLocalMemory: " << keepInLocalMemory);
 
     // TODO: move this into [non-shared] memory cache class when we have one
     if (keepInLocalMemory) {
@@ -963,6 +999,22 @@ StoreHashIndex::maxObjectSize() const
     }
 
     return result;
+}
+
+void
+StoreHashIndex::getStats(StoreInfoStats &stats) const
+{
+    // accumulate per-disk cache stats
+    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+        StoreInfoStats dirStats;
+        store(i)->getStats(dirStats);
+        stats += dirStats;
+    }
+
+    // common to all disks
+    stats.swap.open_disk_fd = store_open_disk_fd;
+
+    // memory cache stats are collected in StoreController::getStats(), for now
 }
 
 void

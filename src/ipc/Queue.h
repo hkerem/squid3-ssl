@@ -42,15 +42,15 @@ public:
     void clearSignal() { unblock(); popSignal.swap_if(1,0); }
 
 private:
-    AtomicWord popBlocked; ///< whether the reader is blocked on pop()
-    AtomicWord popSignal; ///< whether writer has sent and reader has not received notification
+    Atomic::Word popBlocked; ///< whether the reader is blocked on pop()
+    Atomic::Word popSignal; ///< whether writer has sent and reader has not received notification
 
 public:
-    typedef AtomicWord Rate; ///< pop()s per second
+    typedef Atomic::Word Rate; ///< pop()s per second
     Rate rateLimit; ///< pop()s per second limit if positive
 
     // we need a signed atomic type because balance may get negative
-    typedef AtomicWordT<int> AtomicSignedMsec;
+    typedef Atomic::WordT<int> AtomicSignedMsec;
     typedef AtomicSignedMsec Balance;
     /// how far ahead the reader is compared to a perfect read/sec event rate
     Balance balance;
@@ -115,7 +115,7 @@ private:
     unsigned int theIn; ///< input index, used only in push()
     unsigned int theOut; ///< output index, used only in pop()
 
-    AtomicWord theSize; ///< number of items in the queue
+    Atomic::Word theSize; ///< number of items in the queue
     const unsigned int theMaxItemSize; ///< maximum item size
     const int theCapacity; ///< maximum number of items, i.e. theBuffer size
 
@@ -186,6 +186,9 @@ public:
     enum Group { groupA = 0, groupB = 1 };
     FewToFewBiQueue(const String &id, const Group aLocalGroup, const int aLocalProcessId);
 
+    /// maximum number of items in the queue
+    static int MaxItemsCount(const int groupASize, const int groupBSize, const int capacity);
+
     Group localGroup() const { return theLocalGroup; }
     Group remoteGroup() const { return theLocalGroup == groupA ? groupB : groupA; }
 
@@ -198,24 +201,38 @@ public:
     /// calls OneToOneUniQueue::push() using the given process queue
     template <class Value> bool push(const int remoteProcessId, const Value &value);
 
-    // TODO: rename to findOldest() or some such
-    /// calls OneToOneUniQueue::peek() using the given process queue
-    template<class Value> bool peek(const int remoteProcessId, Value &value) const;
+    /// finds the oldest item in incoming and outgoing queues between
+    /// us and the given remote process
+    template<class Value> bool findOldest(const int remoteProcessId, Value &value) const;
 
-    /// returns true if pop() would have probably succeeded but does not pop()
-    bool popReady() const;
+    /// peeks at the item likely to be pop()ed next
+    template<class Value> bool peek(int &remoteProcessId, Value &value) const;
 
     /// returns local reader's balance
     QueueReader::Balance &localBalance();
 
+    /// returns reader's balance for a given remote process
+    const QueueReader::Balance &balance(const int remoteProcessId) const;
+
     /// returns local reader's rate limit
     QueueReader::Rate &localRateLimit();
+
+    /// returns reader's rate limit for a given remote process
+    const QueueReader::Rate &rateLimit(const int remoteProcessId) const;
+
+    /// number of items in incoming queue from a given remote process
+    int inSize(const int remoteProcessId) const { return inQueue(remoteProcessId).size(); }
+
+    /// number of items in outgoing queue to a given remote process
+    int outSize(const int remoteProcessId) const { return outQueue(remoteProcessId).size(); }
 
 private:
     bool validProcessId(const Group group, const int processId) const;
     int oneToOneQueueIndex(const Group fromGroup, const int fromProcessId, const Group toGroup, const int toProcessId) const;
     const OneToOneUniQueue &oneToOneQueue(const Group fromGroup, const int fromProcessId, const Group toGroup, const int toProcessId) const;
     OneToOneUniQueue &oneToOneQueue(const Group fromGroup, const int fromProcessId, const Group toGroup, const int toProcessId);
+    const OneToOneUniQueue &inQueue(const int remoteProcessId) const;
+    const OneToOneUniQueue &outQueue(const int remoteProcessId) const;
     QueueReader &reader(const Group group, const int processId);
     const QueueReader &reader(const Group group, const int processId) const;
     int readerIndex(const Group group, const int processId) const;
@@ -350,22 +367,44 @@ FewToFewBiQueue::push(const int remoteProcessId, const Value &value)
 
 template <class Value>
 bool
-FewToFewBiQueue::peek(const int remoteProcessId, Value &value) const
+FewToFewBiQueue::findOldest(const int remoteProcessId, Value &value) const
 {
     // we may be called before remote process configured its queue end
     if (!validProcessId(remoteGroup(), remoteProcessId))
         return false;
 
     // we need the oldest value, so start with the incoming, them-to-us queue:
-    const OneToOneUniQueue &inQueue = oneToOneQueue(remoteGroup(), remoteProcessId, theLocalGroup, theLocalProcessId);
-    debugs(54, 2, HERE << "peeking from " << remoteProcessId << " to " << theLocalProcessId << " at " << inQueue.size());
-    if (inQueue.peek(value))
+    const OneToOneUniQueue &in = inQueue(remoteProcessId);
+    debugs(54, 2, HERE << "peeking from " << remoteProcessId << " to " <<
+           theLocalProcessId << " at " << in.size());
+    if (in.peek(value))
         return true;
 
     // if the incoming queue is empty, check the outgoing, us-to-them queue:
-    const OneToOneUniQueue &outQueue = oneToOneQueue(theLocalGroup, theLocalProcessId, remoteGroup(), remoteProcessId);
-    debugs(54, 2, HERE << "peeking from " << theLocalProcessId << " to " << remoteProcessId << " at " << outQueue.size());
-    return outQueue.peek(value);
+    const OneToOneUniQueue &out = outQueue(remoteProcessId);
+    debugs(54, 2, HERE << "peeking from " << theLocalProcessId << " to " <<
+           remoteProcessId << " at " << out.size());
+    return out.peek(value);
+}
+
+template <class Value>
+bool
+FewToFewBiQueue::peek(int &remoteProcessId, Value &value) const
+{
+    // mimic FewToFewBiQueue::pop() but quit just before popping
+    int popProcessId = theLastPopProcessId; // preserve for future pop()
+    for (int i = 0; i < remoteGroupSize(); ++i) {
+        if (++popProcessId >= remoteGroupIdOffset() + remoteGroupSize())
+            popProcessId = remoteGroupIdOffset();
+        const OneToOneUniQueue &queue =
+            oneToOneQueue(remoteGroup(), popProcessId,
+                          theLocalGroup, theLocalProcessId);
+        if (queue.peek(value)) {
+            remoteProcessId = popProcessId;
+            return true;
+        }
+    }
+    return false; // most likely, no process had anything to pop
 }
 
 } // namespace Ipc

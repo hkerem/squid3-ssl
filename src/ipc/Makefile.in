@@ -56,11 +56,12 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libipc_la_LIBADD =
-am_libipc_la_OBJECTS = FdNotes.lo Kid.lo Kids.lo Queue.lo \
-	ReadWriteLock.lo StartListening.lo StoreMap.lo StrandCoord.lo \
-	StrandSearch.lo SharedListen.lo TypedMsgHdr.lo Coordinator.lo \
-	UdsOp.lo Port.lo Strand.lo Forwarder.lo Inquirer.lo Page.lo \
-	PagePool.lo Pages.lo PageStack.lo Segment.lo
+am_libipc_la_OBJECTS = AtomicWord.lo FdNotes.lo Kid.lo Kids.lo \
+	Queue.lo ReadWriteLock.lo StartListening.lo StoreMap.lo \
+	StrandCoord.lo StrandSearch.lo SharedListen.lo TypedMsgHdr.lo \
+	Coordinator.lo UdsOp.lo Port.lo Strand.lo Forwarder.lo \
+	Inquirer.lo Page.lo PagePool.lo Pages.lo PageStack.lo \
+	Segment.lo
 libipc_la_OBJECTS = $(am_libipc_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -313,6 +314,7 @@ COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libipc.la
 libipc_la_SOURCES = \
+	AtomicWord.cc \
 	AtomicWord.h \
 	FdNotes.cc \
 	FdNotes.h \
@@ -427,6 +429,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AtomicWord.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Coordinator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FdNotes.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Forwarder.Plo@am__quote@

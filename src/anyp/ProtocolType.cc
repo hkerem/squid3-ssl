@@ -1,7 +1,7 @@
 /*
  * Auto-Generated File. Changes will be destroyed.
  */
-#include "config.h"
+#include "squid.h"
 #include "anyp/ProtocolType.h"
 namespace AnyP
 {
@@ -11,6 +11,8 @@ const char *ProtocolType_str[] = {
 	"HTTP",
 	"FTP",
 	"HTTPS",
+	"COAP",
+	"COAPS",
 	"GOPHER",
 	"WAIS",
 	"CACHE_OBJECT",

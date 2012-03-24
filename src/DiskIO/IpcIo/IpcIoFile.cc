@@ -4,7 +4,7 @@
  * DEBUG: section 47    Store Directory Routines
  */
 
-#include "config.h"
+#include "squid.h"
 #include "base/RunnersRegistry.h"
 #include "base/TextException.h"
 #include "DiskIO/IORequestor.h"
@@ -17,12 +17,18 @@
 #include "ipc/StrandSearch.h"
 #include "ipc/UdsOp.h"
 #include "ipc/mem/Pages.h"
+#include "StatCounters.h"
 #include "SquidTime.h"
 
 CBDATA_CLASS_INIT(IpcIoFile);
 
 /// shared memory segment path to use for IpcIoFile maps
 static const char *const ShmLabel = "io_file";
+/// a single worker-to-disker or disker-to-worker queue capacity; up
+/// to 2*QueueCapacity I/O requests queued between a single worker and
+/// a single disker
+// TODO: make configurable or compute from squid.conf settings if possible
+static const int QueueCapacity = 1024;
 
 const double IpcIoFile::Timeout = 7; // seconds;  XXX: ALL,9 may require more
 IpcIoFile::IpcIoFileList IpcIoFile::WaitingForOpen;
@@ -357,10 +363,24 @@ IpcIoFile::canWait() const
         return true; // no timeout specified
 
     IpcIoMsg oldestIo;
-    if (!queue->peek(diskId, oldestIo) || oldestIo.start.tv_sec <= 0)
+    if (!queue->findOldest(diskId, oldestIo) || oldestIo.start.tv_sec <= 0)
         return true; // we cannot estimate expected wait time; assume it is OK
 
-    const int expectedWait = tvSubMsec(oldestIo.start, current_time);
+    const int oldestWait = tvSubMsec(oldestIo.start, current_time);
+
+    int rateWait = -1; // time in millisecons
+    const Ipc::QueueReader::Rate::Value ioRate = queue->rateLimit(diskId);
+    if (ioRate > 0) {
+        // if there are N requests pending, the new one will wait at
+        // least N/max-swap-rate seconds
+        rateWait = static_cast<int>(1e3 * queue->outSize(diskId) / ioRate);
+        // adjust N/max-swap-rate value based on the queue "balance"
+        // member, in case we have been borrowing time against future
+        // I/O already
+        rateWait += queue->balance(diskId);
+    }
+
+    const int expectedWait = max(oldestWait, rateWait);
     if (expectedWait < 0 ||
             static_cast<time_msec_t>(expectedWait) < config.ioTimeout)
         return true; // expected wait time is acceptible
@@ -609,7 +629,7 @@ diskerRead(IpcIoMsg &ipcIo)
 
     char *const buf = Ipc::Mem::PagePointer(ipcIo.page);
     const ssize_t read = pread(TheFile, buf, min(ipcIo.len, Ipc::Mem::PageSize()), ipcIo.offset);
-    statCounter.syscalls.disk.reads++;
+    ++statCounter.syscalls.disk.reads;
     fd_bytes(TheFile, read, FD_READ);
 
     if (read >= 0) {
@@ -631,7 +651,7 @@ diskerWrite(IpcIoMsg &ipcIo)
 {
     const char *const buf = Ipc::Mem::PagePointer(ipcIo.page);
     const ssize_t wrote = pwrite(TheFile, buf, min(ipcIo.len, Ipc::Mem::PageSize()), ipcIo.offset);
-    statCounter.syscalls.disk.writes++;
+    ++statCounter.syscalls.disk.writes;
     fd_bytes(TheFile, wrote, FD_WRITE);
 
     if (wrote >= 0) {
@@ -671,8 +691,10 @@ IpcIoFile::WaitBeforePop()
         return false;
 
     // is there an I/O request we could potentially delay?
-    if (!queue->popReady()) {
-        // unlike pop(), popReady() is not reliable and does not block reader
+    int processId;
+    IpcIoMsg ipcIo;
+    if (!queue->peek(processId, ipcIo)) {
+        // unlike pop(), peek() is not reliable and does not block reader
         // so we must proceed with pop() even if it is likely to fail
         return false;
     }
@@ -692,9 +714,10 @@ IpcIoFile::WaitBeforePop()
 
     debugs(47, 7, HERE << "rate limiting balance: " << balance << " after +" << credit << " -" << debit);
 
-    if (balance > maxImbalance) {
-        // if we accumulated too much time for future slow I/Os,
-        // then shed accumulated time to keep just half of the excess
+    if (ipcIo.command == IpcIo::cmdWrite && balance > maxImbalance) {
+        // if the next request is (likely) write and we accumulated
+        // too much time for future slow I/Os, then shed accumulated
+        // time to keep just half of the excess
         const int64_t toSpend = balance - maxImbalance/2;
 
         if (toSpend/1e3 > Timeout)
@@ -829,6 +852,31 @@ DiskerClose(const String &path)
 }
 
 
+/// reports our needs for shared memory pages to Ipc::Mem::Pages
+class IpcIoClaimMemoryNeedsRr: public RegisteredRunner
+{
+public:
+    /* RegisteredRunner API */
+    virtual void run(const RunnerRegistry &r);
+};
+
+RunnerRegistrationEntry(rrClaimMemoryNeeds, IpcIoClaimMemoryNeedsRr);
+
+
+void
+IpcIoClaimMemoryNeedsRr::run(const RunnerRegistry &)
+{
+    const int itemsCount = Ipc::FewToFewBiQueue::MaxItemsCount(
+                               ::Config.workers, ::Config.cacheSwap.n_strands, QueueCapacity);
+    // the maximum number of shared I/O pages is approximately the
+    // number of queue slots, we add a fudge factor to that to account
+    // for corner cases where I/O pages are created before queue
+    // limits are checked or destroyed long after the I/O is dequeued
+    Ipc::Mem::NotePageNeed(Ipc::Mem::PageId::ioPage,
+                           static_cast<int>(itemsCount * 1.1));
+}
+
+
 /// initializes shared memory segments used by IpcIoFile
 class IpcIoRr: public Ipc::Mem::RegisteredRunner
 {
@@ -849,15 +897,14 @@ RunnerRegistrationEntry(rrAfterConfig, IpcIoRr);
 
 void IpcIoRr::create(const RunnerRegistry &)
 {
-    if (!UsingSmp())
+    if (Config.cacheSwap.n_strands <= 0)
         return;
 
     Must(!owner);
-    // XXX: make capacity configurable
     owner = Ipc::FewToFewBiQueue::Init(ShmLabel, Config.workers, 1,
                                        Config.cacheSwap.n_strands,
                                        1 + Config.workers, sizeof(IpcIoMsg),
-                                       1024);
+                                       QueueCapacity);
 }
 
 IpcIoRr::~IpcIoRr()

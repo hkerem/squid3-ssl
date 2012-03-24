@@ -33,7 +33,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "CossSwapDir.h"
 #include "Store.h"
 #include "store_coss.h"
@@ -127,6 +127,13 @@ CossSwapDir::allocate(const StoreEntry * e, int which)
         debugs(79, 3, "CossSwapDir::allocate: Collision");
         return -1;
     }
+}
+
+bool
+CossSwapDir::unlinkdUseful() const
+{
+    // no entry-specific files to unlink
+    return false;
 }
 
 void

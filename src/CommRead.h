@@ -36,7 +36,7 @@
 #ifndef COMMREAD_H
 #define COMMREAD_H
 
-#include "squid.h"
+#include "squid-old.h"
 #include "comm.h"
 #include "CommCalls.h"
 #include "comm/forward.h"
@@ -80,7 +80,7 @@ public:
     void kickReads(int const count);
 
 private:
-    static PF CloseHandler;
+    static CLCB CloseHandler;
     static DeferredRead popHead(CbDataListContainer<DeferredRead> &deferredReads);
     void kickARead(DeferredRead const &);
     void flushReads();

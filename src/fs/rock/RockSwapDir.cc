@@ -4,8 +4,7 @@
  * DEBUG: section 47    Store Directory Routines
  */
 
-#include "config.h"
-#include "base/RunnersRegistry.h"
+#include "squid.h"
 #include "ConfigOption.h"
 #include "DiskIO/DiskIOModule.h"
 #include "DiskIO/DiskIOStrategy.h"
@@ -336,10 +335,13 @@ Rock::SwapDir::parseTimeOption(char const *option, const char *value, int reconf
 
     const time_msec_t newTime = static_cast<time_msec_t>(parsedValue);
 
-    if (reconfiguring && *storedTime != newTime)
-        debugs(3, DBG_IMPORTANT, "cache_dir " << path << ' ' << option << " is now " << newTime);
-
-    *storedTime = newTime;
+    if (!reconfiguring)
+        *storedTime = newTime;
+    else if (*storedTime != newTime) {
+        debugs(3, DBG_IMPORTANT, "WARNING: cache_dir " << path << ' ' << option
+               << " cannot be changed dynamically, value left unchanged: " <<
+               *storedTime);
+    }
 
     return true;
 }
@@ -380,10 +382,13 @@ Rock::SwapDir::parseRateOption(char const *option, const char *value, int isaRec
         self_destruct();
     }
 
-    if (isaReconfig && *storedRate != newRate)
-        debugs(3, DBG_IMPORTANT, "cache_dir " << path << ' ' << option << " is now " << newRate);
-
-    *storedRate = newRate;
+    if (!isaReconfig)
+        *storedRate = newRate;
+    else if (*storedRate != newRate) {
+        debugs(3, DBG_IMPORTANT, "WARNING: cache_dir " << path << ' ' << option
+               << " cannot be changed dynamically, value left unchanged: " <<
+               *storedRate);
+    }
 
     return true;
 }
@@ -744,6 +749,13 @@ Rock::SwapDir::dereference(StoreEntry &e)
     return false;
 }
 
+bool
+Rock::SwapDir::unlinkdUseful() const
+{
+    // no entry-specific files to unlink
+    return false;
+}
+
 void
 Rock::SwapDir::unlink(StoreEntry &e)
 {
@@ -811,24 +823,12 @@ Rock::SwapDir::statfs(StoreEntry &e) const
 }
 
 
-/// initializes shared memory segments used by Rock::SwapDir
-class RockSwapDirRr: public Ipc::Mem::RegisteredRunner
+namespace Rock
 {
-public:
-    /* RegisteredRunner API */
-    virtual ~RockSwapDirRr();
+RunnerRegistrationEntry(rrAfterConfig, SwapDirRr);
+}
 
-protected:
-    virtual void create(const RunnerRegistry &);
-
-private:
-    Vector<Rock::SwapDir::DirMap::Owner *> owners;
-};
-
-RunnerRegistrationEntry(rrAfterConfig, RockSwapDirRr);
-
-
-void RockSwapDirRr::create(const RunnerRegistry &)
+void Rock::SwapDirRr::create(const RunnerRegistry &)
 {
     Must(owners.empty());
     for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
@@ -840,7 +840,7 @@ void RockSwapDirRr::create(const RunnerRegistry &)
     }
 }
 
-RockSwapDirRr::~RockSwapDirRr()
+Rock::SwapDirRr::~SwapDirRr()
 {
     for (size_t i = 0; i < owners.size(); ++i)
         delete owners[i];

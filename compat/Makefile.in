@@ -66,9 +66,10 @@ ARFLAGS = cru
 libcompat_squid_a_AR = $(AR) $(ARFLAGS)
 libcompat_squid_a_DEPENDENCIES = $(LIBOBJS)
 am_libcompat_squid_a_OBJECTS = assert.$(OBJEXT) compat.$(OBJEXT) \
-	debug.$(OBJEXT) GnuRegex.$(OBJEXT) strnstr.$(OBJEXT) \
-	xalloc.$(OBJEXT) xstrerror.$(OBJEXT) xstring.$(OBJEXT) \
-	xstrto.$(OBJEXT) mswin.$(OBJEXT)
+	debug.$(OBJEXT) GnuRegex.$(OBJEXT) shm.$(OBJEXT) \
+	strnstr.$(OBJEXT) strnrchr.$(OBJEXT) xalloc.$(OBJEXT) \
+	xstrerror.$(OBJEXT) xstring.$(OBJEXT) xstrto.$(OBJEXT) \
+	mswin.$(OBJEXT)
 libcompat_squid_a_OBJECTS = $(am_libcompat_squid_a_OBJECTS)
 am_testPreCompiler_OBJECTS = testPreCompiler.$(OBJEXT) \
 	testMain.$(OBJEXT)
@@ -353,12 +354,15 @@ libcompat_squid_a_SOURCES = \
 	initgroups.h \
 	osdetect.h \
 	psignal.h \
+	shm.cc \
 	shm.h \
 	stdio.h \
 	stdvarargs.h \
 	strnstr.cc \
 	strsep.h \
 	strtoll.h \
+	strnrchr.h \
+	strnrchr.c \
 	tempnam.h \
 	types.h \
 	unsafe.h \
@@ -477,6 +481,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/compat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mswin.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnrchr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/strnstr.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testPreCompiler.Po@am__quote@

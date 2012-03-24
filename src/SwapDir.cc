@@ -32,7 +32,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "compat/strtoll.h"
 #include "SwapDir.h"
 #include "StoreFileSystem.h"
@@ -67,6 +67,17 @@ SwapDir::doubleCheck(StoreEntry &)
 
 void
 SwapDir::unlink(StoreEntry &) {}
+
+void
+SwapDir::getStats(StoreInfoStats &stats) const
+{
+    if (!doReportStat())
+        return;
+
+    stats.swap.size = currentSize();
+    stats.swap.capacity = maxSize();
+    stats.swap.count = currentCount();
+}
 
 void
 SwapDir::stat(StoreEntry &output) const

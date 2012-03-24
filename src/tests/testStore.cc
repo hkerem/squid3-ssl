@@ -1,6 +1,6 @@
 #define SQUID_UNIT_TEST 1
 
-#include "squid.h"
+#include "squid-old.h"
 #include "testStore.h"
 #include "Store.h"
 
@@ -55,6 +55,11 @@ int64_t
 TestStore::maxObjectSize() const
 {
     return 1;
+}
+
+void
+TestStore::getStats(StoreInfoStats &) const
+{
 }
 
 void

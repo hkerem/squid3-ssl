@@ -30,7 +30,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "cbdata.h"
 #include "CacheManager.h"
 #include "DnsLookupDetails.h"
@@ -39,7 +39,9 @@
 #include "ip/tools.h"
 #include "ipcache.h"
 #include "mgr/Registration.h"
+#include "SquidDns.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
 #include "Store.h"
 #include "wordlist.h"
 
@@ -133,16 +135,16 @@ static dlink_list lru_list;
 static void stat_ipcache_get(StoreEntry *);
 
 static FREE ipcacheFreeEntry;
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 static HLPCB ipcacheHandleReply;
 #else
 static IDNSCB ipcacheHandleReply;
 #endif
 static int ipcacheExpiredEntry(ipcache_entry *);
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 static int ipcacheParse(ipcache_entry *, const char *buf);
 #else
-static int ipcacheParse(ipcache_entry *, rfc1035_rr *, int, const char *error);
+static int ipcacheParse(ipcache_entry *, const rfc1035_rr *, int, const char *error);
 #endif
 static ipcache_entry *ipcache_get(const char *);
 static void ipcacheLockEntry(ipcache_entry *);
@@ -351,7 +353,7 @@ ipcacheCallback(ipcache_entry *i, int wait)
 }
 
 /// \ingroup IPCacheAPI
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 static int
 ipcacheParse(ipcache_entry *i, const char *inbuf)
 {
@@ -456,7 +458,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
 
 #else
 static int
-ipcacheParse(ipcache_entry *i, rfc1035_rr * answers, int nr, const char *error_message)
+ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *error_message)
 {
     int k;
     int j = 0;
@@ -587,19 +589,19 @@ ipcacheParse(ipcache_entry *i, rfc1035_rr * answers, int nr, const char *error_m
 
 /// \ingroup IPCacheInternal
 static void
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
 ipcacheHandleReply(void *data, char *reply)
 #else
-ipcacheHandleReply(void *data, rfc1035_rr * answers, int na, const char *error_message)
+ipcacheHandleReply(void *data, const rfc1035_rr * answers, int na, const char *error_message)
 #endif
 {
     ipcache_entry *i;
     static_cast<generic_cbdata *>(data)->unwrap(&i);
     IpcacheStats.replies++;
     const int age = i->age();
-    statHistCount(&statCounter.dns.svc_time, age);
+    statCounter.dns.svcTime.count(age);
 
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
     ipcacheParse(i, reply);
 #else
 
@@ -692,11 +694,9 @@ ipcache_nbgethostbyname(const char *name, IPH * handler, void *handlerData)
     i->handlerData = cbdataReference(handlerData);
     i->request_time = current_time;
     c = new generic_cbdata(i);
-#if USE_DNSSERVERS
-
+#if USE_DNSHELPER
     dnsSubmit(hashKeyStr(&i->hash), ipcacheHandleReply, c);
 #else
-
     idnsALookup(hashKeyStr(&i->hash), ipcacheHandleReply, c);
 #endif
 }

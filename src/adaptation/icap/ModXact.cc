@@ -2,7 +2,7 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "AccessLogEntry.h"
 #include "adaptation/Answer.h"
 #include "adaptation/History.h"
@@ -945,10 +945,8 @@ void Adaptation::Icap::ModXact::prepEchoing()
     Must(!adapted.header);
     {
         HttpMsg::Pointer newHead;
-        if (const HttpRequest *oldR = dynamic_cast<const HttpRequest*>(oldHead)) {
+        if (dynamic_cast<const HttpRequest*>(oldHead)) {
             HttpRequest::Pointer newR(new HttpRequest);
-            newR->canonical = oldR->canonical ?
-                              xstrdup(oldR->canonical) : NULL; // parse() does not set it
             newHead = newR;
         } else if (dynamic_cast<const HttpReply*>(oldHead)) {
             newHead = new HttpReply;
@@ -964,6 +962,9 @@ void Adaptation::Icap::ModXact::prepEchoing()
     http_status error = HTTP_STATUS_NONE;
 
     Must(adapted.header->parse(&httpBuf, true, &error));
+
+    if (HttpRequest *r = dynamic_cast<HttpRequest*>(adapted.header))
+        urlCanonical(r); // parse does not set HttpRequest::canonical
 
     Must(adapted.header->hdr_sz == httpBuf.contentSize()); // no leftovers
 
@@ -1413,6 +1414,19 @@ void Adaptation::Icap::ModXact::makeRequestHeaders(MemBuf &buf)
 
     if (TheConfig.send_username && request)
         makeUsernameHeader(request, buf);
+
+    // Adaptation::Config::metaHeaders
+    typedef Adaptation::Config::MetaHeaders::iterator ACAMLI;
+    for (ACAMLI i = Adaptation::Config::metaHeaders.begin(); i != Adaptation::Config::metaHeaders.end(); ++i) {
+        HttpRequest *r = virgin.cause ?
+                         virgin.cause : dynamic_cast<HttpRequest*>(virgin.header);
+        Must(r);
+
+        HttpReply *reply = dynamic_cast<HttpReply*>(virgin.header);
+
+        if (const char *value = (*i)->match(r, reply))
+            buf.Printf("%s: %s\r\n", (*i)->name.termedBuf(), value);
+    }
 
     // fprintf(stderr, "%s\n", buf.content());
 

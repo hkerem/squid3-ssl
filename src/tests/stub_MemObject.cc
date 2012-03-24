@@ -199,3 +199,17 @@ MemObject::markEndOfReplyHeaders()
 {
     fatal ("MemObject.cc required.");
 }
+
+size_t
+MemObject::inUseCount()
+{
+    fatal ("MemObject.cc required.");
+    return 0;
+}
+
+int64_t
+MemObject::availableForSwapOut() const
+{
+    fatal ("MemObject.cc required.");
+    return 0;
+}

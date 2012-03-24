@@ -42,7 +42,7 @@
  * From that point on it's up to reply management.
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "acl/FilledChecklist.h"
 #include "acl/Gadgets.h"
 #if USE_ADAPTATION
@@ -66,7 +66,7 @@
 #include "comm/Write.h"
 #include "compat/inet_pton.h"
 #include "fde.h"
-#include "format/Tokens.h"
+#include "format/Token.h"
 #include "HttpHdrCc.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
@@ -553,6 +553,21 @@ ClientRequestContext::hostHeaderIpVerify(const ipcache_addrs* ia, const DnsLooku
 void
 ClientRequestContext::hostHeaderVerifyFailed(const char *A, const char *B)
 {
+    // IP address validation for Host: failed. Admin wants to ignore them.
+    // NP: we do not yet handle CONNECT tunnels well, so ignore for them
+    if (!Config.onoff.hostStrictVerify && http->request->method != METHOD_CONNECT) {
+        debugs(85, 3, "SECURITY ALERT: Host header forgery detected on " << http->getConn()->clientConnection <<
+               " (" << A << " does not match " << B << ") on URL: " << urlCanonical(http->request));
+
+        // NP: it is tempting to use 'flags.nocache' but that is all about READing cache data.
+        // The problems here are about WRITE for new cache content, which means flags.cachable
+        http->request->flags.cachable = 0; // MUST NOT cache (for now)
+        // XXX: when we have updated the cache key to base on raw-IP + URI this cacheable limit can go.
+        http->request->flags.hierarchical = 0; // MUST NOT pass to peers (for now)
+        // XXX: when we have sorted out the best way to relay requests properly to peers this hierarchical limit can go.
+        return;
+    }
+
     debugs(85, DBG_IMPORTANT, "SECURITY ALERT: Host header forgery detected on " <<
            http->getConn()->clientConnection << " (" << A << " does not match " << B << ")");
     debugs(85, DBG_IMPORTANT, "SECURITY ALERT: By user agent: " << http->request->header.getStr(HDR_USER_AGENT));
@@ -562,7 +577,7 @@ ClientRequestContext::hostHeaderVerifyFailed(const char *A, const char *B)
     clientStreamNode *node = (clientStreamNode *)http->client_stream.tail->prev->data;
     clientReplyContext *repContext = dynamic_cast<clientReplyContext *>(node->data.getRaw());
     assert (repContext);
-    repContext->setReplyToError(ERR_INVALID_REQ, HTTP_CONFLICT,
+    repContext->setReplyToError(ERR_CONFLICT_HOST, HTTP_CONFLICT,
                                 http->request->method, NULL,
                                 http->getConn()->clientConnection->remote,
                                 http->request,
@@ -634,7 +649,7 @@ ClientRequestContext::hostHeaderVerify()
             // verify the destination DNS is one of the Host: headers IPs
             ipcache_nbgethostbyname(host, hostHeaderIpVerifyWrapper, this);
         }
-    } else if (Config.onoff.hostStrictVerify) {
+    } else if (!Config.onoff.hostStrictVerify) {
         debugs(85, 3, HERE << "validate skipped.");
         http->doCallouts();
     } else if (strlen(host) != strlen(http->request->GetHost())) {
@@ -657,6 +672,7 @@ ClientRequestContext::hostHeaderVerify()
     } else {
         // Okay no problem.
         debugs(85, 3, HERE << "validate passed.");
+        http->request->flags.hostVerified = 1;
         http->doCallouts();
     }
     safe_free(hostB);
@@ -764,7 +780,10 @@ ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
 
         if (require_auth) {
 #if USE_AUTH
-            if (!http->flags.accel) {
+            if (http->request->flags.sslBumped) {
+                /*SSL Bumped request, authentication is not possible*/
+                status = HTTP_FORBIDDEN;
+            } else if (!http->flags.accel) {
                 /* Proxy authorisation needed */
                 status = HTTP_PROXY_AUTHENTICATION_REQUIRED;
             } else {
@@ -815,45 +834,33 @@ ClientRequestContext::clientAccessCheckDone(const allow_t &answer)
 }
 
 #if USE_ADAPTATION
-static void
-adaptationAclCheckDoneWrapper(Adaptation::ServiceGroupPointer g, void *data)
-{
-    ClientRequestContext *calloutContext = (ClientRequestContext *)data;
-
-    if (!calloutContext->httpStateIsValid())
-        return;
-
-    calloutContext->adaptationAclCheckDone(g);
-}
-
 void
-ClientRequestContext::adaptationAclCheckDone(Adaptation::ServiceGroupPointer g)
+ClientHttpRequest::noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer g)
 {
     debugs(93,3,HERE << this << " adaptationAclCheckDone called");
-    assert(http);
 
 #if ICAP_CLIENT
-    Adaptation::Icap::History::Pointer ih = http->request->icapHistory();
+    Adaptation::Icap::History::Pointer ih = request->icapHistory();
     if (ih != NULL) {
-        if (http->getConn() != NULL) {
-            ih->rfc931 = http->getConn()->clientConnection->rfc931;
+        if (getConn() != NULL) {
+            ih->rfc931 = getConn()->clientConnection->rfc931;
 #if USE_SSL
-            assert(http->getConn()->clientConnection != NULL);
-            ih->ssluser = sslGetUserEmail(fd_table[http->getConn()->clientConnection->fd].ssl);
+            assert(getConn()->clientConnection != NULL);
+            ih->ssluser = sslGetUserEmail(fd_table[getConn()->clientConnection->fd].ssl);
 #endif
         }
-        ih->log_uri = http->log_uri;
-        ih->req_sz = http->req_sz;
+        ih->log_uri = log_uri;
+        ih->req_sz = req_sz;
     }
 #endif
 
     if (!g) {
         debugs(85,3, HERE << "no adaptation needed");
-        http->doCallouts();
+        doCallouts();
         return;
     }
 
-    http->startAdaptation(g);
+    startAdaptation(g);
 }
 
 #endif
@@ -890,6 +897,10 @@ clientHierarchical(ClientHttpRequest * http)
     HttpRequest *request = http->request;
     HttpRequestMethod method = request->method;
     const wordlist *p = NULL;
+
+    // intercepted requests MUST NOT (yet) be sent to peers unless verified
+    if (!request->flags.hostVerified && (request->flags.intercepted || request->flags.spoof_client_ip))
+        return 0;
 
     /*
      * IMS needs a private key, so we can use the hierarchy for IMS only if our
@@ -1381,6 +1392,11 @@ ClientHttpRequest::sslBumpEstablish(comm_err_t errflag)
         return;
     }
 
+#if USE_AUTH
+    // Preserve authentication info for the ssl-bumped request
+    if (request->auth_user_request != NULL)
+        getConn()->auth_user_request = request->auth_user_request;
+#endif
     getConn()->switchToHttps(request->GetHost());
 }
 
@@ -1496,7 +1512,7 @@ ClientHttpRequest::doCallouts()
         calloutContext->adaptation_acl_check_done = true;
         if (Adaptation::AccessCheck::Start(
                     Adaptation::methodReqmod, Adaptation::pointPreCache,
-                    request, NULL, adaptationAclCheckDoneWrapper, calloutContext))
+                    request, NULL, this))
             return; // will call callback
     }
 #endif
@@ -1690,17 +1706,46 @@ ClientHttpRequest::handleAdaptationBlock(const Adaptation::Answer &answer)
 }
 
 void
+ClientHttpRequest::resumeBodyStorage()
+{
+    if (!adaptedBodySource)
+        return;
+
+    noteMoreBodyDataAvailable(adaptedBodySource);
+}
+
+void
 ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe::Pointer)
 {
     assert(request_satisfaction_mode);
     assert(adaptedBodySource != NULL);
 
-    if (const size_t contentSize = adaptedBodySource->buf().contentSize()) {
+    if (size_t contentSize = adaptedBodySource->buf().contentSize()) {
+        // XXX: entry->bytesWanted returns contentSize-1 if entry can accept data.
+        // We have to add 1 to avoid suspending forever.
+        const size_t bytesWanted = storeEntry()->bytesWanted(Range<size_t>(0,contentSize));
+        const size_t spaceAvailable = bytesWanted >  0 ? (bytesWanted + 1) : 0;
+
+        if (spaceAvailable < contentSize ) {
+            // No or partial body data consuming
+            typedef NullaryMemFunT<ClientHttpRequest> Dialer;
+            AsyncCall::Pointer call = asyncCall(93, 5, "ClientHttpRequest::resumeBodyStorage",
+                                                Dialer(this, &ClientHttpRequest::resumeBodyStorage));
+            storeEntry()->deferProducer(call);
+        }
+
+        // XXX: bytesWanted API does not allow us to write just one byte!
+        if (!spaceAvailable && contentSize > 1)
+            return;
+
+        if (spaceAvailable < contentSize )
+            contentSize = spaceAvailable;
+
         BodyPipeCheckout bpc(*adaptedBodySource);
-        const StoreIOBuffer ioBuf(&bpc.buf, request_satisfaction_offset);
+        const StoreIOBuffer ioBuf(&bpc.buf, request_satisfaction_offset, contentSize);
         storeEntry()->write(ioBuf);
-        // assume can write everything
-        request_satisfaction_offset += contentSize;
+        // assume StoreEntry::write() writes the entire ioBuf
+        request_satisfaction_offset += ioBuf.length;
         bpc.buf.consume(contentSize);
         bpc.checkIn();
     }
@@ -1714,13 +1759,9 @@ void
 ClientHttpRequest::noteBodyProductionEnded(BodyPipe::Pointer)
 {
     assert(!virginHeadSource);
-    if (adaptedBodySource != NULL) { // did not end request satisfaction yet
-        // We do not expect more because noteMoreBodyDataAvailable always
-        // consumes everything. We do not even have a mechanism to consume
-        // leftovers after noteMoreBodyDataAvailable notifications seize.
-        assert(adaptedBodySource->exhausted());
+    // should we end request satisfaction now?
+    if (adaptedBodySource != NULL && adaptedBodySource->exhausted())
         endRequestSatisfaction();
-    }
 }
 
 void

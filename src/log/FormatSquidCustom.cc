@@ -32,9 +32,8 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
-#include "format/Tokens.h"
 #include "log/File.h"
 #include "log/Formats.h"
 #include "MemBuf.h"

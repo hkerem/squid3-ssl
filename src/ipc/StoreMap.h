@@ -22,7 +22,7 @@ public:
 
 public:
     mutable ReadWriteLock lock; ///< protects slot data below
-    AtomicWordT<uint8_t> waitingToBeFreed; ///< may be accessed w/o a lock
+    Atomic::WordT<uint8_t> waitingToBeFreed; ///< may be accessed w/o a lock
 
     uint64_t key[2]; ///< StoreEntry key
 
@@ -65,7 +65,7 @@ public:
 
         const int limit; ///< maximum number of map slots
         const size_t extrasSize; ///< size of slot extra data
-        AtomicWord count; ///< current number of map slots
+        Atomic::Word count; ///< current number of map slots
         Slot slots[]; ///< slots storage
     };
 
@@ -195,7 +195,7 @@ StoreMapWithExtras<ExtrasT>::extras(const sfileno fileno) const
 
 } // namespace Ipc
 
-// We do not reuse struct _fileMap because we cannot control its size,
+// We do not reuse FileMap because we cannot control its size,
 // resulting in sfilenos that are pointing beyond the database.
 
 #endif /* SQUID_IPC_STORE_MAP_H */

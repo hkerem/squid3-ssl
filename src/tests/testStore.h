@@ -2,7 +2,7 @@
 #ifndef SQUID_SRC_TEST_STORE_H
 #define SQUID_SRC_TEST_STORE_H
 
-#include "squid.h"
+#include "squid-old.h"
 #include "Store.h"
 
 #include <cppunit/extensions/HelperMacros.h>
@@ -64,6 +64,8 @@ public:
     virtual uint64_t currentCount() const;
 
     virtual int64_t maxObjectSize() const;
+
+    virtual void getStats(StoreInfoStats &) const;
 
     virtual void stat(StoreEntry &) const; /* output stats to the provided store entry */
 

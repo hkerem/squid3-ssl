@@ -33,7 +33,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
 #include "HttpRequest.h"
 #include "log/File.h"
@@ -43,16 +43,19 @@
 void
 Log::Format::SquidUserAgent(AccessLogEntry * al, Logfile * logfile)
 {
-    char clientip[MAX_IPSTRLEN];
+    const char *agent = NULL;
 
-    const char *agent = al->request->header.getStr(HDR_USER_AGENT);
+    if (al && al->request)
+        agent = al->request->header.getStr(HDR_USER_AGENT);
 
-    // do not log unless there is something to be displayed.
     if (!agent || *agent == '\0')
-        return;
+        agent = "-";
+
+    char clientip[MAX_IPSTRLEN];
+    al->getLogClientIp(clientip, MAX_IPSTRLEN);
 
     logfilePrintf(logfile, "%s [%s] \"%s\"\n",
-                  al->cache.caddr.NtoA(clientip,MAX_IPSTRLEN),
+                  clientip,
                   Time::FormatHttpd(squid_curtime),
                   agent);
 }

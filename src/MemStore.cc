@@ -5,12 +5,13 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "base/RunnersRegistry.h"
 #include "ipc/mem/Page.h"
 #include "ipc/mem/Pages.h"
 #include "MemObject.h"
 #include "MemStore.h"
+#include "StoreStats.h"
 #include "HttpReply.h"
 
 /// shared memory segment path to use for MemStore maps
@@ -49,6 +50,19 @@ MemStore::init()
 
     map = new MemStoreMap(ShmLabel);
     map->cleaner = this;
+}
+
+void
+MemStore::getStats(StoreInfoStats &stats) const
+{
+    const size_t pageSize = Ipc::Mem::PageSize();
+
+    stats.mem.shared = true;
+    stats.mem.capacity =
+        Ipc::Mem::PageLimit(Ipc::Mem::PageId::cachePage) * pageSize;
+    stats.mem.size =
+        Ipc::Mem::PageLevel(Ipc::Mem::PageId::cachePage) * pageSize;
+    stats.mem.count = currentCount();
 }
 
 void
@@ -245,8 +259,25 @@ MemStore::considerKeeping(StoreEntry &e)
         return; // cannot keep due to entry state or properties
     }
 
+    // since we copy everything at once, we can only keep complete entries
+    if (e.store_status != STORE_OK) {
+        debugs(20, 7, HERE << "Incomplete: " << e);
+        return;
+    }
+
     assert(e.mem_obj);
-    if (!willFit(e.mem_obj->endOffset())) {
+
+    const int64_t loadedSize = e.mem_obj->endOffset();
+    const int64_t expectedSize = e.mem_obj->expectedReplySize();
+
+    // since we copy everything at once, we can only keep fully loaded entries
+    if (loadedSize != expectedSize) {
+        debugs(20, 7, HERE << "partially loaded: " << loadedSize << " != " <<
+               expectedSize);
+        return;
+    }
+
+    if (!willFit(expectedSize)) {
         debugs(20, 5, HERE << "No mem-cache space for " << e);
         return; // failed to free enough space
     }
@@ -333,12 +364,59 @@ MemStore::cleanReadable(const sfileno fileno)
 int64_t
 MemStore::EntryLimit()
 {
-    if (!Config.memMaxSize)
+    if (!Config.memShared || !Config.memMaxSize)
         return 0; // no memory cache configured
 
     const int64_t entrySize = Ipc::Mem::PageSize(); // for now
     const int64_t entryLimit = Config.memMaxSize / entrySize;
     return entryLimit;
+}
+
+
+/// reports our needs for shared memory pages to Ipc::Mem::Pages
+class MemStoreClaimMemoryNeedsRr: public RegisteredRunner
+{
+public:
+    /* RegisteredRunner API */
+    virtual void run(const RunnerRegistry &r);
+};
+
+RunnerRegistrationEntry(rrClaimMemoryNeeds, MemStoreClaimMemoryNeedsRr);
+
+
+void
+MemStoreClaimMemoryNeedsRr::run(const RunnerRegistry &)
+{
+    Ipc::Mem::NotePageNeed(Ipc::Mem::PageId::cachePage, MemStore::EntryLimit());
+}
+
+
+/// decides whether to use a shared memory cache or checks its configuration
+class MemStoreCfgRr: public ::RegisteredRunner
+{
+public:
+    /* RegisteredRunner API */
+    virtual void run(const RunnerRegistry &);
+};
+
+RunnerRegistrationEntry(rrFinalizeConfig, MemStoreCfgRr);
+
+void MemStoreCfgRr::run(const RunnerRegistry &r)
+{
+    // decide whether to use a shared memory cache if the user did not specify
+    if (!Config.memShared.configured()) {
+        Config.memShared.configure(Ipc::Atomic::Enabled() &&
+                                   Ipc::Mem::Segment::Enabled() && UsingSmp() &&
+                                   Config.memMaxSize > 0);
+    } else if (Config.memShared && !Ipc::Atomic::Enabled()) {
+        // bail if the user wants shared memory cache but we cannot support it
+        fatal("memory_cache_shared is on, but no support for atomic operations detected");
+    } else if (Config.memShared && !Ipc::Mem::Segment::Enabled()) {
+        fatal("memory_cache_shared is on, but no support for shared memory detected");
+    } else if (Config.memShared && !UsingSmp()) {
+        debugs(20, DBG_IMPORTANT, "WARNING: memory_cache_shared is on, but only"
+               " a single worker is running");
+    }
 }
 
 
@@ -363,21 +441,7 @@ RunnerRegistrationEntry(rrAfterConfig, MemStoreRr);
 
 void MemStoreRr::run(const RunnerRegistry &r)
 {
-    // decide whether to use a shared memory cache if the user did not specify
-    if (!Config.memShared.configured()) {
-        Config.memShared.configure(AtomicOperationsSupported &&
-                                   Ipc::Mem::Segment::Enabled() && UsingSmp() &&
-                                   Config.memMaxSize > 0);
-    } else if (Config.memShared && !AtomicOperationsSupported) {
-        // bail if the user wants shared memory cache but we cannot support it
-        fatal("memory_cache_shared is on, but no support for atomic operations detected");
-    } else if (Config.memShared && !Ipc::Mem::Segment::Enabled()) {
-        fatal("memory_cache_shared is on, but no support for shared memory detected");
-    } else if (Config.memShared && !UsingSmp()) {
-        debugs(20, DBG_IMPORTANT, "WARNING: memory_cache_shared is on, but only"
-               " a single worker is running");
-    }
-
+    assert(Config.memShared.configured());
     Ipc::Mem::RegisteredRunner::run(r);
 }
 
@@ -388,8 +452,14 @@ void MemStoreRr::create(const RunnerRegistry &)
 
     Must(!owner);
     const int64_t entryLimit = MemStore::EntryLimit();
-    if (entryLimit <= 0)
+    if (entryLimit <= 0) {
+        if (Config.memMaxSize > 0) {
+            debugs(20, DBG_IMPORTANT, "WARNING: mem-cache size is too small ("
+                   << (Config.memMaxSize / 1024.0) << " KB), should be >= " <<
+                   (Ipc::Mem::PageSize() / 1024.0) << " KB");
+        }
         return; // no memory cache configured or a misconfiguration
+    }
     owner = MemStoreMap::Init(ShmLabel, entryLimit);
 }
 

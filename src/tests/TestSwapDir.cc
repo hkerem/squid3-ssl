@@ -1,6 +1,6 @@
-#include "config.h"
-
 #include "squid.h"
+
+#include "squid-old.h"
 #include "TestSwapDir.h"
 
 uint64_t
@@ -34,6 +34,12 @@ TestSwapDir::reconfigure()
 void
 TestSwapDir::init()
 {}
+
+bool
+TestSwapDir::unlinkdUseful() const
+{
+    return false;
+}
 
 bool
 TestSwapDir::canStore(const StoreEntry &, int64_t, int &load) const

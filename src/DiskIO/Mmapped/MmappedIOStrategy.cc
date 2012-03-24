@@ -5,7 +5,7 @@
  * DEBUG: section 47    Store Directory Routines
  */
 
-#include "config.h"
+#include "squid.h"
 #include "MmappedFile.h"
 #include "MmappedIOStrategy.h"
 
@@ -26,6 +26,12 @@ DiskFile::Pointer
 MmappedIOStrategy::newFile (char const *path)
 {
     return new MmappedFile (path);
+}
+
+bool
+MmappedIOStrategy::unlinkdUseful() const
+{
+    return true;
 }
 
 void

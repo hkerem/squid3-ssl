@@ -2,10 +2,16 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "adaptation/Initiate.h"
 #include "adaptation/Initiator.h"
 #include "base/AsyncJobCalls.h"
+
+void
+Adaptation::Initiator::noteAdaptationAclCheckDone(Adaptation::ServiceGroupPointer group)
+{
+    Must(false);
+}
 
 CbcPointer<Adaptation::Initiate>
 Adaptation::Initiator::initiateAdaptation(Initiate *x)

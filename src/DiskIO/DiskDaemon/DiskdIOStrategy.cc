@@ -33,7 +33,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "comm/Loops.h"
 
 #include <sys/ipc.h>
@@ -46,6 +46,7 @@
 #include "diomsg.h"
 /* for statfs */
 #include "Store.h"
+#include "StatCounters.h"
 #include "SquidTime.h"
 
 diskd_stats_t diskd_stats;
@@ -102,6 +103,12 @@ DiskdIOStrategy::newFile(char const *path)
 
 DiskdIOStrategy::DiskdIOStrategy() : magic1(64), magic2(72), away(0) , smsgid(-1), rmsgid(-1), wfd(-1) , instanceID(newInstance())
 {}
+
+bool
+DiskdIOStrategy::unlinkdUseful() const
+{
+    return true;
+}
 
 void
 DiskdIOStrategy::unlinkFile(char const *path)
@@ -203,7 +210,7 @@ DiskdIOStrategy::init()
 
     fd_note(wfd, "squid -> diskd");
 
-    commSetTimeout(wfd, -1, NULL, NULL);
+    commUnsetFdTimeout(wfd);
     commSetNonBlocking(wfd);
     Comm::QuickPollRequired();
 }
@@ -287,7 +294,7 @@ void
 DiskdIOStrategy::unlinkDone(diomsg * M)
 {
     debugs(79, 3, "storeDiskdUnlinkDone: file " << shm.buf + M->shm_offset << " status " << M->status);
-    statCounter.syscalls.disk.unlinks++;
+    ++statCounter.syscalls.disk.unlinks;
 
     if (M->status < 0)
         diskd_stats.unlink.fail++;

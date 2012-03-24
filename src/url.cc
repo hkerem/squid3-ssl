@@ -33,7 +33,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "URL.h"
 #include "HttpRequest.h"
 #include "URLScheme.h"
@@ -125,6 +125,12 @@ urlParseProtocol(const char *b, const char *e)
     if (strncasecmp(b, "file", len) == 0)
         return AnyP::PROTO_FTP;
 
+    if (strncasecmp(b, "coap", len) == 0)
+        return AnyP::PROTO_COAP;
+
+    if (strncasecmp(b, "coaps", len) == 0)
+        return AnyP::PROTO_COAPS;
+
     if (strncasecmp(b, "gopher", len) == 0)
         return AnyP::PROTO_GOPHER;
 
@@ -159,6 +165,12 @@ urlDefaultPort(AnyP::ProtocolType p)
 
     case AnyP::PROTO_FTP:
         return 21;
+
+    case AnyP::PROTO_COAP:
+    case AnyP::PROTO_COAPS:
+        // coaps:// default is TBA as of draft-ietf-core-coap-08.
+        // Assuming IANA policy of allocating same port for base and TLS protocol versions will occur.
+        return 5683;
 
     case AnyP::PROTO_GOPHER:
         return 70;
@@ -250,8 +262,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         *dst = '\0';
 
         /* Then its :// */
-        /* (XXX yah, I'm not checking we've got enough data left before checking the array..) */
-        if (*src != ':' || *(src + 1) != '/' || *(src + 2) != '/')
+        if ((i+3) > l || *src != ':' || *(src + 1) != '/' || *(src + 2) != '/')
             return NULL;
         i += 3;
         src += 3;
@@ -328,7 +339,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
 
         // Bug 3183 sanity check: If scheme is present, host must be too.
         if (protocol != AnyP::PROTO_NONE && (host == NULL || *host == '\0')) {
-            debugs(23, DBG_IMPORTANT, "SECURITY WARNING: Missing hostname in URL '" << url << "'. see access.log for details.");
+            debugs(23, DBG_IMPORTANT, "SECURITY ALERT: Missing hostname in URL '" << url << "'. see access.log for details.");
             return NULL;
         }
 

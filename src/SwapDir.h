@@ -75,6 +75,7 @@ public:
 
     virtual int64_t maxObjectSize() const;
 
+    virtual void getStats(StoreInfoStats &stats) const;
     virtual void stat(StoreEntry &) const;
 
     virtual void sync();	/* Sync the store prior to shutdown */
@@ -132,6 +133,8 @@ public:
     virtual bool active() const; ///< may be used in this strand
     /// whether stat should be reported by this SwapDir
     virtual bool doReportStat() const { return active(); }
+    /// whether SwapDir may benefit from unlinkd
+    virtual bool unlinkdUseful() const = 0;
 
     /* official Store interface functions */
     virtual void diskFull();
@@ -146,6 +149,7 @@ public:
 
     virtual int64_t maxObjectSize() const { return max_objsize; }
 
+    virtual void getStats(StoreInfoStats &stats) const;
     virtual void stat (StoreEntry &anEntry) const;
     virtual StoreSearch *search(String const url, HttpRequest *) = 0;
 

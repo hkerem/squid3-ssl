@@ -32,7 +32,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "AccessLogEntry.h"
 #if USE_ADAPTATION
 #include "adaptation/Config.h"
@@ -63,8 +63,10 @@
 #include "event.h"
 #include "EventLoop.h"
 #include "ExternalACL.h"
+#include "format/Token.h"
 #include "fs/Module.h"
 #include "PeerSelectState.h"
+#include "SquidDns.h"
 #include "Store.h"
 #include "ICP.h"
 #include "ident/Ident.h"
@@ -81,6 +83,7 @@
 #include "ipc/Strand.h"
 #include "ip/tools.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
 #include "SwapDir.h"
 #include "forward.h"
 #include "MemPool.h"
@@ -419,26 +422,18 @@ mainParseOptions(int argc, char *argv[])
                 opt_send_signal = SIGHUP;
             else if (!strncmp(optarg, "rotate", strlen(optarg)))
                 /** \li On rotate send SIGQUIT or SIGUSR1. */
-#ifdef _SQUID_LINUX_THREADS_
-
+#if defined(_SQUID_LINUX_THREADS_)
                 opt_send_signal = SIGQUIT;
-
 #else
-
                 opt_send_signal = SIGUSR1;
-
 #endif
 
             else if (!strncmp(optarg, "debug", strlen(optarg)))
                 /** \li On debug send SIGTRAP or SIGUSR2. */
-#ifdef _SQUID_LINUX_THREADS_
-
+#if defined(_SQUID_LINUX_THREADS_)
                 opt_send_signal = SIGTRAP;
-
 #else
-
                 opt_send_signal = SIGUSR2;
-
 #endif
 
             else if (!strncmp(optarg, "shutdown", strlen(optarg)))
@@ -678,7 +673,6 @@ serverConnectionsOpen(void)
         htcpInit();
 #endif
 #if SQUID_SNMP
-
         snmpConnectionOpen();
 #endif
 
@@ -722,8 +716,7 @@ serverConnectionsClose(void)
 
         icmpEngine.Close();
 #if SQUID_SNMP
-
-        snmpConnectionShutdown();
+        snmpConnectionClose();
 #endif
 
         asnFreeMemory();
@@ -743,17 +736,7 @@ mainReconfigureStart(void)
 
     htcpSocketClose();
 #endif
-#if SQUID_SNMP
-
-    snmpConnectionClose();
-#endif
-#if USE_DNSSERVERS
-
     dnsShutdown();
-#else
-
-    idnsShutdown();
-#endif
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Shutdown();
 #endif
@@ -836,13 +819,7 @@ mainReconfigureFinish(void *)
     icapLogOpen();
 #endif
     storeLogOpen();
-#if USE_DNSSERVERS
-
     dnsInit();
-#else
-
-    idnsInit();
-#endif
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Init();
 #endif
@@ -872,6 +849,11 @@ mainReconfigureFinish(void *)
 
     mimeInit(Config.mimeTablePathname);
 
+#if USE_UNLINKD
+    if (unlinkdNeeded())
+        unlinkdInit();
+#endif
+
 #if USE_DELAY_POOLS
     Config.ClientDelay.finalize();
 #endif
@@ -886,8 +868,6 @@ mainReconfigureFinish(void *)
 
     writePidFile();		/* write PID file */
 
-    debugs(1, 1, "Ready to serve requests.");
-
     reconfiguring = 0;
 }
 
@@ -895,7 +875,7 @@ static void
 mainRotate(void)
 {
     icmpEngine.Close();
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
     dnsShutdown();
 #endif
     redirectShutdown();
@@ -912,7 +892,7 @@ mainRotate(void)
     icapLogRotate();               /*icap.log*/
 #endif
     icmpEngine.Open();
-#if USE_DNSSERVERS
+#if USE_DNSHELPER
     dnsInit();
 #endif
     redirectInit();
@@ -1036,15 +1016,7 @@ mainInitialize(void)
 
     parseEtcHosts();
 
-#if USE_DNSSERVERS
-
     dnsInit();
-
-#else
-
-    idnsInit();
-
-#endif
 
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Init();
@@ -1085,7 +1057,8 @@ mainInitialize(void)
 
     if (!configured_once) {
 #if USE_UNLINKD
-        unlinkdInit();
+        if (unlinkdNeeded())
+            unlinkdInit();
 #endif
 
         urlInitialize();
@@ -1139,7 +1112,7 @@ mainInitialize(void)
     if (!configured_once)
         writePidFile();		/* write PID file */
 
-#ifdef _SQUID_LINUX_THREADS_
+#if defined(_SQUID_LINUX_THREADS_)
 
     squid_signal(SIGQUIT, rotate_logs, SA_RESTART);
 
@@ -1195,8 +1168,6 @@ mainInitialize(void)
 #if USE_DELAY_POOLS
     Config.ClientDelay.finalize();
 #endif
-
-    debugs(1, 1, "Ready to serve requests.");
 
     if (!configured_once) {
         eventAdd("storeMaintain", Store::Maintain, NULL, 1.0, 1);
@@ -1399,6 +1370,8 @@ SquidMain(int argc, char **argv)
 #endif
         Ip::ProbeTransport(); // determine IPv4 or IPv6 capabilities before parsing.
 
+        Format::Token::Init(); // XXX: temporary. Use a runners registry of pre-parse runners instead.
+
         parse_err = parseConfigFile(ConfigFile);
 
         Mem::Report();
@@ -1442,6 +1415,8 @@ SquidMain(int argc, char **argv)
 
     debugs(1,2, HERE << "Doing post-config initialization\n");
     leave_suid();
+    ActivateRegistered(rrFinalizeConfig);
+    ActivateRegistered(rrClaimMemoryNeeds);
     ActivateRegistered(rrAfterConfig);
     enter_suid();
 
@@ -1811,6 +1786,8 @@ watch_child(char *argv[])
         if (!TheKids.someRunning() && !TheKids.shouldRestartSome()) {
             leave_suid();
             DeactivateRegistered(rrAfterConfig);
+            DeactivateRegistered(rrClaimMemoryNeeds);
+            DeactivateRegistered(rrFinalizeConfig);
             enter_suid();
 
             if (TheKids.someSignaled(SIGINT) || TheKids.someSignaled(SIGTERM)) {
@@ -1849,13 +1826,7 @@ SquidShutdown()
 #endif
 
     debugs(1, 1, "Shutting down...");
-#if USE_DNSSERVERS
-
     dnsShutdown();
-#else
-
-    idnsShutdown();
-#endif
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Shutdown();
 #endif
@@ -1867,7 +1838,6 @@ SquidShutdown()
     htcpSocketClose();
 #endif
 #if SQUID_SNMP
-
     snmpConnectionClose();
 #endif
 #if USE_WCCP
@@ -1913,6 +1883,8 @@ SquidShutdown()
     StoreFileSystem::FreeAllFs();
     DiskIOModule::FreeAllModules();
     DeactivateRegistered(rrAfterConfig);
+    DeactivateRegistered(rrClaimMemoryNeeds);
+    DeactivateRegistered(rrFinalizeConfig);
 #if LEAK_CHECK_MODE && 0 /* doesn't work at the moment */
 
     configFreeMemory();

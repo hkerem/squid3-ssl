@@ -33,7 +33,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the SSL code from compile process when not needed.
@@ -252,7 +252,18 @@ ssl_verify_cb(int ok, X509_STORE_CTX * ctx)
     if (!dont_verify_domain && server) {}
 
     if (!ok && !SSL_get_ex_data(ssl, ssl_ex_index_ssl_error_detail) ) {
-        Ssl::ErrorDetail *errDetail = new Ssl::ErrorDetail(error_no, peer_cert);
+
+        // Find the broken certificate. It may be intermediate.
+        X509 *broken_cert = peer_cert; // reasonable default if search fails
+        // Our SQUID_X509_V_ERR_DOMAIN_MISMATCH implies peer_cert is at fault.
+        if (error_no != SQUID_X509_V_ERR_DOMAIN_MISMATCH) {
+            if (X509 *last_used_cert = X509_STORE_CTX_get_current_cert(ctx))
+                broken_cert = last_used_cert;
+        }
+
+        Ssl::ErrorDetail *errDetail =
+            new Ssl::ErrorDetail(error_no, broken_cert);
+
         if (!SSL_set_ex_data(ssl, ssl_ex_index_ssl_error_detail,  errDetail)) {
             debugs(83, 2, "Failed to set Ssl::ErrorDetail in ssl_verify_cb: Certificate " << buffer);
             delete errDetail;
@@ -322,7 +333,7 @@ ssl_options[] = {
 #endif
 #if SSL_OP_ALL
     {
-        "ALL", SSL_OP_ALL
+        "ALL", (long)SSL_OP_ALL
     },
 #endif
 #if SSL_OP_SINGLE_DH_USE
@@ -392,7 +403,7 @@ ssl_options[] = {
 static long
 ssl_parse_options(const char *options)
 {
-    long op = SSL_OP_ALL;
+    long op = 0;
     char *tmp;
     char *option;
 
@@ -1008,10 +1019,8 @@ ssl_write_method(int fd, const char *buf, int len)
 }
 
 void
-ssl_shutdown_method(int fd)
+ssl_shutdown_method(SSL *ssl)
 {
-    SSL *ssl = fd_table[fd].ssl;
-
     SSL_shutdown(ssl);
 }
 
@@ -1246,6 +1255,75 @@ Ssl::setClientSNI(SSL *ssl, const char *fqdn)
     debugs(83, 7,  "no support for TLS servername extension (SNI)\n");
     return false;
 #endif
+}
+
+void Ssl::addChainToSslContext(SSL_CTX *sslContext, STACK_OF(X509) *chain)
+{
+    if (!chain)
+        return;
+
+    for (int i = 0; i < sk_X509_num(chain); i++) {
+        X509 *cert = sk_X509_value(chain, i);
+        if (SSL_CTX_add_extra_chain_cert(sslContext, cert)) {
+            // increase the certificate lock
+            CRYPTO_add(&(cert->references),1,CRYPTO_LOCK_X509);
+        } else {
+            const int ssl_error = ERR_get_error();
+            debugs(83, DBG_IMPORTANT, "WARNING: can not add certificate to SSL context chain: " << ERR_error_string(ssl_error, NULL));
+        }
+    }
+}
+
+/**
+ \ingroup ServerProtocolSSLInternal
+ * Read certificate from file.
+ * See also: static readSslX509Certificate function, gadgets.cc file
+ */
+static X509 * readSslX509CertificatesChain(char const * certFilename,  STACK_OF(X509)* chain)
+{
+    if (!certFilename)
+        return NULL;
+    Ssl::BIO_Pointer bio(BIO_new(BIO_s_file_internal()));
+    if (!bio)
+        return NULL;
+    if (!BIO_read_filename(bio.get(), certFilename))
+        return NULL;
+    X509 *certificate = PEM_read_bio_X509(bio.get(), NULL, NULL, NULL);
+
+    if (certificate && chain) {
+
+        if (X509_check_issued(certificate, certificate) == X509_V_OK)
+            debugs(83, 5, "Certificate is self-signed, will not be chained");
+        else {
+            if (sk_X509_push(chain, certificate))
+                CRYPTO_add(&(certificate->references), 1, CRYPTO_LOCK_X509);
+            else
+                debugs(83, DBG_IMPORTANT, "WARNING: unable to add signing certificate to cert chain");
+            // and add to the chain any certificate loaded from the file
+            while (X509 *ca = PEM_read_bio_X509(bio.get(), NULL, NULL, NULL)) {
+                if (!sk_X509_push(chain, ca))
+                    debugs(83, DBG_IMPORTANT, "WARNING: unable to add CA certificate to cert chain");
+            }
+        }
+    }
+
+    return certificate;
+}
+
+void Ssl::readCertChainAndPrivateKeyFromFiles(X509_Pointer & cert, EVP_PKEY_Pointer & pkey, X509_STACK_Pointer & chain, char const * certFilename, char const * keyFilename)
+{
+    if (keyFilename == NULL)
+        keyFilename = certFilename;
+    if (!chain)
+        chain.reset(sk_X509_new_null());
+    if (!chain)
+        debugs(83, DBG_IMPORTANT, "WARNING: unable to allocate memory for cert chain");
+    pkey.reset(readSslPrivateKey(keyFilename, ssl_ask_password_cb));
+    cert.reset(readSslX509CertificatesChain(certFilename, chain.get()));
+    if (!pkey || !cert || !X509_check_private_key(cert.get(), pkey.get())) {
+        pkey.reset(NULL);
+        cert.reset(NULL);
+    }
 }
 
 #endif /* USE_SSL */

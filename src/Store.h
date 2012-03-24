@@ -37,7 +37,7 @@
  \ingroup FileSystems
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "StoreIOBuffer.h"
 #include "Range.h"
 #include "RefCount.h"
@@ -45,6 +45,7 @@
 #include "comm/forward.h"
 #include "Packer.h"
 #include "RemovalPolicy.h"
+#include "StoreStats.h"
 
 #if USE_SQUID_ESI
 #include "esi/Element.h"
@@ -60,16 +61,6 @@ class StoreClient;
 class MemObject;
 class StoreSearch;
 class SwapDir;
-
-typedef struct {
-
-    struct {
-        int calls;
-        int select_fail;
-        int create_fail;
-        int success;
-    } create;
-} StoreIoStats;
 
 extern StoreIoStats store_io_stats;
 
@@ -101,8 +92,9 @@ public:
     virtual char const *getSerialisedMetaData();
     void replaceHttpReply(HttpReply *, bool andStartWriting = true);
     void startWriting(); ///< pack and write reply headers and, maybe, body
-    virtual bool swapoutPossible();
-    virtual void trimMemory();
+    /// whether we may start writing to disk (now or in the future)
+    virtual bool mayStartSwapOut();
+    virtual void trimMemory(const bool preserveSwappable);
     void abort();
     void unlink();
     void makePublic();
@@ -117,7 +109,8 @@ public:
     void purgeMem();
     void cacheInMemory(); ///< start or continue storing in memory cache
     void swapOut();
-    bool swapOutAble() const;
+    /// whether we are in the process of writing this entry to disk
+    bool swappingOut() const { return swap_status == SWAPOUT_WRITING; }
     void swapOutFileClose(int how);
     const char *url() const;
     int checkCachable();
@@ -210,8 +203,20 @@ public:
     virtual void lock();
     virtual void release();
 
+#if USE_ADAPTATION
+    /// call back producer when more buffer space is available
+    void deferProducer(const AsyncCall::Pointer &producer);
+    /// calls back producer registered with deferProducer
+    void kickProducer();
+#endif
+
 private:
     static MemAllocator *pool;
+
+#if USE_ADAPTATION
+    /// producer callback registered with deferProducer
+    AsyncCall::Pointer deferredProducer;
+#endif
 
     bool validLength() const;
     bool hasOneOfEtags(const String &reqETags, const bool allowWeakMatch) const;
@@ -244,9 +249,9 @@ private:
     store_client_t storeClientType() const {return STORE_MEM_CLIENT;}
 
     char const *getSerialisedMetaData();
-    bool swapoutPossible() {return false;}
+    bool mayStartSwapout() {return false;}
 
-    void trimMemory() {}
+    void trimMemory(const bool preserveSwappable) {}
 
 
     static NullStoreEntry _instance;
@@ -314,6 +319,9 @@ public:
 
     /** the maximum object size that can be stored, -1 if unlimited */
     virtual int64_t maxObjectSize() const = 0;
+
+    /// collect cache storage-related statistics
+    virtual void getStats(StoreInfoStats &stats) const = 0;
 
     /**
      * Output stats to the provided store entry.

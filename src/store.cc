@@ -33,7 +33,7 @@
  *
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
 #include "ETag.h"
@@ -47,6 +47,7 @@
 #include "HttpRequest.h"
 #include "MemObject.h"
 #include "mem_node.h"
+#include "StatCounters.h"
 #include "StoreMeta.h"
 #include "SwapDir.h"
 #include "StoreIOState.h"
@@ -316,7 +317,7 @@ StoreEntry::storeClientType() const
      * offset 0 in the memory object is the HTTP headers.
      */
 
-    if (mem_status == IN_MEMORY && UsingSmp()) {
+    if (mem_status == IN_MEMORY && Config.memShared && IamWorkerProcess()) {
         // clients of an object cached in shared memory are memory clients
         return STORE_MEM_CLIENT;
     }
@@ -409,6 +410,27 @@ StoreEntry::~StoreEntry()
     }
     delete hidden_mem_obj;
 }
+
+#if USE_ADAPTATION
+void
+StoreEntry::deferProducer(const AsyncCall::Pointer &producer)
+{
+    if (!deferredProducer)
+        deferredProducer = producer;
+    else
+        debugs(20, 5, HERE << "Deferred producer call is allready set to: " <<
+               *deferredProducer << ", requested call: " << *producer);
+}
+
+void
+StoreEntry::kickProducer()
+{
+    if (deferredProducer != NULL) {
+        ScheduleCallHere(deferredProducer);
+        deferredProducer = NULL;
+    }
+}
+#endif
 
 void
 StoreEntry::destroyMemObject()
@@ -856,20 +878,6 @@ StoreEntry::write (StoreIOBuffer writeBuffer)
     PROF_start(StoreEntry_write);
     assert(store_status == STORE_PENDING);
 
-    if (!writeBuffer.length) {
-        /* the headers are received already, but we have not received
-         * any body data. There are BROKEN abuses of HTTP which require
-         * the headers to be passed along before any body data - see
-         * http://developer.apple.com/documentation/QuickTime/QTSS/Concepts/chapter_2_section_14.html
-         * for an example of such bad behaviour. To accomodate this, if
-         * we have a empty write arrive, we flush to our clients.
-         * -RBC 20060903
-         */
-        PROF_stop(StoreEntry_write);
-        invokeHandlers();
-        return;
-    }
-
     debugs(20, 5, "storeWrite: writing " << writeBuffer.length << " bytes for '" << getMD5Text() << "'");
     PROF_stop(StoreEntry_write);
     storeGetMemSpace(writeBuffer.length);
@@ -1170,7 +1178,7 @@ storeGetMemSpace(int size)
 
     last_check = squid_curtime;
 
-    pages_needed = (size / SM_PAGE_SIZE) + 1;
+    pages_needed = (size + SM_PAGE_SIZE-1) / SM_PAGE_SIZE;
 
     if (mem_node::InUseCount() + pages_needed < store_pages_max) {
         PROF_stop(storeGetMemSpace);
@@ -1444,7 +1452,7 @@ StoreEntry::memoryCachable() const
     if (!Config.onoff.memory_cache_first && swap_status == SWAPOUT_DONE && refcount == 1)
         return 0;
 
-    if (UsingSmp()) {
+    if (Config.memShared && IamWorkerProcess()) {
         const int64_t expectedSize = mem_obj->expectedReplySize();
         // objects of unknown size are not allowed into memory cache, for now
         if (expectedSize < 0 ||
@@ -1627,8 +1635,10 @@ StoreEntry::setMemStatus(mem_status_t new_status)
     if (new_status == mem_status)
         return;
 
-    if (UsingSmp()) {
-        assert(new_status != IN_MEMORY); // we do not call this otherwise
+    // are we using a shared memory cache?
+    if (Config.memShared && IamWorkerProcess()) {
+        // enumerate calling cases if shared memory is enabled
+        assert(new_status != IN_MEMORY || EBIT_TEST(flags, ENTRY_SPECIAL));
         // This method was designed to update replacement policy, not to
         // actually purge something from the memory cache (TODO: rename?).
         // Shared memory cache does not have a policy that needs updates.
@@ -1864,7 +1874,7 @@ StoreEntry::startWriting()
     rep->packHeadersInto(&p);
     mem_obj->markEndOfReplyHeaders();
 
-    httpBodyPackInto(&rep->body, &p);
+    rep->body.packInto(&p);
 
     packerClean(&p);
 }
@@ -1882,95 +1892,8 @@ StoreEntry::getSerialisedMetaData()
     return result;
 }
 
-bool
-StoreEntry::swapoutPossible()
-{
-    if (!Config.cacheSwap.n_configured)
-        return false;
-
-    /* should we swap something out to disk? */
-    debugs(20, 7, "storeSwapOut: " << url());
-    debugs(20, 7, "storeSwapOut: store_status = " << storeStatusStr[store_status]);
-
-    assert(mem_obj);
-    MemObject::SwapOut::Decision &decision = mem_obj->swapout.decision;
-
-    // if we decided that swapout is not possible, do not repeat same checks
-    if (decision == MemObject::SwapOut::swImpossible) {
-        debugs(20, 3, "storeSwapOut: already rejected");
-        return false;
-    }
-
-    // this flag may change so we must check it even if we already said "yes"
-    if (EBIT_TEST(flags, ENTRY_ABORTED)) {
-        assert(EBIT_TEST(flags, RELEASE_REQUEST));
-        // StoreEntry::abort() already closed the swap out file, if any
-        decision = MemObject::SwapOut::swImpossible;
-        return false;
-    }
-
-    // if we decided that swapout is possible, do not repeat same checks
-    if (decision == MemObject::SwapOut::swPossible) {
-        debugs(20, 3, "storeSwapOut: already allowed");
-        return true;
-    }
-
-    // if we are swapping out already, do not repeat same checks
-    if (swap_status != SWAPOUT_NONE) {
-        debugs(20, 3, "storeSwapOut: already started");
-        decision = MemObject::SwapOut::swPossible;
-        return true;
-    }
-
-    if (!checkCachable()) {
-        debugs(20, 3, "storeSwapOut: not cachable");
-        decision = MemObject::SwapOut::swImpossible;
-        return false;
-    }
-
-    if (EBIT_TEST(flags, ENTRY_SPECIAL)) {
-        debugs(20, 3, "storeSwapOut: " << url() << " SPECIAL");
-        decision = MemObject::SwapOut::swImpossible;
-        return false;
-    }
-
-    // check cache_dir max-size limit if all cache_dirs have it
-    if (store_maxobjsize >= 0) {
-        // TODO: add estimated store metadata size to be conservative
-
-        // use guaranteed maximum if it is known
-        const int64_t expectedEnd = mem_obj->expectedReplySize();
-        debugs(20, 7, "storeSwapOut: expectedEnd = " << expectedEnd);
-        if (expectedEnd > store_maxobjsize) {
-            debugs(20, 3, "storeSwapOut: will not fit: " << expectedEnd <<
-                   " > " << store_maxobjsize);
-            decision = MemObject::SwapOut::swImpossible;
-            return false; // known to outgrow the limit eventually
-        }
-
-        // use current minimum (always known)
-        const int64_t currentEnd = mem_obj->endOffset();
-        if (currentEnd > store_maxobjsize) {
-            debugs(20, 3, "storeSwapOut: does not fit: " << currentEnd <<
-                   " > " << store_maxobjsize);
-            decision = MemObject::SwapOut::swImpossible;
-            return false; // already does not fit and may only get bigger
-        }
-
-        // prevent default swPossible answer for yet unknown length
-        if (expectedEnd < 0) {
-            debugs(20, 3, "storeSwapOut: wait for more info: " <<
-                   store_maxobjsize);
-            return false; // may fit later, but will be rejected now
-        }
-    }
-
-    decision = MemObject::SwapOut::swPossible;
-    return true;
-}
-
 void
-StoreEntry::trimMemory()
+StoreEntry::trimMemory(const bool preserveSwappable)
 {
     /*
      * DPW 2007-05-09
@@ -1980,7 +1903,10 @@ StoreEntry::trimMemory()
     if (mem_status == IN_MEMORY)
         return;
 
-    if (!swapOutAble()) {
+    if (EBIT_TEST(flags, ENTRY_SPECIAL))
+        return; // cannot trim because we do not load them again
+
+    if (!preserveSwappable) {
         if (mem_obj->policyLowestOffsetToKeep(0) == 0) {
             /* Nothing to do */
             return;

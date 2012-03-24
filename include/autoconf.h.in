@@ -145,6 +145,9 @@
 /* Define to 1 if you have the <crypt.h> header file. */
 #undef HAVE_CRYPT_H
 
+/* Define to 1 if you have the <cstdarg> header file. */
+#undef HAVE_CSTDARG
+
 /* Define to 1 if you have the <cstdlib> header file. */
 #undef HAVE_CSTDLIB
 
@@ -1237,7 +1240,7 @@
 #undef USE_DISKIO_IPCIO
 
 /* Use dnsserver processes instead of the internal DNS protocol support */
-#undef USE_DNSSERVERS
+#undef USE_DNSHELPER
 
 /* Disable eCAP support */
 #undef USE_ECAP

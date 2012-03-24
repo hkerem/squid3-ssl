@@ -34,7 +34,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "config.h"
+#include "squid.h"
 #include "BlockingIOStrategy.h"
 #include "BlockingFile.h"
 
@@ -55,6 +55,12 @@ DiskFile::Pointer
 BlockingIOStrategy::newFile (char const *path)
 {
     return new BlockingFile (path);
+}
+
+bool
+BlockingIOStrategy::unlinkdUseful() const
+{
+    return true;
 }
 
 void

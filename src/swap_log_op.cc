@@ -1,7 +1,7 @@
 /*
  * Auto-Generated File. Changes will be destroyed.
  */
-#include "config.h"
+#include "squid.h"
 #include "swap_log_op.h"
 
 const char *swap_log_op_str[] = {

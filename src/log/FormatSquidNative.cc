@@ -32,10 +32,10 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
 #include "format/Quoting.h"
-#include "format/Tokens.h"
+#include "format/Token.h"
 #include "log/File.h"
 #include "log/Formats.h"
 #include "SquidTime.h"
@@ -62,10 +62,7 @@ Log::Format::SquidNative(AccessLogEntry * al, Logfile * logfile)
         safe_free(user);
 
     char clientip[MAX_IPSTRLEN];
-    if (al->tcpClient != NULL)
-        al->tcpClient->remote.NtoA(clientip, sizeof(clientip));
-    else
-        al->cache.caddr.NtoA(clientip, sizeof(clientip));
+    al->getLogClientIp(clientip, MAX_IPSTRLEN);
 
     logfilePrintf(logfile, "%9ld.%03d %6d %s %s%s/%03d %"PRId64" %s %s %s %s%s/%s %s%s",
                   (long int) current_time.tv_sec,

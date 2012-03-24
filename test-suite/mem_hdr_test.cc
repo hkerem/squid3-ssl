@@ -34,7 +34,7 @@
  * Copyright (c) 2003  Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid.h"
+#include "squid-old.h"
 #include "stmem.h"
 #include "mem_node.h"
 #include "Generic.h"
@@ -57,7 +57,7 @@ testLowAndHigh()
     assert (aHeader.lowestOffset() == 0);
     assert (aHeader.write (StoreIOBuffer()));
     assert (aHeader.lowestOffset() == 0);
-    assert (aHeader.write (StoreIOBuffer(0, 1, NULL)));
+    assert (aHeader.write (StoreIOBuffer(0, 1, (char *)NULL)));
     assert (aHeader.lowestOffset() == 0);
     char * sampleData = xstrdup ("A");
     assert (aHeader.write (StoreIOBuffer(1, 100, sampleData)));

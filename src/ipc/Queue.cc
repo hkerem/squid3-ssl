@@ -5,7 +5,7 @@
  *
  */
 
-#include "config.h"
+#include "squid.h"
 #include "base/TextException.h"
 #include "Debug.h"
 #include "globals.h"
@@ -149,6 +149,12 @@ Ipc::FewToFewBiQueue::FewToFewBiQueue(const String &id, const Group aLocalGroup,
     debugs(54, 7, HERE << "queue " << id << " reader: " << localReader.id);
 }
 
+int
+Ipc::FewToFewBiQueue::MaxItemsCount(const int groupASize, const int groupBSize, const int capacity)
+{
+    return capacity * groupASize * groupBSize * 2;
+}
+
 bool
 Ipc::FewToFewBiQueue::validProcessId(const Group group, const int processId) const
 {
@@ -197,6 +203,22 @@ Ipc::FewToFewBiQueue::oneToOneQueue(const Group fromGroup, const int fromProcess
     return (*queues)[oneToOneQueueIndex(fromGroup, fromProcessId, toGroup, toProcessId)];
 }
 
+/// incoming queue from a given remote process
+const Ipc::OneToOneUniQueue &
+Ipc::FewToFewBiQueue::inQueue(const int remoteProcessId) const
+{
+    return oneToOneQueue(remoteGroup(), remoteProcessId,
+                         theLocalGroup, theLocalProcessId);
+}
+
+/// outgoing queue to a given remote process
+const Ipc::OneToOneUniQueue &
+Ipc::FewToFewBiQueue::outQueue(const int remoteProcessId) const
+{
+    return oneToOneQueue(theLocalGroup, theLocalProcessId,
+                         remoteGroup(), remoteProcessId);
+}
+
 int
 Ipc::FewToFewBiQueue::readerIndex(const Group group, const int processId) const
 {
@@ -233,21 +255,6 @@ Ipc::FewToFewBiQueue::clearReaderSignal(const int remoteProcessId)
     // theLastPopProcessId = remoteProcessId;
 }
 
-bool
-Ipc::FewToFewBiQueue::popReady() const
-{
-    // mimic FewToFewBiQueue::pop() but quit just before popping
-    int popProcessId = theLastPopProcessId; // preserve for future pop()
-    for (int i = 0; i < remoteGroupSize(); ++i) {
-        if (++popProcessId >= remoteGroupIdOffset() + remoteGroupSize())
-            popProcessId = remoteGroupIdOffset();
-        const OneToOneUniQueue &queue = oneToOneQueue(remoteGroup(), popProcessId, theLocalGroup, theLocalProcessId);
-        if (!queue.empty())
-            return true;
-    }
-    return false; // most likely, no process had anything to pop
-}
-
 Ipc::QueueReader::Balance &
 Ipc::FewToFewBiQueue::localBalance()
 {
@@ -255,10 +262,24 @@ Ipc::FewToFewBiQueue::localBalance()
     return r.balance;
 }
 
+const Ipc::QueueReader::Balance &
+Ipc::FewToFewBiQueue::balance(const int remoteProcessId) const
+{
+    const QueueReader &r = reader(remoteGroup(), remoteProcessId);
+    return r.balance;
+}
+
 Ipc::QueueReader::Rate &
 Ipc::FewToFewBiQueue::localRateLimit()
 {
     QueueReader &r = reader(theLocalGroup, theLocalProcessId);
+    return r.rateLimit;
+}
+
+const Ipc::QueueReader::Rate &
+Ipc::FewToFewBiQueue::rateLimit(const int remoteProcessId) const
+{
+    const QueueReader &r = reader(remoteGroup(), remoteProcessId);
     return r.rateLimit;
 }
 

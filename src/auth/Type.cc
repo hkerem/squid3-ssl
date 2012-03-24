@@ -1,7 +1,7 @@
 /*
  * Auto-Generated File. Changes will be destroyed.
  */
-#include "config.h"
+#include "squid.h"
 #include "auth/Type.h"
 namespace Auth
 {
