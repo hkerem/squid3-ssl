@@ -1,6 +1,12 @@
+squid3-ssl (3.2.0.16-1.1ubuntu1) maverick; urgency=low
+
+  * Upgraded to 3.2.0.16
+
+ -- MyDLP Development Team (Release) <devel@mydlp.com>  Tue, 03 April 2012 13:05:01 +0300
+
 squid3-ssl (3.2.0.13-1.1ubuntu1) maverick; urgency=low
 
-  * Upgraded to 3.2.13
+  * Upgraded to 3.2.0.13
 
  -- MyDLP Development Team (Release) <devel@mydlp.com>  Tue, 25 November 2011 22:27:12 +0300
 
