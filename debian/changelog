@@ -2,7 +2,7 @@ squid3-ssl (3.2.0.13-1.1ubuntu1) maverick; urgency=low
 
   * Upgraded to 3.2.13
 
- -- H. Kerem Cevahir <kerem@mydlp.com>  Tue, 25 November 2011 22:27:12 +0300
+ -- MyDLP Development Team (Release) <devel@mydlp.com>  Tue, 25 November 2011 22:27:12 +0300
 
 squid3-ssl (3.1.6-1.1ubuntu1) maverick; urgency=low
 
