@@ -56,7 +56,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libanyp_la_LIBADD =
-am_libanyp_la_OBJECTS = ProtocolType.lo
+am_libanyp_la_OBJECTS = PortCfg.lo ProtocolType.lo
 libanyp_la_OBJECTS = $(am_libanyp_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -137,6 +137,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
@@ -309,6 +310,8 @@ COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = libanyp.la
 libanyp_la_SOURCES = \
+	PortCfg.cc \
+	PortCfg.h \
 	ProtocolType.cc \
 	ProtocolType.h \
 	ProtocolVersion.h
@@ -374,6 +377,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PortCfg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ProtocolType.Plo@am__quote@
 
 .cc.o:

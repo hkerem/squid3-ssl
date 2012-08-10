@@ -261,36 +261,44 @@ log_quoted_string(const char *str, char *out)
             break;
 
         case '\r':
-            *p++ = '\\';
-            *p++ = 'r';
-            str++;
+            *p = '\\';
+            ++p;
+            *p = 'r';
+            ++p;
+            ++str;
             break;
 
         case '\n':
-            *p++ = '\\';
-            *p++ = 'n';
-            str++;
+            *p = '\\';
+            ++p;
+            *p = 'n';
+            ++p;
+            ++str;
             break;
 
         case '\t':
-            *p++ = '\\';
-            *p++ = 't';
-            str++;
+            *p = '\\';
+            ++p;
+            *p = 't';
+            ++p;
+            ++str;
             break;
 
         default:
-            *p++ = '\\';
-            *p++ = *str;
-            str++;
+            *p = '\\';
+            ++p;
+            *p = *str;
+            ++p;
+            ++str;
             break;
         }
     }
 
-    *p++ = '\0';
+    *p = '\0';
 }
 
 void
-Format::Format::assemble(MemBuf &mb, AccessLogEntry *al, int logSequenceNumber) const
+Format::Format::assemble(MemBuf &mb, const AccessLogEntryPointer &al, int logSequenceNumber) const
 {
     char tmp[1024];
     String sb;

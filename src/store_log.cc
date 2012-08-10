@@ -68,7 +68,7 @@ storeLog(int tag, const StoreEntry * e)
     if (NULL == storelog)
         return;
 
-    storeLogTagsCounts[tag]++;
+    ++storeLogTagsCounts[tag];
     if (mem != NULL) {
         if (mem->log_url == NULL) {
             debugs(20, 1, "storeLog: NULL log_url for " << mem->url);
@@ -86,7 +86,7 @@ storeLog(int tag, const StoreEntry * e)
         String ctype=(reply->content_type.size() ? reply->content_type.termedBuf() : str_unknown);
 
         logfileLineStart(storelog);
-        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d " SQUIDSTRINGPH " %"PRId64"/%"PRId64" %s %s\n",
+        logfilePrintf(storelog, "%9d.%03d %-7s %02d %08X %s %4d %9d %9d %9d " SQUIDSTRINGPH " %" PRId64 "/%" PRId64 " %s %s\n",
                       (int) current_time.tv_sec,
                       (int) current_time.tv_usec / 1000,
                       storeLogTags[tag],
@@ -161,7 +161,7 @@ void
 storeLogTagsHist(StoreEntry *e)
 {
     int tag;
-    for (tag = 0; tag <= STORE_LOG_SWAPOUTFAIL; tag++) {
+    for (tag = 0; tag <= STORE_LOG_SWAPOUTFAIL; ++tag) {
         storeAppendPrintf(e, "%s %d\n",
                           storeLogTags[tag],
                           storeLogTagsCounts[tag]);

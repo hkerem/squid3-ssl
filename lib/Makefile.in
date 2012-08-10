@@ -212,6 +212,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
@@ -414,7 +415,7 @@ libmiscencoding_la_SOURCES = \
 	uudecode.c
 
 libmisccontainers_la_SOURCES = \
-	hash.c
+	hash.cc
 
 libmiscutil_la_SOURCES = \
 	malloc_trace.cc \
@@ -500,7 +501,7 @@ clean-noinstLTLIBRARIES:
 	  rm -f "$${dir}/so_locations"; \
 	done
 libmisccontainers.la: $(libmisccontainers_la_OBJECTS) $(libmisccontainers_la_DEPENDENCIES) 
-	$(LINK)  $(libmisccontainers_la_OBJECTS) $(libmisccontainers_la_LIBADD) $(LIBS)
+	$(CXXLINK)  $(libmisccontainers_la_OBJECTS) $(libmisccontainers_la_LIBADD) $(LIBS)
 libmiscencoding.la: $(libmiscencoding_la_OBJECTS) $(libmiscencoding_la_DEPENDENCIES) 
 	$(LINK)  $(libmiscencoding_la_OBJECTS) $(libmiscencoding_la_LIBADD) $(LIBS)
 libmiscutil.la: $(libmiscutil_la_OBJECTS) $(libmiscutil_la_DEPENDENCIES) 

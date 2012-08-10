@@ -67,8 +67,7 @@ ssl_ask_password_cb(char *buf, int size, int rwflag, void *userdata)
         len = strlen(buf);
 
     while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
-
-        len--;
+        --len;
 
     buf[len] = '\0';
 
@@ -171,7 +170,7 @@ int Ssl::matchX509CommonNames(X509 *peer_cert, void *check_data, int (*check_fun
 
     if (altnames) {
         int numalts = sk_GENERAL_NAME_num(altnames);
-        for (int i = 0; i < numalts; i++) {
+        for (int i = 0; i < numalts; ++i) {
             const GENERAL_NAME *check = sk_GENERAL_NAME_value(altnames, i);
             if (check->type != GEN_DNS) {
                 continue;
@@ -391,6 +390,16 @@ ssl_options[] = {
         "NO_TLSv1", SSL_OP_NO_TLSv1
     },
 #endif
+#if SSL_OP_NO_TLSv1_1
+    {
+        "NO_TLSv1_1", SSL_OP_NO_TLSv1_1
+    },
+#endif
+#if SSL_OP_NO_TLSv1_2
+    {
+        "NO_TLSv1_2", SSL_OP_NO_TLSv1_2
+    },
+#endif
     {
         "", 0
     },
@@ -428,12 +437,12 @@ ssl_parse_options(const char *options)
 
         case '-':
             mode = MODE_REMOVE;
-            option++;
+            ++option;
             break;
 
         case '+':
             mode = MODE_ADD;
-            option++;
+            ++option;
             break;
 
         default:
@@ -441,7 +450,7 @@ ssl_parse_options(const char *options)
             break;
         }
 
-        for (opttmp = ssl_options; opttmp->name; opttmp++) {
+        for (opttmp = ssl_options; opttmp->name; ++opttmp) {
             if (strcmp(opttmp->name, option) == 0) {
                 opt = opttmp;
                 break;
@@ -626,7 +635,7 @@ ssl_load_crl(SSL_CTX *sslContext, const char *CRLfile)
         if (!X509_STORE_add_crl(st, crl))
             debugs(83, 2, "WARNING: Failed to add CRL from file '" << CRLfile << "'");
         else
-            count++;
+            ++count;
 
         X509_CRL_free(crl);
     }
@@ -678,6 +687,26 @@ sslCreateServerContext(const char *certfile, const char *keyfile, int version, c
     case 4:
         debugs(83, 5, "Using TLSv1.");
         method = TLSv1_server_method();
+        break;
+
+    case 5:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L  // NP: not sure exactly which sub-version yet.
+        debugs(83, 5, "Using TLSv1.1.");
+        method = TLSv1_1_server_method();
+#else
+        debugs(83, DBG_IMPORTANT, "TLSv1.1 is not available in this Proxy.");
+        return NULL;
+#endif
+        break;
+
+    case 6:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L // NP: not sure exactly which sub-version yet.
+        debugs(83, 5, "Using TLSv1.2");
+        method = TLSv1_2_server_method();
+#else
+        debugs(83, DBG_IMPORTANT, "TLSv1.2 is not available in this Proxy.");
+        return NULL;
+#endif
         break;
 
     case 1:
@@ -877,6 +906,26 @@ sslCreateClientContext(const char *certfile, const char *keyfile, int version, c
     case 4:
         debugs(83, 5, "Using TLSv1.");
         method = TLSv1_client_method();
+        break;
+
+    case 5:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L  // NP: not sure exactly which sub-version yet.
+        debugs(83, 5, "Using TLSv1.1.");
+        method = TLSv1_1_client_method();
+#else
+        debugs(83, DBG_IMPORTANT, "TLSv1.1 is not available in this Proxy.");
+        return NULL;
+#endif
+        break;
+
+    case 6:
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L // NP: not sure exactly which sub-version yet.
+        debugs(83, 5, "Using TLSv1.2");
+        method = TLSv1_2_client_method();
+#else
+        debugs(83, DBG_IMPORTANT, "TLSv1.2 is not available in this Proxy.");
+        return NULL;
+#endif
         break;
 
     case 1:
@@ -1168,7 +1217,7 @@ sslGetUserCertificateChainPEM(SSL *ssl)
 
     mem = BIO_new(BIO_s_mem());
 
-    for (i = 0; i < sk_X509_num(chain); i++) {
+    for (i = 0; i < sk_X509_num(chain); ++i) {
         X509 *cert = sk_X509_value(chain, i);
         PEM_write_bio_X509(mem, cert);
     }
@@ -1262,7 +1311,7 @@ void Ssl::addChainToSslContext(SSL_CTX *sslContext, STACK_OF(X509) *chain)
     if (!chain)
         return;
 
-    for (int i = 0; i < sk_X509_num(chain); i++) {
+    for (int i = 0; i < sk_X509_num(chain); ++i) {
         X509 *cert = sk_X509_value(chain, i);
         if (SSL_CTX_add_extra_chain_cert(sslContext, cert)) {
             // increase the certificate lock

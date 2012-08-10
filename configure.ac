@@ -3,7 +3,7 @@ dnl  $Id$
 dnl
 dnl
 dnl
-AC_INIT([Squid Web Proxy],[3.2.0.16],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.2.0.19],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -533,11 +533,18 @@ for module in $squid_disk_module_candidates none; do
   fi
   case "$module" in
     DiskDaemon)
-      AC_MSG_NOTICE([Enabling DiskDaemon DiskIO module])
-      DISK_LIBS="$DISK_LIBS libDiskDaemon.a"
-      DISK_MODULES="$DISK_MODULES DiskDaemon"
-      DISK_PROGRAMS="$DISK_PROGRAMS DiskIO/DiskDaemon/diskd"
-      DISK_LINKOBJS="$DISK_LINKOBJS DiskIO/DiskDaemon/DiskDaemonDiskIOModule.o"
+      case "$squid_host_os" in
+        mingw)
+          AC_MSG_NOTICE(["DiskDaemon not supported on MinGW"])
+          ;;
+        *)
+          AC_MSG_NOTICE([Enabling DiskDaemon DiskIO module])
+          DISK_LIBS="$DISK_LIBS libDiskDaemon.a"
+          DISK_MODULES="$DISK_MODULES DiskDaemon"
+          DISK_PROGRAMS="$DISK_PROGRAMS DiskIO/DiskDaemon/diskd"
+          DISK_LINKOBJS="$DISK_LINKOBJS DiskIO/DiskDaemon/DiskDaemonDiskIOModule.o"
+          ;;
+        esac
       ;;
     DiskThreads)
       squid_opt_use_diskthreads="yes"
@@ -1023,6 +1030,7 @@ dnl   fi
 dnl ])
 
 
+test "x$squid_host_os" = "xmingw" && enable_wccp=no
 AC_ARG_ENABLE(wccp,
   AS_HELP_STRING([--disable-wccp],[Disable Web Cache Coordination Protocol]), [
 SQUID_YESNO([$enableval],[unrecognized argument to --disable-wccp: $enableval])
@@ -1030,6 +1038,7 @@ SQUID_YESNO([$enableval],[unrecognized argument to --disable-wccp: $enableval])
 SQUID_DEFINE_BOOL(USE_WCCP, ${enable_wccp:=yes}, [Define to enable WCCP])
 AC_MSG_NOTICE([Web Cache Coordination Protocol enabled: $enable_wccp])
 
+test "x$squid_host_os" = "xmingw" && enable_wccpv2=no
 AC_ARG_ENABLE(wccpv2,
   AS_HELP_STRING([--disable-wccpv2],
                  [Disable Web Cache Coordination V2 Protocol]), [ 
@@ -1125,6 +1134,7 @@ if test "x${enable_eui:=yes}" = "xyes" ; then
 #endif
   ]])
 fi
+AC_SUBST(EUILIB)
 AC_MSG_NOTICE([EUI (MAC address) controls enabled: $enable_eui])
 SQUID_DEFINE_BOOL(USE_SQUID_EUI,$enable_eui,
    [Define this to include code which lets you use ethernet addresses. This code uses API initially defined in 4.4-BSD.])
@@ -2491,6 +2501,8 @@ AC_CHECK_TYPE([bool])
 #need the defines for PRId64
 AC_CHECK_SIZEOF(int64_t)
 AC_CHECK_SIZEOF(long)
+#need the defines for PRIuSIZE
+AC_CHECK_SIZEOF(size_t)
 #need the define for overflow checks
 AC_CHECK_SIZEOF(off_t)
 AC_CHECK_SIZEOF(size_t)
@@ -2521,6 +2533,17 @@ AC_CHECK_TYPE(mtyp_t,AC_DEFINE(HAVE_MTYP_T,1,
    [mtyp_t is defined by the system headers]),,[#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>])
+
+# check for compiler support of %zu printf macro
+AH_TEMPLATE(PRIuSIZE,[Compiler supports %zu printf macro])
+AC_MSG_CHECKING([for compiler %zu support])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <stdio.h>
+  ]],[[size_t n=1;printf("%zu",n);]])],[
+    AC_DEFINE(PRIuSIZE,"zu")
+    AC_MSG_RESULT(yes)
+  ],[AC_MSG_RESULT(no)],[AC_MSG_RESULT(no)])
+
 
 dnl Check for special functions
 AC_FUNC_ALLOCA
@@ -2987,19 +3010,36 @@ dnl Please change your configure script.  AIX doesn't need -lbsd.
   *-ibm-aix*)
     AC_MSG_NOTICE([Removing -lbsd for AIX...])
     LIBS=`echo $LIBS | sed -e s/-lbsd//`
-    AC_MSG_CHECKING(for aix xlc c++ comments support)
-    AC_LANG_PUSH([C])
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[//c++ cmt]])],
-      [AIX_CPPCMT_SUPPORT=yes],[AIX_CPPCMT_SUPPORT=no])	
-    AC_MSG_RESULT($AIX_CPPCMT_SUPPORT)
-    if test -n `echo $CC | grep cc` 2>/dev/null && \
-      test -n `cc -qversion 2>/dev/null | grep "IBM XL C/C++ for AIX"` 2>/dev/null; then
-        if test "$AIX_CPPCMT_SUPPORT"="no";then
-          SQUID_CFLAGS="-qcpluscmt $SQUID_CFLAGS"
-        fi
+
+    SQUID_CC_REQUIRE_ARGUMENT([ac_cv_require_rtti],[-rtti],[[
+#include <assert.h>
+#ifndef NULL
+#define NULL 0
+#endif
+class Foo{
+public:virtual ~Foo(){}
+};
+class Bar:public Foo{
+public:Bar():Foo(){}
+};
+      ]],[[
+Foo * myFoo=new Bar();
+Bar * myBar=dynamic_cast<Bar *>(myFoo);
+assert(myBar != NULL);
+      ]])
+    if test "$ac_cv_require_rtti" = "yes"; then
+      SQUID_CFLAGS="-rtti $SQUID_CFLAGS"
+      SQUID_CXXFLAGS="-rtti $SQUID_CXXFLAGS"
     fi
+
+    AC_LANG_PUSH([C])
+    SQUID_CC_REQUIRE_ARGUMENT([ac_cv_require_qcpluscmt],[-qcpluscmt],[[]],[[//c++ cmt]])
     AC_LANG_POP([C])
+    if test "$ac_cv_require_qcpluscmt" = "yes"; then
+      SQUID_CFLAGS="-qcpluscmt $SQUID_CFLAGS"
+    fi
     ;;
+
     *m88k*)
       SQUID_CFLAGS="$SQUID_CFLAGS -D_SQUID_MOTOROLA_"
       SQUID_CXXFLAGS="$SQUID_CXXFLAGS -D_SQUID_MOTOROLA_"
@@ -3205,6 +3245,20 @@ SQUID_CHECK_SETRESUID_WORKS
 if test "x$squid_cv_resuid_works" = "xyes" ; then
   AC_DEFINE(HAVE_SETRESUID,1,[Yay! Another Linux brokenness. Knowing that setresuid() exists is not enough, because RedHat 5.0 declares setresuid() but does not implement it.])
 fi
+
+AC_MSG_CHECKING([for constant CMSG_SPACE])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+  #if HAVE_SYS_SOCKET_H
+  #include <sys/socket.h>
+  #endif
+
+  int a[CMSG_SPACE(int)];
+]])], [
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_CONSTANT_CMSG_SPACE, 1, [Define to 1 if CMSG_SPACE is constant])
+], [
+  AC_MSG_RESULT(no)
+])
 
 SQUID_CHECK_FUNC_STRNSTR
 SQUID_CHECK_FUNC_VACOPY

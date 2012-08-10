@@ -136,6 +136,9 @@
 /* Define to 1 if you have the <com_err.h> header file. */
 #undef HAVE_COM_ERR_H
 
+/* Define to 1 if CMSG_SPACE is constant */
+#undef HAVE_CONSTANT_CMSG_SPACE
+
 /* Support setting CPU affinity for workers */
 #undef HAVE_CPU_AFFINITY
 
@@ -1152,6 +1155,9 @@
 
 /* Print stack traces on fatal errors */
 #undef PRINT_STACK_TRACE
+
+/* Compiler supports %zu printf macro */
+#undef PRIuSIZE
 
 /* The size of `int64_t', as computed by sizeof. */
 #undef SIZEOF_INT64_T

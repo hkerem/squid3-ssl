@@ -142,6 +142,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
@@ -363,7 +364,6 @@ libmgr_la_SOURCES = \
 	StringParam.cc \
 	StringParam.h
 
-EXTRA_DIST = stub_libmgr.cc
 all: all-am
 
 .SUFFIXES:

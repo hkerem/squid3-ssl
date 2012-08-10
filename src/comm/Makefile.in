@@ -140,6 +140,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
@@ -330,6 +331,7 @@ libcomm_la_SOURCES = \
 	ModSelectWin32.cc \
 	TcpAcceptor.cc \
 	TcpAcceptor.h \
+	UdpOpenDialer.h \
 	Write.cc \
 	Write.h \
 	\

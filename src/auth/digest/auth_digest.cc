@@ -185,6 +185,8 @@ authenticateDigestNonceNew(void)
     while ((temp = authenticateDigestNonceFindNonce((char const *) (newnonce->key)))) {
         /* create a new nonce */
         newnonce->noncedata.randomdata = squid_random();
+        /* Bug 3526 high performance fix: add 1 second to creationtime to avoid duplication */
+        newnonce->noncedata.creationtime++;
         authDigestNonceEncode(newnonce);
     }
 
@@ -318,7 +320,7 @@ authDigestNonceUnlink(digest_nonce_h * nonce)
     assert(nonce != NULL);
 
     if (nonce->references > 0) {
-        nonce->references--;
+        -- nonce->references;
     } else {
         debugs(29, 1, "authDigestNonceUnlink; Attempt to lower nonce " << nonce << " refcount below 0!");
     }
@@ -807,7 +809,8 @@ Auth::Digest::Config::decode(char const *proxy_auth)
         size_t nlen;
         size_t vlen;
         if ((p = (const char *)memchr(item, '=', ilen)) && (p - item < ilen)) {
-            nlen = p++ - item;
+            nlen = p - item;
+            ++p;
             vlen = ilen - (p - item);
         } else {
             nlen = ilen;
@@ -1063,6 +1066,7 @@ Auth::Digest::Config::decode(char const *proxy_auth)
     } else {
         debugs(29, 9, HERE << "Found user '" << username << "' in the user cache as '" << auth_user << "'");
         digest_user = static_cast<Auth::Digest::User *>(auth_user.getRaw());
+        digest_user->credentials(Auth::Unchecked);
         xfree(username);
     }
 

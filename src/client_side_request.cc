@@ -54,6 +54,7 @@
 #include "adaptation/icap/History.h"
 #endif
 #endif
+#include "anyp/PortCfg.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
@@ -72,7 +73,6 @@
 #include "HttpRequest.h"
 #include "ip/QosConfig.h"
 #include "MemObject.h"
-#include "ProtoPort.h"
 #include "Store.h"
 #include "SquidTime.h"
 #include "wordlist.h"
@@ -176,7 +176,8 @@ ClientHttpRequest::ClientHttpRequest(ConnStateData * aConn) :
 {
     start_time = current_time;
     setConn(aConn);
-    al.tcpClient = clientConnection = aConn->clientConnection;
+    al = new AccessLogEntry;
+    al->tcpClient = clientConnection = aConn->clientConnection;
     dlinkAdd(this, &active, &ClientActiveRequests);
 #if USE_ADAPTATION
     request_satisfaction_mode = false;
@@ -198,7 +199,7 @@ ClientHttpRequest::onlyIfCached()const
            request->cache_control->onlyIfCached();
 }
 
-/*
+/**
  * This function is designed to serve a fairly specific purpose.
  * Occasionally our vBNS-connected caches can talk to each other, but not
  * the rest of the world.  Here we try to detect frequent failures which
@@ -210,18 +211,24 @@ ClientHttpRequest::onlyIfCached()const
  *
  * Duane W., Sept 16, 1996
  */
-
-#define FAILURE_MODE_TIME 300
-
 static void
 checkFailureRatio(err_type etype, hier_code hcode)
 {
-    static double magic_factor = 100.0;
-    double n_good;
-    double n_bad;
+    // Can be set at compile time with -D compiler flag
+#ifndef FAILURE_MODE_TIME
+#define FAILURE_MODE_TIME 300
+#endif
 
     if (hcode == HIER_NONE)
         return;
+
+    // don't bother when ICP is disabled.
+    if (Config.Port.icp <= 0)
+        return;
+
+    static double magic_factor = 100.0;
+    double n_good;
+    double n_bad;
 
     n_good = magic_factor / (1.0 + request_failure_ratio);
 
@@ -235,11 +242,11 @@ checkFailureRatio(err_type etype, hier_code hcode)
     case ERR_SECURE_CONNECT_FAIL:
 
     case ERR_READ_ERROR:
-        n_bad++;
+        ++n_bad;
         break;
 
     default:
-        n_good++;
+        ++n_good;
     }
 
     request_failure_ratio = n_bad / n_good;
@@ -250,10 +257,10 @@ checkFailureRatio(err_type etype, hier_code hcode)
     if (request_failure_ratio < 1.0)
         return;
 
-    debugs(33, 0, "Failure Ratio at "<< std::setw(4)<<
+    debugs(33, DBG_CRITICAL, "WARNING: Failure Ratio at "<< std::setw(4)<<
            std::setprecision(3) << request_failure_ratio);
 
-    debugs(33, 0, "Going into hit-only-mode for " <<
+    debugs(33, DBG_CRITICAL, "WARNING: ICP going into HIT-only mode for " <<
            FAILURE_MODE_TIME / 60 << " minutes...");
 
     hit_only_mode_until = squid_curtime + FAILURE_MODE_TIME;
@@ -280,7 +287,7 @@ ClientHttpRequest::~ClientHttpRequest()
     loggingEntry(NULL);
 
     if (request)
-        checkFailureRatio(request->errType, al.hier.code);
+        checkFailureRatio(request->errType, al->hier.code);
 
     freeResources();
 
@@ -479,11 +486,11 @@ clientFollowXForwardedForCheck(allow_t answer, void *data)
         */
         /* skip trailing space and commas */
         while (l > 0 && (p[l-1] == ',' || xisspace(p[l-1])))
-            l--;
+            --l;
         request->x_forwarded_for_iterator.cut(l);
         /* look for start of last item in list */
         while (l > 0 && ! (p[l-1] == ',' || xisspace(p[l-1])))
-            l--;
+            --l;
         asciiaddr = p+l;
         if ((addr = asciiaddr)) {
             request->indirect_client_addr = addr;
@@ -537,9 +544,10 @@ ClientRequestContext::hostHeaderIpVerify(const ipcache_addrs* ia, const DnsLooku
 
     if (ia != NULL && ia->count > 0) {
         // Is the NAT destination IP in DNS?
-        for (int i = 0; i < ia->count; i++) {
+        for (int i = 0; i < ia->count; ++i) {
             if (clientConn->local.matchIPAddr(ia->in_addrs[i]) == 0) {
                 debugs(85, 3, HERE << "validate IP " << clientConn->local << " possible from Host:");
+                http->request->flags.hostVerified = 1;
                 http->doCallouts();
                 return;
             }
@@ -565,6 +573,7 @@ ClientRequestContext::hostHeaderVerifyFailed(const char *A, const char *B)
         // XXX: when we have updated the cache key to base on raw-IP + URI this cacheable limit can go.
         http->request->flags.hierarchical = 0; // MUST NOT pass to peers (for now)
         // XXX: when we have sorted out the best way to relay requests properly to peers this hierarchical limit can go.
+        http->doCallouts();
         return;
     }
 
@@ -1011,7 +1020,7 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
 {
     HttpRequest *request = http->request;
     HttpHeader *req_hdr = &request->header;
-    int no_cache = 0;
+    bool no_cache = false;
     const char *str;
 
     request->imslen = -1;
@@ -1025,14 +1034,14 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
             String s = req_hdr->getList(HDR_PRAGMA);
 
             if (strListIsMember(&s, "no-cache", ','))
-                no_cache++;
+                no_cache=true;
 
             s.clean();
         }
 
         if (request->cache_control)
             if (request->cache_control->noCache())
-                no_cache++;
+                no_cache=true;
 
         /*
         * Work around for supporting the Reload button in IE browsers when Squid
@@ -1045,20 +1054,20 @@ clientInterpretRequestHeaders(ClientHttpRequest * http)
             if (http->flags.accel && request->flags.ims) {
                 if ((str = req_hdr->getStr(HDR_USER_AGENT))) {
                     if (strstr(str, "MSIE 5.01") != NULL)
-                        no_cache++;
+                        no_cache=true;
                     else if (strstr(str, "MSIE 5.0") != NULL)
-                        no_cache++;
+                        no_cache=true;
                     else if (strstr(str, "MSIE 4.") != NULL)
-                        no_cache++;
+                        no_cache=true;
                     else if (strstr(str, "MSIE 3.") != NULL)
-                        no_cache++;
+                        no_cache=true;
                 }
             }
         }
     }
 
     if (request->method == METHOD_OTHER) {
-        no_cache++;
+        no_cache=true;
     }
 
     if (no_cache) {
@@ -1185,6 +1194,7 @@ ClientRequestContext::clientRedirectDone(char *result)
         if (status == HTTP_MOVED_PERMANENTLY
                 || status == HTTP_MOVED_TEMPORARILY
                 || status == HTTP_SEE_OTHER
+                || status == HTTP_PERMANENT_REDIRECT
                 || status == HTTP_TEMPORARY_REDIRECT) {
             char *t = result;
 
@@ -1193,10 +1203,7 @@ ClientRequestContext::clientRedirectDone(char *result)
                 http->redirect.location = xstrdup(t + 1);
                 // TODO: validate the URL produced here is RFC 2616 compliant absolute URI
             } else {
-                if (old_request->http_ver < HttpVersion(1,1))
-                    debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid 302 redirect Location: " << result);
-                else
-                    debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid 303 redirect Location: " << result);
+                debugs(85, DBG_CRITICAL, "ERROR: URL-rewrite produces invalid " << status << " redirect Location: " << result);
             }
         } else if (strcmp(result, http->uri)) {
             // XXX: validate the URL properly *without* generating a whole new request object right here.
@@ -1330,7 +1337,7 @@ ClientHttpRequest::processRequest()
 #endif
         logType = LOG_TCP_MISS;
         getConn()->stopReading(); // tunnels read for themselves
-        tunnelStart(this, &out.size, &al.http.code);
+        tunnelStart(this, &out.size, &al->http.code);
         return;
     }
 
@@ -1489,8 +1496,8 @@ ClientHttpRequest::doCallouts()
     assert(calloutContext);
 
     /*Save the original request for logging purposes*/
-    if (!calloutContext->http->al.request)
-        calloutContext->http->al.request = HTTPMSGLOCK(request);
+    if (!calloutContext->http->al->request)
+        calloutContext->http->al->request = HTTPMSGLOCK(request);
 
     // CVE-2009-0801: verify the Host: header is consistent with other known details.
     if (!calloutContext->host_header_verify_done) {
@@ -1721,10 +1728,7 @@ ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe::Pointer)
     assert(adaptedBodySource != NULL);
 
     if (size_t contentSize = adaptedBodySource->buf().contentSize()) {
-        // XXX: entry->bytesWanted returns contentSize-1 if entry can accept data.
-        // We have to add 1 to avoid suspending forever.
-        const size_t bytesWanted = storeEntry()->bytesWanted(Range<size_t>(0,contentSize));
-        const size_t spaceAvailable = bytesWanted >  0 ? (bytesWanted + 1) : 0;
+        const size_t spaceAvailable = storeEntry()->bytesWanted(Range<size_t>(0,contentSize));
 
         if (spaceAvailable < contentSize ) {
             // No or partial body data consuming
@@ -1734,8 +1738,7 @@ ClientHttpRequest::noteMoreBodyDataAvailable(BodyPipe::Pointer)
             storeEntry()->deferProducer(call);
         }
 
-        // XXX: bytesWanted API does not allow us to write just one byte!
-        if (!spaceAvailable && contentSize > 1)
+        if (!spaceAvailable)
             return;
 
         if (spaceAvailable < contentSize )

@@ -331,6 +331,8 @@ static struct wccp2_capability_element_t wccp2_capability_element;
 #define WCCP2_CAPABILITY_FORWARDING_METHOD	0x01
 #define WCCP2_CAPABILITY_ASSIGNMENT_METHOD	0x02
 #define WCCP2_CAPABILITY_RETURN_METHOD		0x03
+// 0x04 ?? - advertised by a 4507 (ios v15.1) Cisco switch
+// 0x05 ?? - advertised by a 4507 (ios v15.1) Cisco switch
 
 /* capability values */
 #define WCCP2_METHOD_GRE		0x00000001
@@ -701,7 +703,7 @@ wccp2Init(void)
     for (s = Config.Wccp2.router; s; s = s->next) {
         if (!s->s.IsAnyAddr()) {
             /* Increment the counter */
-            wccp2_numrouters++;
+            ++wccp2_numrouters;
         }
     }
 
@@ -1384,6 +1386,10 @@ wccp2HandleUdp(int sock, void *not_used)
 
                 break;
 
+            case 4:
+            case 5:
+                break; // ignore silently for now
+
             default:
                 debugs(80, 1, "Unknown capability type in WCCPv2 Packet (" << ntohs(router_capability_element->capability_type) << ").");
             }
@@ -1429,7 +1435,7 @@ wccp2HandleUdp(int sock, void *not_used)
     if (ntohl(tmp) != 0) {
         /* search through the list of received-from ip addresses */
 
-        for (num_caches = 0; num_caches < (int) ntohl(tmp); num_caches++) {
+        for (num_caches = 0; num_caches < (int) ntohl(tmp); ++num_caches) {
             /* Get a copy of the ip */
             memset(&cache_address, 0, sizeof(cache_address)); // Make GCC happy
 
@@ -1798,7 +1804,7 @@ wccp2AssignBuckets(void *voidnotused)
                 if (num_caches) {
                     int cache;
 
-                    for (cache = 0, cache_list_ptr = &router_list_ptr->cache_list_head; cache_list_ptr->next; cache_list_ptr = cache_list_ptr->next, cache++) {
+                    for (cache = 0, cache_list_ptr = &router_list_ptr->cache_list_head; cache_list_ptr->next; cache_list_ptr = cache_list_ptr->next, ++cache) {
                         /* add caches */
 
                         cache_address = (struct in_addr *) &wccp_packet[offset];
@@ -1818,7 +1824,7 @@ wccp2AssignBuckets(void *voidnotused)
 
                 if (num_caches != 0) {
                     if (total_weight == 0) {
-                        for (bucket_counter = 0; bucket_counter < WCCP_BUCKETS; bucket_counter++) {
+                        for (bucket_counter = 0; bucket_counter < WCCP_BUCKETS; ++bucket_counter) {
                             buckets[bucket_counter] = (char) (bucket_counter % num_caches);
                         }
                     } else {
@@ -1827,18 +1833,18 @@ wccp2AssignBuckets(void *voidnotused)
                         int cache = -1;
                         unsigned long per_bucket = total_weight / WCCP_BUCKETS;
 
-                        for (bucket_counter = 0; bucket_counter < WCCP_BUCKETS; bucket_counter++) {
+                        for (bucket_counter = 0; bucket_counter < WCCP_BUCKETS; ++bucket_counter) {
                             int n;
                             unsigned long step;
 
-                            for (n = num_caches; n; n--) {
-                                cache++;
+                            for (n = num_caches; n; --n) {
+                                ++cache;
 
                                 if (cache >= num_caches)
                                     cache = 0;
 
                                 if (!weight[cache]) {
-                                    n++;
+                                    ++n;
                                     continue;
                                 }
 
@@ -1899,13 +1905,13 @@ wccp2AssignBuckets(void *voidnotused)
                 cache_list_ptr = &router_list_ptr->cache_list_head;
                 value = 0;
 
-                for (valuecounter = 0; valuecounter < 64; valuecounter++) {
+                for (valuecounter = 0; valuecounter < 64; ++valuecounter) {
 
                     value_element = (struct wccp2_value_element_t *) &wccp_packet[offset];
 
                     /* Update the value according the the "correct" formula */
 
-                    for (; (value & 0x1741) != value; value++) {
+                    for (; (value & 0x1741) != value; ++value) {
                         assert(value <= 0x1741);
                     }
 
@@ -1936,7 +1942,7 @@ wccp2AssignBuckets(void *voidnotused)
                     value_element->cache_ip = cache_list_ptr->cache_ip;
 
                     offset += sizeof(struct wccp2_value_element_t);
-                    value++;
+                    ++value;
 
                     /* Assign the next value to the next cache */
 
@@ -2272,7 +2278,7 @@ parse_wccp2_service_ports(char *options, int portlist[])
         }
 
         portlist[i] = p;
-        i++;
+        ++i;
         port = strsep(&tmp2, ",");
     }
 

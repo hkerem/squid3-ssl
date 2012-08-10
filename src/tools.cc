@@ -35,11 +35,12 @@
 #include "squid-old.h"
 #include "base/Subscription.h"
 #include "fde.h"
+#include "htcp.h"
 #include "ICP.h"
 #include "ip/Intercept.h"
 #include "ip/QosConfig.h"
 #include "MemBuf.h"
-#include "ProtoPort.h"
+#include "anyp/PortCfg.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
 #include "ipc/Kids.h"
@@ -88,19 +89,16 @@ SQUIDCEXTERN int setresuid(uid_t, uid_t, uid_t);
 void
 releaseServerSockets(void)
 {
-    int i;
-    /* Release the main ports as early as possible */
+    // Release the main ports as early as possible
 
     // clear both http_port and https_port lists.
-    for (i = 0; i < NHttpSockets; i++) {
-        if (HttpSockets[i] >= 0)
-            close(HttpSockets[i]);
-    }
+    clientHttpConnectionsClose();
 
     // clear icp_port's
-    icpConnectionClose();
+    icpClosePorts();
 
     // XXX: Why not the HTCP, SNMP, DNS ports as well?
+    // XXX: why does this differ from main closeServerConnections() anyway ?
 }
 
 static char *
@@ -178,7 +176,7 @@ dumpMallocStats(void)
 
     mp = mallinfo();
 
-    fprintf(debug_log, "Memory usage for "APP_SHORTNAME" via mallinfo():\n");
+    fprintf(debug_log, "Memory usage for " APP_SHORTNAME " via mallinfo():\n");
 
     fprintf(debug_log, "\ttotal space in arena:  %6ld KB\n",
             (long)mp.arena >> 10);
@@ -1258,7 +1256,7 @@ parseEtcHosts(void)
 int
 getMyPort(void)
 {
-    http_port_list *p = NULL;
+    AnyP::PortCfg *p = NULL;
     if ((p = Config.Sockaddr.http)) {
         // skip any special interception ports
         while (p && (p->intercepted || p->spoof_client_ip))
@@ -1315,12 +1313,12 @@ strwordquote(MemBuf * mb, const char *str)
 
         case '\n':
             mb->append("\\n", 2);
-            str++;
+            ++str;
             break;
 
         case '\r':
             mb->append("\\r", 2);
-            str++;
+            ++str;
             break;
 
         case '\0':
@@ -1329,7 +1327,7 @@ strwordquote(MemBuf * mb, const char *str)
         default:
             mb->append("\\", 1);
             mb->append(str, 1);
-            str++;
+            ++str;
             break;
         }
     }
@@ -1365,9 +1363,11 @@ restoreCapabilities(int keep)
         int ncaps = 0;
         int rc = 0;
         cap_value_t cap_list[10];
-        cap_list[ncaps++] = CAP_NET_BIND_SERVICE;
+        cap_list[ncaps] = CAP_NET_BIND_SERVICE;
+        ++ncaps;
         if (Ip::Interceptor.TransparentActive() || Ip::Qos::TheConfig.isHitNfmarkActive() || Ip::Qos::TheConfig.isAclNfmarkActive()) {
-            cap_list[ncaps++] = CAP_NET_ADMIN;
+            cap_list[ncaps] = CAP_NET_ADMIN;
+            ++ncaps;
         }
 
         cap_clear_flag(caps, CAP_EFFECTIVE);

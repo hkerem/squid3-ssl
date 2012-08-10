@@ -254,7 +254,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         src = url;
         i = 0;
         /* Find first : - everything before is protocol */
-        for (i = 0, dst = proto; i < l && *src != ':'; i++, src++, dst++) {
+        for (i = 0, dst = proto; i < l && *src != ':'; ++i, ++src, ++dst) {
             *dst = *src;
         }
         if (i >= l)
@@ -268,8 +268,10 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         src += 3;
 
         /* Then everything until first /; thats host (and port; which we'll look for here later) */
-        /* bug 1881: If we don't get a "/" then we imply it was there */
-        for (dst = host; i < l && *src != '/' && *src != '\0'; i++, src++, dst++) {
+        // bug 1881: If we don't get a "/" then we imply it was there
+        // bug 3074: We could just be given a "?" or "#". These also imply "/"
+        // bug 3233: whitespace is also a hostname delimiter.
+        for (dst = host; i < l && *src != '/' && *src != '?' && *src != '#' && *src != '\0' && !xisspace(*src); ++i, ++src, ++dst) {
             *dst = *src;
         }
 
@@ -282,8 +284,15 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             return NULL;
         *dst = '\0';
 
+        // bug 3074: received 'path' starting with '?', '#', or '\0' implies '/'
+        if (*src == '?' || *src == '#' || *src == '\0') {
+            urlpath[0] = '/';
+            dst = &urlpath[1];
+        } else {
+            dst = urlpath;
+        }
         /* Then everything from / (inclusive) until \r\n or \0 - thats urlpath */
-        for (dst = urlpath; i < l && *src != '\r' && *src != '\n' && *src != '\0'; i++, src++, dst++) {
+        for (; i < l && *src != '\r' && *src != '\n' && *src != '\0'; ++i, ++src, ++dst) {
             *dst = *src;
         }
 
@@ -292,7 +301,8 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             return NULL;
         /* If the URL path is empty we set it to be "/" */
         if (dst == urlpath) {
-            *(dst++) = '/';
+            *dst = '/';
+            ++dst;
         }
         *dst = '\0';
 
@@ -313,18 +323,20 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
             dst = host;
             /* only for IPv6 sadly, pre-IPv6/URL code can't handle the clean result properly anyway. */
             src = host;
-            src++;
+            ++src;
             l = strlen(host);
             i = 1;
-            for (; i < l && *src != ']' && *src != '\0'; i++, src++, dst++) {
+            for (; i < l && *src != ']' && *src != '\0'; ++i, ++src, ++dst) {
                 *dst = *src;
             }
 
             /* we moved in-place, so truncate the actual hostname found */
-            *(dst++) = '\0';
+            *dst = '\0';
+            ++dst;
 
             /* skip ahead to either start of port, or original EOS */
-            while (*dst != '\0' && *dst != ':') dst++;
+            while (*dst != '\0' && *dst != ':')
+                ++dst;
             t = dst;
         } else {
             t = strrchr(host, ':');
@@ -345,21 +357,23 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
 
         if (t && *t == ':') {
             *t = '\0';
-            t++;
+            ++t;
             port = atoi(t);
         }
     }
 
-    for (t = host; *t; t++)
+    for (t = host; *t; ++t)
         *t = xtolower(*t);
 
     if (stringHasWhitespace(host)) {
         if (URI_WHITESPACE_STRIP == Config.uri_whitespace) {
             t = q = host;
             while (*t) {
-                if (!xisspace(*t))
-                    *q++ = *t;
-                t++;
+                if (!xisspace(*t)) {
+                    *q = *t;
+                    ++q;
+                }
+                ++t;
             }
             *q = '\0';
         }
@@ -424,9 +438,11 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
         default:
             t = q = urlpath;
             while (*t) {
-                if (!xisspace(*t))
-                    *q++ = *t;
-                t++;
+                if (!xisspace(*t)) {
+                    *q = *t;
+                    ++q;
+                }
+                ++t;
             }
             *q = '\0';
         }
@@ -572,8 +588,10 @@ urlCanonicalClean(const HttpRequest * request)
              */
 
             if (Config.onoff.strip_query_terms)
-                if ((t = strchr(buf, '?')))
-                    *(++t) = '\0';
+                if ((t = strchr(buf, '?'))) {
+                    ++t;
+                    *t = '\0';
+                }
 
             break;
         }
@@ -625,7 +643,7 @@ urlIsRelative(const char *url)
         return (false);
     }
 
-    for (p = url; *p != '\0' && *p != ':' && *p != '/'; p++);
+    for (p = url; *p != '\0' && *p != ':' && *p != '/'; ++p);
 
     if (*p == ':') {
         return (false);
@@ -689,10 +707,11 @@ urlMakeAbsolute(const HttpRequest * req, const char *relUrl)
         const char *last_slash = strrchr(path, '/');
 
         if (last_slash == NULL) {
-            urlbuf[urllen++] = '/';
+            urlbuf[urllen] = '/';
+            ++urllen;
             strncpy(&urlbuf[urllen], relUrl, MAX_URL - urllen - 1);
         } else {
-            last_slash++;
+            ++last_slash;
             size_t pathlen = last_slash - path;
             if (pathlen > MAX_URL - urllen - 1) {
                 pathlen = MAX_URL - urllen - 1;
@@ -737,7 +756,7 @@ matchDomainName(const char *h, const char *d)
     int hl;
 
     while ('.' == *h)
-        h++;
+        ++h;
 
     hl = strlen(h);
 
@@ -960,7 +979,7 @@ URLHostName::trimAuth()
     char *t;
 
     if ((t = strrchr(Host, '@'))) {
-        t++;
+        ++t;
         memmove(Host, t, strlen(t) + 1);
     }
 }

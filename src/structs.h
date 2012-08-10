@@ -36,6 +36,7 @@
 
 /* needed for the global config */
 #include "HttpHeader.h"
+#include "HttpHeaderTools.h"
 
 /* for ICP_END */
 #include "icp_opcode.h"
@@ -56,14 +57,6 @@ struct acl_deny_info_list {
     char *err_page_name;
     acl_name_list *acl_list;
     acl_deny_info_list *next;
-};
-
-
-class acl_access;
-
-struct _header_mangler {
-    acl_access *access_list;
-    char *replacement;
 };
 
 class ACLChecklist;
@@ -145,7 +138,10 @@ class CpuAffinityMap;
 class RemovalPolicySettings;
 class external_acl;
 class Store;
-struct http_port_list;
+namespace AnyP
+{
+struct PortCfg;
+}
 class SwapDir;
 
 /// Used for boolean enabled/disabled options with complex default logic.
@@ -244,11 +240,10 @@ struct SquidConfig {
     } Port;
 
     struct {
-        http_port_list *http;
+        AnyP::PortCfg *http;
 #if USE_SSL
-        http_port_list *https;
+        AnyP::PortCfg *https;
 #endif
-
     } Sockaddr;
 #if SQUID_SNMP
 
@@ -556,12 +551,10 @@ struct SquidConfig {
 #endif
 
     struct {
-        int icp_average;
-        int dns_average;
-        int http_average;
-        int icp_min_poll;
-        int dns_min_poll;
-        int http_min_poll;
+        struct {
+            int average;
+            int min_poll;
+        } dns, udp, tcp;
     } comm_incoming;
     int max_open_disk_fds;
     int uri_whitespace;
@@ -577,10 +570,10 @@ struct SquidConfig {
     } mcast_miss;
 #endif
 
-    /* one access list per header type we know of */
-    header_mangler request_header_access[HDR_ENUM_END];
-    /* one access list per header type we know of */
-    header_mangler reply_header_access[HDR_ENUM_END];
+    /// request_header_access and request_header_replace
+    HeaderManglers *request_header_access;
+    /// reply_header_access and reply_header_replace
+    HeaderManglers *reply_header_access;
     char *coredump_dir;
     char *chroot_dir;
 #if USE_CACHE_DIGESTS

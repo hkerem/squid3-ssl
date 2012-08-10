@@ -40,6 +40,7 @@
 #include "squid-old.h"
 #include "acl/FilledChecklist.h"
 #include "acl/Gadgets.h"
+#include "anyp/PortCfg.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
@@ -61,7 +62,6 @@
 #include "ip/QosConfig.h"
 #include "ipcache.h"
 #include "MemObject.h"
-#include "ProtoPort.h"
 #include "SquidTime.h"
 #include "StoreClient.h"
 #include "Store.h"
@@ -117,7 +117,7 @@ clientReplyContext::setReplyToError(
         /* prevent confusion over whether we default to persistent or not */
         http->request->flags.proxy_keepalive = 0;
 
-    http->al.http.code = errstate->httpStatus;
+    http->al->http.code = errstate->httpStatus;
 
     createStoreEntry(method, request_flags());
 #if USE_AUTH
@@ -277,7 +277,7 @@ clientReplyContext::processExpired()
      * this clientReplyContext does
      */
     Comm::ConnectionPointer conn = http->getConn() != NULL ? http->getConn()->clientConnection : NULL;
-    FwdState::fwdStart(conn, http->storeEntry(), http->request);
+    FwdState::Start(conn, http->storeEntry(), http->request, http->al);
 
     /* Register with storage manager to receive updates when data comes in. */
 
@@ -633,7 +633,7 @@ clientReplyContext::processMiss()
     /// Deny loops for accelerator and interceptor. TODO: deny in all modes?
     if (r->flags.loopdetect &&
             (http->flags.accel || http->flags.intercepted)) {
-        http->al.http.code = HTTP_FORBIDDEN;
+        http->al->http.code = HTTP_FORBIDDEN;
         err = clientBuildError(ERR_ACCESS_DENIED, HTTP_FORBIDDEN, NULL, http->getConn()->clientConnection->remote, http->request);
         createStoreEntry(r->method, request_flags());
         errorAppendEntry(http->storeEntry(), err);
@@ -646,11 +646,7 @@ clientReplyContext::processMiss()
 
         if (http->redirect.status) {
             HttpReply *rep = new HttpReply;
-#if LOG_TCP_REDIRECTS
-
             http->logType = LOG_TCP_REDIRECT;
-#endif
-
             http->storeEntry()->releaseRequest();
             rep->redirect(http->redirect.status, http->redirect.location);
             http->storeEntry()->replaceHttpReply(rep);
@@ -666,7 +662,7 @@ clientReplyContext::processMiss()
 
         /** Start forwarding to get the new object from network */
         Comm::ConnectionPointer conn = http->getConn() != NULL ? http->getConn()->clientConnection : NULL;
-        FwdState::fwdStart(conn, http->storeEntry(), r);
+        FwdState::Start(conn, http->storeEntry(), r, http->al);
     }
 }
 
@@ -681,7 +677,7 @@ clientReplyContext::processOnlyIfCachedMiss()
 {
     debugs(88, 4, "clientProcessOnlyIfCachedMiss: '" <<
            RequestMethodStr(http->request->method) << " " << http->uri << "'");
-    http->al.http.code = HTTP_GATEWAY_TIMEOUT;
+    http->al->http.code = HTTP_GATEWAY_TIMEOUT;
     ErrorState *err = clientBuildError(ERR_ONLY_IF_CACHED_MISS, HTTP_GATEWAY_TIMEOUT, NULL,
                                        http->getConn()->clientConnection->remote, http->request);
     removeClientStoreReference(&sc, http);
@@ -1438,6 +1434,7 @@ clientReplyContext::buildReplyHeader()
 #endif
 
     const bool maySendChunkedReply = !request->multipartRangeRequest() &&
+                                     reply->sline.protocol == AnyP::PROTO_HTTP && // response is HTTP
                                      (request->http_ver >= HttpVersion(1, 1));
 
     /* Check whether we should send keep-alive */
@@ -1611,9 +1608,9 @@ clientReplyContext::identifyFoundObject(StoreEntry *newEntry)
 
     if (http->redirect.status) {
         /** \li If redirection status is True force this to be a MISS */
-        debugs(85, 3, "clientProcessRequest2: redirectStatus forced StoreEntry to NULL -  MISS");
+        debugs(85, 3, HERE << "REDIRECT status forced StoreEntry to NULL (no body on 3XX responses)");
         http->storeEntry(NULL);
-        http->logType = LOG_TCP_MISS;
+        http->logType = LOG_TCP_REDIRECT;
         doGetMoreData();
         return;
     }
@@ -2125,9 +2122,9 @@ clientReplyContext::sendMoreData (StoreIOBuffer result)
         size_t k;
 
         if ((k = headersEnd(buf, reqofs))) {
-            safe_free(http->al.headers.reply);
-            http->al.headers.reply = (char *)xcalloc(k + 1, 1);
-            xstrncpy(http->al.headers.reply, buf, k);
+            safe_free(http->al->headers.reply);
+            http->al->headers.reply = (char *)xcalloc(k + 1, 1);
+            xstrncpy(http->al->headers.reply, buf, k);
         }
     }
 

@@ -159,6 +159,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EPOLL_LIBS = @EPOLL_LIBS@
+EUILIB = @EUILIB@
 EXEEXT = @EXEEXT@
 EXPATLIB = @EXPATLIB@
 EXTERNAL_ACL_HELPERS = @EXTERNAL_ACL_HELPERS@
@@ -336,6 +337,7 @@ noinst_LIBRARIES = libcompat-squid.a
 libcompat_squid_a_SOURCES = \
 	assert.cc \
 	assert.h \
+	cmsg.h \
 	compat.cc \
 	compat.h \
 	compat_shared.h \

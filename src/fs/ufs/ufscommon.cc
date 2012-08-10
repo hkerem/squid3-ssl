@@ -95,6 +95,7 @@ public:
     }
 };
 
+#if UNUSED_CODE
 /// Parse a swap header entry created on a system with 32-bit size_t, time_t and sfileno
 /// this is typical of 32-bit systems without large file support and with old kernels
 /// NP: SQUID_MD5_DIGEST_LENGTH is very risky still.
@@ -213,6 +214,20 @@ bool UFSSwapLogParser_v1::ReadRecord(StoreSwapLogData &swapData)
     }
     return true;
 }
+#endif /* UNUSED_CODE */
+
+/// swap.state v2 log parser
+class UFSSwapLogParser_v2: public UFSSwapLogParser
+{
+public:
+    UFSSwapLogParser_v2(FILE *fp): UFSSwapLogParser(fp) {
+        record_size = sizeof(StoreSwapLogData);
+    }
+    bool ReadRecord(StoreSwapLogData &swapData) {
+        assert(log);
+        return fread(&swapData, sizeof(StoreSwapLogData), 1, log) == 1;
+    }
+};
 
 
 UFSSwapLogParser *UFSSwapLogParser::GetUFSSwapLogParser(FILE *fp)
@@ -230,10 +245,18 @@ UFSSwapLogParser *UFSSwapLogParser::GetUFSSwapLogParser(FILE *fp)
         return new UFSSwapLogParser_v1_32bs(fp); // Um. 32-bits except time_t, and can't determine that.
     }
 
+    debugs(47, 2, "Swap file version: " << header.version);
+
     if (header.version == 1) {
         if (fseek(fp, header.record_size, SEEK_SET) != 0)
             return NULL;
 
+        debugs(47, DBG_IMPORTANT, "Rejecting swap file v1 to avoid cache " <<
+               "index corruption. Forcing a full cache index rebuild. " <<
+               "See Squid bug #3441.");
+        return NULL;
+
+#if UNUSED_CODE
         // baseline
         // 32-bit sfileno
         // native time_t (hopefully 64-bit)
@@ -272,11 +295,26 @@ UFSSwapLogParser *UFSSwapLogParser::GetUFSSwapLogParser(FILE *fp)
         debugs(47, 1, "WARNING: The swap file has wrong format!... ");
         debugs(47, 1, "NOTE: Cannot safely downgrade caches to short (32-bit) timestamps.");
         return NULL;
+#endif
     }
 
-    // XXX: version 2 of swapfile. This time use fixed-bit sizes for everything!!
-    // and preferrably write to disk in network-order bytes for the larger fields.
+    if (header.version >= 2) {
+        if (!header.sane()) {
+            debugs(47, DBG_IMPORTANT, "ERROR: Corrupted v" << header.version <<
+                   " swap file header.");
+            return NULL;
+        }
 
+        if (fseek(fp, header.record_size, SEEK_SET) != 0)
+            return NULL;
+
+        if (header.version == 2)
+            return new UFSSwapLogParser_v2(fp);
+    }
+
+    // TODO: v3: write to disk in network-order bytes for the larger fields?
+
+    debugs(47, DBG_IMPORTANT, "Unknown swap file version: " << header.version);
     return NULL;
 }
 
@@ -327,7 +365,8 @@ RebuildState::RebuildState (RefCount<UFSSwapDir> aSwapDir) : sd (aSwapDir),LogPa
     if (!clean)
         flags.need_to_validate = 1;
 
-    debugs(47, 1, "Rebuilding storage in " << sd->path << " (" << (clean ? "CLEAN" : "DIRTY") << ")");
+    debugs(47, DBG_IMPORTANT, "Rebuilding storage in " << sd->path << " (" <<
+           (clean ? "clean log" : (LogParser ? "dirty log" : "no log")) << ")");
 }
 
 RebuildState::~RebuildState()
@@ -347,7 +386,7 @@ RebuildState::RebuildStep(void *data)
     if (!rb->isDone())
         eventAdd("storeRebuild", RebuildStep, rb, 0.01, 1);
     else {
-        StoreController::store_dirs_rebuilding--;
+        -- StoreController::store_dirs_rebuilding;
         storeRebuildComplete(&rb->counts);
         delete rb;
     }
@@ -407,7 +446,8 @@ RebuildState::rebuildFromDirectory()
     fd = getNextFile(&filn, &size);
 
     if (fd == -2) {
-        debugs(47, 1, "Done scanning " << sd->path << " swaplog (" << n_read << " entries)");
+        debugs(47, DBG_IMPORTANT, "Done scanning " << sd->path << " dir (" <<
+               n_read << " entries)");
         _done = true;
         return;
     } else if (fd < 0) {
@@ -417,10 +457,12 @@ RebuildState::rebuildFromDirectory()
     assert(fd > -1);
     /* lets get file stats here */
 
+    ++n_read;
+
     if (fstat(fd, &sb) < 0) {
         debugs(47, 1, "commonUfsDirRebuildFromDirectory: fstat(FD " << fd << "): " << xstrerror());
         file_close(fd);
-        store_open_disk_fd--;
+        --store_open_disk_fd;
         fd = -1;
         return;
     }
@@ -435,7 +477,7 @@ RebuildState::rebuildFromDirectory()
                         (int64_t)sb.st_size);
 
     file_close(fd);
-    store_open_disk_fd--;
+    --store_open_disk_fd;
     fd = -1;
 
     if (!loaded) {
@@ -447,7 +489,7 @@ RebuildState::rebuildFromDirectory()
     if (!storeRebuildKeepEntry(tmpe, key, counts))
         return;
 
-    counts.objcount++;
+    ++counts.objcount;
     // tmpe.dump(5);
     currentEntry(sd->addDiskRestore(key,
                                     filn,
@@ -489,10 +531,10 @@ RebuildState::rebuildFromSwapLog()
         return;
     }
 
-    n_read++;
+    ++n_read;
 
     if (!swapData.sane()) {
-        counts.invalid++;
+        ++counts.invalid;
         return;
     }
 
@@ -525,27 +567,9 @@ RebuildState::rebuildFromSwapLog()
         currentEntry (Store::Root().get(swapData.key));
 
         if (currentEntry() != NULL && swapData.lastref >= e->lastref) {
-            /*
-             * Make sure we don't unlink the file, it might be
-             * in use by a subsequent entry.  Also note that
-             * we don't have to subtract from cur_size because
-             * adding to cur_size happens in the cleanup procedure.
-             */
-            currentEntry()->expireNow();
-            currentEntry()->releaseRequest();
-
-            if (currentEntry()->swap_filen > -1) {
-                UFSSwapDir *sdForThisEntry = dynamic_cast<UFSSwapDir *>(INDEXSD(currentEntry()->swap_dirn));
-                assert (sdForThisEntry);
-                sdForThisEntry->replacementRemove(currentEntry());
-                sdForThisEntry->mapBitReset(currentEntry()->swap_filen);
-                currentEntry()->swap_filen = -1;
-                currentEntry()->swap_dirn = -1;
-            }
-
-            currentEntry()->release();
-            counts.objcount--;
-            counts.cancelcount++;
+            undoAdd();
+            --counts.objcount;
+            ++counts.cancelcount;
         }
         return;
     } else {
@@ -555,7 +579,7 @@ RebuildState::rebuildFromSwapLog()
         if (0.0 == x - (double) (int) x)
             debugs(47, 1, "WARNING: " << counts.bad_log_op << " invalid swap log entries found");
 
-        counts.invalid++;
+        ++counts.invalid;
 
         return;
     }
@@ -563,12 +587,12 @@ RebuildState::rebuildFromSwapLog()
     ++counts.scancount; // XXX: should not this be incremented earlier?
 
     if (!sd->validFileno(swapData.swap_filen, 0)) {
-        counts.invalid++;
+        ++counts.invalid;
         return;
     }
 
     if (EBIT_TEST(swapData.flags, KEY_PRIVATE)) {
-        counts.badflags++;
+        ++counts.badflags;
         return;
     }
 
@@ -592,7 +616,7 @@ RebuildState::rebuildFromSwapLog()
 
     if (used && !disk_entry_newer) {
         /* log entry is old, ignore it */
-        counts.clashcount++;
+        ++counts.clashcount;
         return;
     } else if (used && currentEntry() && currentEntry()->swap_filen == swapData.swap_filen && currentEntry()->swap_dirn == sd->index) {
         /* swapfile taken, same URL, newer, update meta */
@@ -630,37 +654,26 @@ RebuildState::rebuildFromSwapLog()
          * were in a slow rebuild and the the swap file number got taken
          * and the validation procedure hasn't run. */
         assert(flags.need_to_validate);
-        counts.clashcount++;
+        ++counts.clashcount;
         return;
     } else if (currentEntry() && !disk_entry_newer) {
         /* key already exists, current entry is newer */
         /* keep old, ignore new */
-        counts.dupcount++;
+        ++counts.dupcount;
         return;
     } else if (currentEntry()) {
         /* key already exists, this swapfile not being used */
         /* junk old, load new */
-        currentEntry()->expireNow();
-        currentEntry()->releaseRequest();
-
-        if (currentEntry()->swap_filen > -1) {
-            UFSSwapDir *sdForThisEntry = dynamic_cast<UFSSwapDir *>(INDEXSD(currentEntry()->swap_dirn));
-            sdForThisEntry->replacementRemove(currentEntry());
-            /* Make sure we don't actually unlink the file */
-            sdForThisEntry->mapBitReset(currentEntry()->swap_filen);
-            currentEntry()->swap_filen = -1;
-            currentEntry()->swap_dirn = -1;
-        }
-
-        currentEntry()->release();
-        counts.dupcount++;
+        undoAdd();
+        --counts.objcount;
+        ++counts.dupcount;
     } else {
         /* URL doesnt exist, swapfile not in use */
         /* load new */
         (void) 0;
     }
 
-    counts.objcount++;
+    ++counts.objcount;
 
     currentEntry(sd->addDiskRestore(swapData.key,
                                     swapData.swap_filen,
@@ -674,6 +687,27 @@ RebuildState::rebuildFromSwapLog()
                                     (int) flags.clean));
 
     storeDirSwapLog(currentEntry(), SWAP_LOG_ADD);
+}
+
+/// undo the effects of adding an entry in rebuildFromSwapLog()
+void
+RebuildState::undoAdd()
+{
+    StoreEntry *added = currentEntry();
+    assert(added);
+    currentEntry(NULL);
+
+    // TODO: Why bother with these two if we are going to release?!
+    added->expireNow();
+    added->releaseRequest();
+
+    if (added->swap_filen > -1) {
+        UFSSwapDir *sde = dynamic_cast<UFSSwapDir *>(INDEXSD(added->swap_dirn));
+        assert(sde);
+        sde->undoAddDiskRestore(added);
+    }
+
+    added->release();
 }
 
 int
@@ -711,7 +745,7 @@ RebuildState::getNextFile(sfileno * filn_p, int *size)
 
             td = opendir(fullpath);
 
-            dirs_opened++;
+            ++dirs_opened;
 
             if (td == NULL) {
                 debugs(47, 1, "commonUfsDirGetNextFile: opendir: " << fullpath << ": " << xstrerror());
@@ -726,7 +760,7 @@ RebuildState::getNextFile(sfileno * filn_p, int *size)
         }
 
         if (td != NULL && (entry = readdir(td)) != NULL) {
-            in_dir++;
+            ++in_dir;
 
             if (sscanf(entry->d_name, "%x", &fn) != 1) {
                 debugs(47, 3, "commonUfsDirGetNextFile: invalid " << entry->d_name);
@@ -755,7 +789,7 @@ RebuildState::getNextFile(sfileno * filn_p, int *size)
             if (fd < 0)
                 debugs(47, 1, "commonUfsDirGetNextFile: " << fullfilename << ": " << xstrerror());
             else
-                store_open_disk_fd++;
+                ++store_open_disk_fd;
 
             continue;
         }

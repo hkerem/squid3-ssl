@@ -272,12 +272,10 @@ StoreEntry::delayAwareRead(const Comm::ConnectionPointer &conn, char *buf, int l
 }
 
 size_t
-StoreEntry::bytesWanted (Range<size_t> const aRange) const
+StoreEntry::bytesWanted (Range<size_t> const aRange, bool ignoreDelayPools) const
 {
-    assert (aRange.size());
-
     if (mem_obj == NULL)
-        return aRange.end - 1;
+        return aRange.end;
 
 #if URL_CHECKSUM_DEBUG
 
@@ -285,14 +283,10 @@ StoreEntry::bytesWanted (Range<size_t> const aRange) const
 
 #endif
 
-    /* Always read *something* here - we haven't got the header yet */
-    if (EBIT_TEST(flags, ENTRY_FWD_HDR_WAIT))
-        return aRange.end - 1;
-
     if (!mem_obj->readAheadPolicyCanRead())
         return 0;
 
-    return mem_obj->mostBytesWanted(aRange.end - 1);
+    return mem_obj->mostBytesWanted(aRange.end, ignoreDelayPools);
 }
 
 bool
@@ -520,7 +514,7 @@ void
 
 StoreEntry::lock()
 {
-    lock_count++;
+    ++lock_count;
     debugs(20, 3, "StoreEntry::lock: key '" << getMD5Text() <<"' count=" <<
            lock_count  );
     lastref = squid_curtime;
@@ -561,7 +555,7 @@ StoreEntry::releaseRequest()
 int
 StoreEntry::unlock()
 {
-    lock_count--;
+    --lock_count;
     debugs(20, 3, "StoreEntry::unlock: key '" << getMD5Text() << "' count=" << lock_count);
 
     if (lock_count)
@@ -980,34 +974,34 @@ StoreEntry::checkCachable()
 
     if (mem_obj->method != METHOD_GET) {
         debugs(20, 2, "StoreEntry::checkCachable: NO: non-GET method");
-        store_check_cachable_hist.no.non_get++;
+        ++store_check_cachable_hist.no.non_get;
     } else
 #endif
         if (store_status == STORE_OK && EBIT_TEST(flags, ENTRY_BAD_LENGTH)) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: wrong content-length");
-            store_check_cachable_hist.no.wrong_content_length++;
+            ++store_check_cachable_hist.no.wrong_content_length;
         } else if (!EBIT_TEST(flags, ENTRY_CACHABLE)) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: not cachable");
-            store_check_cachable_hist.no.not_entry_cachable++;
+            ++store_check_cachable_hist.no.not_entry_cachable;
         } else if (EBIT_TEST(flags, ENTRY_NEGCACHED)) {
             debugs(20, 3, "StoreEntry::checkCachable: NO: negative cached");
-            store_check_cachable_hist.no.negative_cached++;
+            ++store_check_cachable_hist.no.negative_cached;
             return 0;           /* avoid release call below */
         } else if ((getReply()->content_length > 0 &&
                     getReply()->content_length
                     > Config.Store.maxObjectSize) ||
                    mem_obj->endOffset() > Config.Store.maxObjectSize) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too big");
-            store_check_cachable_hist.no.too_big++;
+            ++store_check_cachable_hist.no.too_big;
         } else if (getReply()->content_length > Config.Store.maxObjectSize) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too big");
-            store_check_cachable_hist.no.too_big++;
+            ++store_check_cachable_hist.no.too_big;
         } else if (checkTooSmall()) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too small");
-            store_check_cachable_hist.no.too_small++;
+            ++store_check_cachable_hist.no.too_small;
         } else if (EBIT_TEST(flags, KEY_PRIVATE)) {
             debugs(20, 3, "StoreEntry::checkCachable: NO: private key");
-            store_check_cachable_hist.no.private_key++;
+            ++store_check_cachable_hist.no.private_key;
         } else if (swap_status != SWAPOUT_NONE) {
             /*
              * here we checked the swap_status because the remaining
@@ -1017,12 +1011,12 @@ StoreEntry::checkCachable()
             return 1;
         } else if (storeTooManyDiskFilesOpen()) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too many disk files open");
-            store_check_cachable_hist.no.too_many_open_files++;
+            ++store_check_cachable_hist.no.too_many_open_files;
         } else if (fdNFree() < RESERVED_FD) {
             debugs(20, 2, "StoreEntry::checkCachable: NO: too many FD's open");
-            store_check_cachable_hist.no.too_many_open_fds++;
+            ++store_check_cachable_hist.no.too_many_open_fds;
         } else {
-            store_check_cachable_hist.yes.Default++;
+            ++store_check_cachable_hist.yes.Default;
             return 1;
         }
 
@@ -1113,7 +1107,7 @@ StoreEntry::complete()
 void
 StoreEntry::abort()
 {
-    statCounter.aborted_requests++;
+    ++statCounter.aborted_requests;
     assert(store_status == STORE_PENDING);
     assert(mem_obj != NULL);
     debugs(20, 6, "storeAbort: " << getMD5Text());
@@ -1193,7 +1187,7 @@ storeGetMemSpace(int size)
 
     while ((e = walker->Next(walker))) {
         e->purgeMem();
-        released++;
+        ++released;
 
         if (mem_node::InUseCount() + pages_needed < store_pages_max)
             break;
@@ -1282,7 +1276,7 @@ StoreEntry::release()
              * Fake a call to StoreEntry->lock()  When rebuilding is done,
              * we'll just call StoreEntry->unlock() on these.
              */
-            lock_count++;
+            ++lock_count;
             setReleaseFlag();
             LateReleaseStack.push_back(this);
         } else {
@@ -1321,7 +1315,7 @@ storeLateRelease(void *unused)
         return;
     }
 
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < 10; ++i) {
         e = LateReleaseStack.count ? LateReleaseStack.pop() : NULL;
 
         if (e == NULL) {
@@ -1331,7 +1325,7 @@ storeLateRelease(void *unused)
         }
 
         e->unlock();
-        n++;
+        ++n;
     }
 
     eventAdd("storeLateRelease", storeLateRelease, NULL, 0.0, 1);
@@ -1451,14 +1445,6 @@ StoreEntry::memoryCachable() const
 
     if (!Config.onoff.memory_cache_first && swap_status == SWAPOUT_DONE && refcount == 1)
         return 0;
-
-    if (Config.memShared && IamWorkerProcess()) {
-        const int64_t expectedSize = mem_obj->expectedReplySize();
-        // objects of unknown size are not allowed into memory cache, for now
-        if (expectedSize < 0 ||
-                expectedSize > static_cast<int64_t>(Config.Store.maxInMemObjSize))
-            return 0;
-    }
 
     return 1;
 }
@@ -1658,7 +1644,7 @@ StoreEntry::setMemStatus(mem_status_t new_status)
             debugs(20, 4, "StoreEntry::setMemStatus: inserted mem node " << mem_obj->url << " key: " << getMD5Text());
         }
 
-        hot_obj_count++; // TODO: maintain for the shared hot cache as well
+        ++hot_obj_count; // TODO: maintain for the shared hot cache as well
     } else {
         if (EBIT_TEST(flags, ENTRY_SPECIAL)) {
             debugs(20, 4, "StoreEntry::setMemStatus: special entry " << mem_obj->url);
@@ -1667,7 +1653,7 @@ StoreEntry::setMemStatus(mem_status_t new_status)
             debugs(20, 4, "StoreEntry::setMemStatus: removed mem node " << mem_obj->url);
         }
 
-        hot_obj_count--;
+        --hot_obj_count;
     }
 
     mem_status = new_status;
@@ -1775,7 +1761,7 @@ storeReplAdd(const char *type, REMOVALPOLICYCREATE * create)
     int i;
 
     /* find the number of currently known repl types */
-    for (i = 0; storerepl_list && storerepl_list[i].typestr; i++) {
+    for (i = 0; storerepl_list && storerepl_list[i].typestr; ++i) {
         if (strcmp(storerepl_list[i].typestr, type) == 0) {
             debugs(20, 1, "WARNING: Trying to load store replacement policy " << type << " twice.");
             return;
@@ -1800,7 +1786,7 @@ createRemovalPolicy(RemovalPolicySettings * settings)
 {
     storerepl_entry_t *r;
 
-    for (r = storerepl_list; r && r->typestr; r++) {
+    for (r = storerepl_list; r && r->typestr; ++r) {
         if (strcmp(r->typestr, settings->type) == 0)
             return r->create(settings->args);
     }

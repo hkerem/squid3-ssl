@@ -638,8 +638,8 @@ tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
     }
 
     debugs(26, 3, HERE << "'" << RequestMethodStr(request->method) << " " << url << " " << request->http_ver << "'");
-    statCounter.server.all.requests++;
-    statCounter.server.other.requests++;
+    ++statCounter.server.all.requests;
+    ++statCounter.server.other.requests;
 
     tunnelState = new TunnelStateData;
 #if USE_DELAY_POOLS
@@ -680,6 +680,7 @@ tunnelRelayConnectRequest(const Comm::ConnectionPointer &srv, void *data)
     mb.Printf("CONNECT %s HTTP/1.1\r\n", tunnelState->url);
     HttpStateData::httpBuildRequestHeader(tunnelState->request,
                                           NULL,			/* StoreEntry */
+                                          NULL,			/* AccessLogEntry */
                                           &hdr_out,
                                           flags);			/* flags */
     packerToMemInit(&p, &mb);

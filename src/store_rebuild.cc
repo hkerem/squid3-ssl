@@ -74,6 +74,7 @@ storeCleanup(void *datanotused)
 
     size_t statCount = 500;
 
+    // TODO: Avoid the loop (and ENTRY_VALIDATED) unless opt_store_doublecheck.
     while (statCount-- && !currentSearch->isDone() && currentSearch->next()) {
         StoreEntry *e;
 
@@ -91,7 +92,7 @@ storeCleanup(void *datanotused)
 
         if (opt_store_doublecheck)
             if (storeCleanupDoubleCheck(e))
-                store_errors++;
+                ++store_errors;
 
         EBIT_SET(e->flags, ENTRY_VALIDATED);
 
@@ -109,11 +110,15 @@ storeCleanup(void *datanotused)
         debugs(20, 1, "  Completed Validation Procedure");
         debugs(20, 1, "  Validated " << validated << " Entries");
         debugs(20, 1, "  store_swap_size = " << Store::Root().currentSize() / 1024.0 << " KB");
-        StoreController::store_dirs_rebuilding--;
+        --StoreController::store_dirs_rebuilding;
         assert(0 == StoreController::store_dirs_rebuilding);
 
-        if (opt_store_doublecheck)
-            assert(store_errors == 0);
+        if (opt_store_doublecheck && store_errors) {
+            fatalf("Quitting after finding %d cache index inconsistencies. " \
+                   "Removing cache index will force its slow rebuild. " \
+                   "Removing -S will let Squid start with an inconsistent " \
+                   "cache index (at your own risk).\n", store_errors);
+        }
 
         if (store_digest)
             storeDigestNoteStoreReady();
@@ -222,7 +227,7 @@ storeRebuildProgress(int sd_index, int total, int sofar)
     if (squid_curtime - last_report < 15)
         return;
 
-    for (sd_index = 0; sd_index < Config.cacheSwap.n_configured; sd_index++) {
+    for (sd_index = 0; sd_index < Config.cacheSwap.n_configured; ++sd_index) {
         n += (double) RebuildProgress[sd_index].scanned;
         d += (double) RebuildProgress[sd_index].total;
     }
@@ -292,7 +297,7 @@ storeRebuildLoadEntry(int fd, int diskIndex, MemBuf &buf,
     assert(buf.hasSpace()); // caller must allocate
 
     const int len = FD_READ_METHOD(fd, buf.space(), buf.spaceSize());
-    statCounter.syscalls.disk.reads++;
+    ++ statCounter.syscalls.disk.reads;
     if (len < 0) {
         const int xerrno = errno;
         debugs(47, DBG_IMPORTANT, "WARNING: cache_dir[" << diskIndex << "]: " <<
@@ -363,7 +368,7 @@ storeRebuildParseEntry(MemBuf &buf, StoreEntry &tmpe, cache_key *key,
     }
 
     if (EBIT_TEST(tmpe.flags, KEY_PRIVATE)) {
-        counts.badflags++;
+        ++ counts.badflags;
         return false;
     }
 
@@ -397,7 +402,7 @@ storeRebuildKeepEntry(const StoreEntry &tmpe, const cache_key *key,
         if (e->lastref >= tmpe.lastref) {
             /* key already exists, old entry is newer */
             /* keep old, ignore new */
-            counts.dupcount++;
+            ++counts.dupcount;
 
             // For some stores, get() creates/unpacks a store entry. Signal
             // such stores that we will no longer use the get() result:
@@ -409,7 +414,7 @@ storeRebuildKeepEntry(const StoreEntry &tmpe, const cache_key *key,
             /* URL already exists, this swapfile not being used */
             /* junk old, load new */
             e->release();	/* release old entry */
-            counts.dupcount++;
+            ++counts.dupcount;
         }
     }
 

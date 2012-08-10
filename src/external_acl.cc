@@ -264,12 +264,15 @@ parse_header_token(external_acl_format *format, char *header, const _external_ac
 
     if (member) {
         /* Split in header and member */
-        *member++ = '\0';
+        *member = '\0';
+        ++member;
 
-        if (!xisalnum(*member))
-            format->separator = *member++;
-        else
+        if (!xisalnum(*member)) {
+            format->separator = *member;
+            ++member;
+        } else {
             format->separator = ',';
+        }
 
         format->member = xstrdup(member);
 
@@ -568,6 +571,10 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
             case _external_acl_format::EXT_ACL_##a: \
                 storeAppendPrintf(sentry, " %%%s", #a); \
                 break
+#define DUMP_EXT_ACL_TYPE_FMT(a, fmt, ...) \
+            case _external_acl_format::EXT_ACL_##a: \
+                storeAppendPrintf(sentry, fmt, ##__VA_ARGS__); \
+                break
 #if USE_AUTH
                 DUMP_EXT_ACL_TYPE(LOGIN);
 #endif
@@ -592,28 +599,17 @@ dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl
                 DUMP_EXT_ACL_TYPE(PATH);
                 DUMP_EXT_ACL_TYPE(METHOD);
 #if USE_SSL
-
-            case _external_acl_format::EXT_ACL_USER_CERT_RAW:
-                storeAppendPrintf(sentry, " %%USER_CERT");
-                break;
-
-            case _external_acl_format::EXT_ACL_USER_CERTCHAIN_RAW:
-                storeAppendPrintf(sentry, " %%USER_CERTCHAIN");
-                break;
-
-            case _external_acl_format::EXT_ACL_USER_CERT:
-                storeAppendPrintf(sentry, " %%USER_CERT_%s", format->header);
-                break;
-
-            case _external_acl_format::EXT_ACL_CA_CERT:
-                storeAppendPrintf(sentry, " %%USER_CERT_%s", format->header);
-                break;
+                DUMP_EXT_ACL_TYPE_FMT(USER_CERT_RAW, " %%USER_CERT_RAW");
+                DUMP_EXT_ACL_TYPE_FMT(USER_CERTCHAIN_RAW, " %%USER_CERTCHAIN_RAW");
+                DUMP_EXT_ACL_TYPE_FMT(USER_CERT, " %%USER_CERT_%s", format->header);
+                DUMP_EXT_ACL_TYPE_FMT(CA_CERT, " %%CA_CERT_%s", format->header);
 #endif
 #if USE_AUTH
                 DUMP_EXT_ACL_TYPE(EXT_USER);
 #endif
                 DUMP_EXT_ACL_TYPE(EXT_LOG);
                 DUMP_EXT_ACL_TYPE(TAG);
+                DUMP_EXT_ACL_TYPE_FMT(PERCENT, " %%%%");
             default:
                 fatal("unknown external_acl format error");
                 break;
@@ -659,7 +655,7 @@ external_acl::add(ExternalACLEntry *anEntry)
     anEntry->def = this;
     hash_join(cache, anEntry);
     dlinkAdd(anEntry, &anEntry->lru, &lru_list);
-    cache_entries++;
+    ++cache_entries;
 }
 
 void
@@ -1297,7 +1293,8 @@ externalAclHandleReply(void *data, char *reply)
             value = strchr(token, '=');
 
             if (value) {
-                *value++ = '\0';	/* terminate the token, and move up to the value */
+                *value = '\0';	/* terminate the token, and move up to the value */
+                ++value;
 
                 if (state->def->quote == external_acl::QUOTE_METHOD_URL)
                     rfc1738_unescape(value);

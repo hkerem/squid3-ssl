@@ -46,6 +46,7 @@
 #if USE_ECAP
 #include "adaptation/ecap/Config.h"
 #endif
+#include "anyp/PortCfg.h"
 #if USE_SSL
 #include "ssl/support.h"
 #include "ssl/Config.h"
@@ -71,7 +72,6 @@
 #include "MemBuf.h"
 #include "mgr/Registration.h"
 #include "Parsing.h"
-#include "ProtoPort.h"
 #include "rfc1738.h"
 #if SQUID_SNMP
 #include "snmp.h"
@@ -169,12 +169,13 @@ static void free_all(void);
 void requirePathnameExists(const char *name, const char *path);
 static OBJH dump_config;
 #if USE_HTTP_VIOLATIONS
-static void dump_http_header_access(StoreEntry * entry, const char *name, header_mangler header[]);
-static void parse_http_header_access(header_mangler header[]);
-static void free_http_header_access(header_mangler header[]);
-static void dump_http_header_replace(StoreEntry * entry, const char *name, header_mangler header[]);
-static void parse_http_header_replace(header_mangler * header);
-static void free_http_header_replace(header_mangler * header);
+static void free_HeaderManglers(HeaderManglers **pm);
+static void dump_http_header_access(StoreEntry * entry, const char *name, const HeaderManglers *manglers);
+static void parse_http_header_access(HeaderManglers **manglers);
+#define free_http_header_access free_HeaderManglers
+static void dump_http_header_replace(StoreEntry * entry, const char *name, const HeaderManglers *manglers);
+static void parse_http_header_replace(HeaderManglers **manglers);
+#define free_http_header_replace free_HeaderManglers
 #endif
 static void parse_denyinfo(acl_deny_info_list ** var);
 static void dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var);
@@ -189,17 +190,10 @@ static int check_null_IpAddress_list(const Ip::Address_list *);
 #endif /* CURRENTLY_UNUSED */
 #endif /* USE_WCCPv2 */
 
-static void parsePortList(http_port_list **, const char *protocol);
-#define parse_http_port_list(l) parsePortList((l),"http")
-static void dump_http_port_list(StoreEntry *, const char *, const http_port_list *);
-static void free_http_port_list(http_port_list **);
-
-#if USE_SSL
-#define parse_https_port_list(l) parsePortList((l),"https")
-#define dump_https_port_list(e,n,l) dump_http_port_list((e),(n),(l))
-#define free_https_port_list(l) free_http_port_list((l))
-#define check_null_https_port_list(l) check_null_http_port_list((l))
-#endif /* USE_SSL */
+static void parsePortCfg(AnyP::PortCfg **, const char *protocol);
+#define parse_PortCfg(l) parsePortCfg((l), token)
+static void dump_PortCfg(StoreEntry *, const char *, const AnyP::PortCfg *);
+static void free_PortCfg(AnyP::PortCfg **);
 
 static void parse_b_size_t(size_t * var);
 static void parse_b_int64_t(int64_t * var);
@@ -232,7 +226,7 @@ update_maxobjsize(void)
     int i;
     int64_t ms = -1;
 
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         assert (Config.cacheSwap.swapDirs[i].getRaw());
 
         if (dynamic_cast<SwapDir *>(Config.cacheSwap.swapDirs[i].getRaw())->
@@ -280,7 +274,7 @@ parseManyConfigFiles(char* files, int depth)
                    path, xstrerror());
         }
     }
-    for (i = 0; i < (int)globbuf.gl_pathc; i++) {
+    for (i = 0; i < (int)globbuf.gl_pathc; ++i) {
         error_count += parseOneConfigFile(globbuf.gl_pathv[i], depth);
     }
     globfree(&globbuf);
@@ -438,7 +432,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
 
     Vector<bool> if_states;
     while (fgets(config_input_line, BUFSIZ, fp)) {
-        config_lineno++;
+        ++config_lineno;
 
         if ((token = strchr(config_input_line, '\n')))
             *token = '\0';
@@ -462,7 +456,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
                 continue;	/* Not a valid #line directive, may be a comment */
 
             while (*file && xisspace((unsigned char) *file))
-                file++;
+                ++file;
 
             if (*file) {
                 if (*file != '"')
@@ -523,7 +517,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
                 err_count += parseManyConfigFiles(tmp_line + 8, depth + 1);
             } else if (!parse_line(tmp_line)) {
                 debugs(3, 0, HERE << cfg_filename << ":" << config_lineno << " unrecognized: '" << tmp_line << "'");
-                err_count++;
+                ++err_count;
             }
         }
 
@@ -817,7 +811,7 @@ configDoConfigure(void)
     // TODO: replace with a dedicated "purge" ACL option?
     Config2.onoff.enable_purge = (ACLMethodData::ThePurgeCount > 0);
 
-    Config2.onoff.mangle_request_headers = httpReqHdrManglersConfigured();
+    Config2.onoff.mangle_request_headers = (Config.request_header_access != NULL);
 
     if (geteuid() == 0) {
         if (NULL != Config.effectiveUser) {
@@ -880,51 +874,36 @@ configDoConfigure(void)
 
     Config.ssl_client.sslContext = sslCreateClientContext(Config.ssl_client.cert, Config.ssl_client.key, Config.ssl_client.version, Config.ssl_client.cipher, Config.ssl_client.options, Config.ssl_client.flags, Config.ssl_client.cafile, Config.ssl_client.capath, Config.ssl_client.crlfile);
 
-    {
-
-        peer *p;
-
-        for (p = Config.peers; p != NULL; p = p->next) {
-            if (p->use_ssl) {
-                debugs(3, 1, "Initializing cache_peer " << p->name << " SSL context");
-                p->sslContext = sslCreateClientContext(p->sslcert, p->sslkey, p->sslversion, p->sslcipher, p->ssloptions, p->sslflags, p->sslcafile, p->sslcapath, p->sslcrlfile);
-            }
+    for (peer *p = Config.peers; p != NULL; p = p->next) {
+        if (p->use_ssl) {
+            debugs(3, 1, "Initializing cache_peer " << p->name << " SSL context");
+            p->sslContext = sslCreateClientContext(p->sslcert, p->sslkey, p->sslversion, p->sslcipher, p->ssloptions, p->sslflags, p->sslcafile, p->sslcapath, p->sslcrlfile);
         }
     }
 
-    {
+    for (AnyP::PortCfg *s = Config.Sockaddr.http; s != NULL; s = s->next) {
+        if (!s->cert && !s->key)
+            continue;
 
-        http_port_list *s;
+        debugs(3, 1, "Initializing http_port " << s->s << " SSL context");
 
-        for (s = Config.Sockaddr.http; s != NULL; s = (http_port_list *) s->next) {
-            if (!s->cert && !s->key)
-                continue;
+        s->staticSslContext.reset(
+            sslCreateServerContext(s->cert, s->key,
+                                   s->version, s->cipher, s->options, s->sslflags, s->clientca,
+                                   s->cafile, s->capath, s->crlfile, s->dhfile,
+                                   s->sslContextSessionId));
 
-            debugs(3, 1, "Initializing http_port " << s->s << " SSL context");
-
-            s->staticSslContext.reset(
-                sslCreateServerContext(s->cert, s->key,
-                                       s->version, s->cipher, s->options, s->sslflags, s->clientca,
-                                       s->cafile, s->capath, s->crlfile, s->dhfile,
-                                       s->sslContextSessionId));
-
-            Ssl::readCertChainAndPrivateKeyFromFiles(s->signingCert, s->signPkey, s->certsToChain, s->cert, s->key);
-        }
+        Ssl::readCertChainAndPrivateKeyFromFiles(s->signingCert, s->signPkey, s->certsToChain, s->cert, s->key);
     }
 
-    {
+    for (AnyP::PortCfg *s = Config.Sockaddr.https; s != NULL; s = s->next) {
+        debugs(3, 1, "Initializing https_port " << s->s << " SSL context");
 
-        http_port_list *s;
-
-        for (s = Config.Sockaddr.https; s != NULL; s = s->next) {
-            debugs(3, 1, "Initializing https_port " << s->s << " SSL context");
-
-            s->staticSslContext.reset(
-                sslCreateServerContext(s->cert, s->key,
-                                       s->version, s->cipher, s->options, s->sslflags, s->clientca,
-                                       s->cafile, s->capath, s->crlfile, s->dhfile,
-                                       s->sslContextSessionId));
-        }
+        s->staticSslContext.reset(
+            sslCreateServerContext(s->cert, s->key,
+                                   s->version, s->cipher, s->options, s->sslflags, s->clientca,
+                                   s->cafile, s->capath, s->crlfile, s->dhfile,
+                                   s->sslContextSessionId));
     }
 
 #endif
@@ -1198,7 +1177,7 @@ static void parseBytesOptionValue(size_t * bptr, const char *units, char const *
     char const * number_end = value;
 
     while ((*number_end >= '0' && *number_end <= '9')) {
-        number_end++;
+        ++number_end;
     }
 
     String number;
@@ -1697,23 +1676,15 @@ parse_client_delay_pool_access(ClientDelayConfig * cfg)
 
 #if USE_HTTP_VIOLATIONS
 static void
-dump_http_header_access(StoreEntry * entry, const char *name, header_mangler header[])
+dump_http_header_access(StoreEntry * entry, const char *name, const HeaderManglers *manglers)
 {
-    int i;
-
-    for (i = 0; i < HDR_ENUM_END; i++) {
-        if (header[i].access_list != NULL) {
-            storeAppendPrintf(entry, "%s ", name);
-            dump_acl_access(entry, httpHeaderNameById(i),
-                            header[i].access_list);
-        }
-    }
+    if (manglers)
+        manglers->dumpAccess(entry, name);
 }
 
 static void
-parse_http_header_access(header_mangler header[])
+parse_http_header_access(HeaderManglers **pm)
 {
-    int id, i;
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
@@ -1722,64 +1693,34 @@ parse_http_header_access(header_mangler header[])
         return;
     }
 
-    /* Now lookup index of header. */
-    id = httpHeaderIdByNameDef(t, strlen(t));
+    if (!*pm)
+        *pm = new HeaderManglers;
+    HeaderManglers *manglers = *pm;
+    header_mangler *mangler = manglers->track(t);
+    assert(mangler);
+    parse_acl_access(&mangler->access_list);
+}
 
-    if (strcmp(t, "All") == 0)
-        id = HDR_ENUM_END;
-    else if (strcmp(t, "Other") == 0)
-        id = HDR_OTHER;
-    else if (id == -1) {
-        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(3, 0, "parse_http_header_access: unknown header name '" << t << "'");
-        return;
-    }
-
-    if (id != HDR_ENUM_END) {
-        parse_acl_access(&header[id].access_list);
-    } else {
-        char *next_string = t + strlen(t) - 1;
-        *next_string = 'A';
-        *(next_string + 1) = ' ';
-
-        for (i = 0; i < HDR_ENUM_END; i++) {
-            char *new_string = xstrdup(next_string);
-            strtok(new_string, w_space);
-            parse_acl_access(&header[i].access_list);
-            safe_free(new_string);
-        }
+static void
+free_HeaderManglers(HeaderManglers **pm)
+{
+    // we delete the entire http_header_* mangler configuration at once
+    if (const HeaderManglers *manglers = *pm) {
+        delete manglers;
+        *pm = NULL;
     }
 }
 
 static void
-free_http_header_access(header_mangler header[])
+dump_http_header_replace(StoreEntry * entry, const char *name, const HeaderManglers *manglers)
 {
-    int i;
-
-    for (i = 0; i < HDR_ENUM_END; i++) {
-        free_acl_access(&header[i].access_list);
-    }
+    if (manglers)
+        manglers->dumpReplacement(entry, name);
 }
 
 static void
-dump_http_header_replace(StoreEntry * entry, const char *name, header_mangler
-                         header[])
+parse_http_header_replace(HeaderManglers **pm)
 {
-    int i;
-
-    for (i = 0; i < HDR_ENUM_END; i++) {
-        if (NULL == header[i].replacement)
-            continue;
-
-        storeAppendPrintf(entry, "%s %s %s\n", name, httpHeaderNameById(i),
-                          header[i].replacement);
-    }
-}
-
-static void
-parse_http_header_replace(header_mangler header[])
-{
-    int id, i;
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
@@ -1788,44 +1729,12 @@ parse_http_header_replace(header_mangler header[])
         return;
     }
 
-    /* Now lookup index of header. */
-    id = httpHeaderIdByNameDef(t, strlen(t));
+    const char *value = t + strlen(t) + 1;
 
-    if (strcmp(t, "All") == 0)
-        id = HDR_ENUM_END;
-    else if (strcmp(t, "Other") == 0)
-        id = HDR_OTHER;
-    else if (id == -1) {
-        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(3, 0, "parse_http_header_replace: unknown header name " << t << ".");
-
-        return;
-    }
-
-    if (id != HDR_ENUM_END) {
-        if (header[id].replacement != NULL)
-            safe_free(header[id].replacement);
-
-        header[id].replacement = xstrdup(t + strlen(t) + 1);
-    } else {
-        for (i = 0; i < HDR_ENUM_END; i++) {
-            if (header[i].replacement != NULL)
-                safe_free(header[i].replacement);
-
-            header[i].replacement = xstrdup(t + strlen(t) + 1);
-        }
-    }
-}
-
-static void
-free_http_header_replace(header_mangler header[])
-{
-    int i;
-
-    for (i = 0; i < HDR_ENUM_END; i++) {
-        if (header[i].replacement != NULL)
-            safe_free(header[i].replacement);
-    }
+    if (!*pm)
+        *pm = new HeaderManglers;
+    HeaderManglers *manglers = *pm;
+    manglers->setReplacement(t, value);
 }
 
 #endif
@@ -1837,7 +1746,7 @@ dump_cachedir(StoreEntry * entry, const char *name, SquidConfig::_cacheSwap swap
     int i;
     assert (entry);
 
-    for (i = 0; i < swap.n_configured; i++) {
+    for (i = 0; i < swap.n_configured; ++i) {
         s = dynamic_cast<SwapDir *>(swap.swapDirs[i].getRaw());
         if (!s) continue;
         storeAppendPrintf(entry, "%s %s %s", name, s->type(), s->path);
@@ -1946,7 +1855,7 @@ parse_cachedir(SquidConfig::_cacheSwap * swap)
 
     /* reconfigure existing dir */
 
-    for (i = 0; i < swap->n_configured; i++) {
+    for (i = 0; i < swap->n_configured; ++i) {
         assert (swap->swapDirs[i].getRaw());
 
         if ((strcasecmp(path_str, dynamic_cast<SwapDir *>(swap->swapDirs[i].getRaw())->path)) == 0) {
@@ -2073,7 +1982,7 @@ isUnsignedNumeric(const char *str, size_t len)
 {
     if (len < 1) return false;
 
-    for (; len >0 && *str; str++, len--) {
+    for (; len >0 && *str; ++str, --len) {
         if (! isdigit(*str))
             return false;
     }
@@ -2209,8 +2118,10 @@ parse_peer(peer ** head)
             char *mode, *nextmode;
             for (mode = nextmode = tmp; mode; mode = nextmode) {
                 nextmode = strchr(mode, ',');
-                if (nextmode)
-                    *nextmode++ = '\0';
+                if (nextmode) {
+                    *nextmode = '\0';
+                    ++nextmode;
+                }
                 if (!strcasecmp(mode, "no-clr")) {
                     if (p->options.htcp_only_clr)
                         fatalf("parse_peer: can't set htcp-no-clr and htcp-only-clr simultaneously");
@@ -2577,7 +2488,7 @@ parse_hostdomain(void)
 
         if (*domain == '!') {	/* check for !.edu */
             l->do_ping = 0;
-            domain++;
+            ++domain;
         }
 
         l->domain = xstrdup(domain);
@@ -3019,7 +2930,7 @@ parse_eol(char *volatile *var)
     }
 
     while (*token && xisspace(*token))
-        token++;
+        ++token;
 
     if (!*token) {
         self_destruct();
@@ -3057,7 +2968,7 @@ static void
 dump_time_msec(StoreEntry * entry, const char *name, time_msec_t var)
 {
     if (var % 1000)
-        storeAppendPrintf(entry, "%s %"PRId64" milliseconds\n", name, var);
+        storeAppendPrintf(entry, "%s %" PRId64 " milliseconds\n", name, var);
     else
         storeAppendPrintf(entry, "%s %d seconds\n", name, (int)(var/1000) );
 }
@@ -3108,13 +3019,13 @@ dump_kb_size_t(StoreEntry * entry, const char *name, size_t var)
 static void
 dump_b_int64_t(StoreEntry * entry, const char *name, int64_t var)
 {
-    storeAppendPrintf(entry, "%s %"PRId64" %s\n", name, var, B_BYTES_STR);
+    storeAppendPrintf(entry, "%s %" PRId64 " %s\n", name, var, B_BYTES_STR);
 }
 
 static void
 dump_kb_int64_t(StoreEntry * entry, const char *name, int64_t var)
 {
-    storeAppendPrintf(entry, "%s %"PRId64" %s\n", name, var, B_KBYTES_STR);
+    storeAppendPrintf(entry, "%s %" PRId64 " %s\n", name, var, B_KBYTES_STR);
 }
 
 #if UNUSED_CODE
@@ -3511,10 +3422,8 @@ check_null_IpAddress_list(const Ip::Address_list * s)
 #endif /* CURRENTLY_UNUSED */
 #endif /* USE_WCCPv2 */
 
-CBDATA_CLASS_INIT(http_port_list);
-
 static void
-parsePortSpecification(http_port_list * s, char *token)
+parsePortSpecification(AnyP::PortCfg * s, char *token)
 {
     char *host = NULL;
     unsigned short port = 0;
@@ -3533,7 +3442,8 @@ parsePortSpecification(http_port_list * s, char *token)
             debugs(3, DBG_CRITICAL, s->protocol << "_port: missing ']' on IPv6 address: " << token);
             self_destruct();
         }
-        *t++ = '\0';
+        *t = '\0';
+        ++t;
         if (*t != ':') {
             debugs(3, DBG_CRITICAL, s->protocol << "_port: missing Port in: " << token);
             self_destruct();
@@ -3588,7 +3498,7 @@ parsePortSpecification(http_port_list * s, char *token)
 }
 
 static void
-parse_http_port_option(http_port_list * s, char *token)
+parse_port_option(AnyP::PortCfg * s, char *token)
 {
     /* modes first */
 
@@ -3719,12 +3629,12 @@ parse_http_port_option(http_port_list * s, char *token)
         s->tcp_keepalive.idle = atoi(t);
         t = strchr(t, ',');
         if (t) {
-            t++;
+            ++t;
             s->tcp_keepalive.interval = atoi(t);
             t = strchr(t, ',');
         }
         if (t) {
-            t++;
+            ++t;
             s->tcp_keepalive.timeout = atoi(t);
             t = strchr(t, ',');
         }
@@ -3789,67 +3699,29 @@ parse_http_port_option(http_port_list * s, char *token)
 void
 add_http_port(char *portspec)
 {
-    http_port_list *s = new http_port_list("http");
+    AnyP::PortCfg *s = new AnyP::PortCfg("http_port");
     parsePortSpecification(s, portspec);
-    // we may need to merge better of the above returns a list with clones
+    // we may need to merge better if the above returns a list with clones
     assert(s->next == NULL);
-    s->next = Config.Sockaddr.http;
-    Config.Sockaddr.http = s;
-}
-
-http_port_list *
-clone_http_port_list(http_port_list *a)
-{
-    http_port_list *b = new http_port_list(a->protocol);
-
-    b->s = a->s;
-    if (a->name)
-        b->name = xstrdup(a->name);
-    if (a->defaultsite)
-        b->defaultsite = xstrdup(a->defaultsite);
-
-    b->intercepted = a->intercepted;
-    b->spoof_client_ip = a->spoof_client_ip;
-    b->accel = a->accel;
-    b->allow_direct = a->allow_direct;
-    b->vhost = a->vhost;
-    b->sslBump = a->sslBump;
-    b->vport = a->vport;
-    b->connection_auth_disabled = a->connection_auth_disabled;
-    b->disable_pmtu_discovery = a->disable_pmtu_discovery;
-
-    memcpy( &(b->tcp_keepalive), &(a->tcp_keepalive), sizeof(a->tcp_keepalive));
-
-#if 0
-    // AYJ: 2009-07-18: for now SSL does not clone. Configure separate ports with IPs and SSL settings
-
-#if USE_SSL
-    // XXX: temporary hack to ease move of SSL options to http_port
-    http_port_list &http;
-
-    char *cert;
-    char *key;
-    int version;
-    char *cipher;
-    char *options;
-    char *clientca;
-    char *cafile;
-    char *capath;
-    char *crlfile;
-    char *dhfile;
-    char *sslflags;
-    char *sslContextSessionId;
-    SSL_CTX *sslContext;
-#endif
-
-#endif /*0*/
-
-    return b;
+    s->next = cbdataReference(Config.Sockaddr.http);
+    cbdataReferenceDone(Config.Sockaddr.http);
+    Config.Sockaddr.http = cbdataReference(s);
 }
 
 static void
-parsePortList(http_port_list ** head, const char *protocol)
+parsePortCfg(AnyP::PortCfg ** head, const char *optionName)
 {
+    const char *protocol = NULL;
+    if (strcmp(optionName, "http_port") == 0 ||
+            strcmp(optionName, "ascii_port") == 0)
+        protocol = "http";
+    else if (strcmp(optionName, "https_port") == 0)
+        protocol = "https";
+    if (!protocol) {
+        self_destruct();
+        return;
+    }
+
     char *token = strtok(NULL, w_space);
 
     if (!token) {
@@ -3857,17 +3729,17 @@ parsePortList(http_port_list ** head, const char *protocol)
         return;
     }
 
-    http_port_list *s = new http_port_list(protocol);
+    AnyP::PortCfg *s = new AnyP::PortCfg(protocol);
     parsePortSpecification(s, token);
 
     /* parse options ... */
     while ((token = strtok(NULL, w_space))) {
-        parse_http_port_option(s, token);
+        parse_port_option(s, token);
     }
 
     if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && s->s.IsAnyAddr()) {
         // clone the port options from *s to *(s->next)
-        s->next = clone_http_port_list(s);
+        s->next = cbdataReference(s->clone());
         s->next->s.SetIPv4();
         debugs(3, 3, protocol << "_port: clone wildcard address for split-stack: " << s->s << " and " << s->next->s);
     }
@@ -3875,11 +3747,11 @@ parsePortList(http_port_list ** head, const char *protocol)
     while (*head)
         head = &(*head)->next;
 
-    *head = s;
+    *head = cbdataReference(s);
 }
 
 static void
-dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
+dump_generic_port(StoreEntry * e, const char *n, const AnyP::PortCfg * s)
 {
     char buf[MAX_IPSTRLEN];
 
@@ -4002,23 +3874,23 @@ dump_generic_http_port(StoreEntry * e, const char *n, const http_port_list * s)
 }
 
 static void
-dump_http_port_list(StoreEntry * e, const char *n, const http_port_list * s)
+dump_PortCfg(StoreEntry * e, const char *n, const AnyP::PortCfg * s)
 {
     while (s) {
-        dump_generic_http_port(e, n, s);
+        dump_generic_port(e, n, s);
         storeAppendPrintf(e, "\n");
         s = s->next;
     }
 }
 
 static void
-free_http_port_list(http_port_list ** head)
+free_PortCfg(AnyP::PortCfg ** head)
 {
-    http_port_list *s;
+    AnyP::PortCfg *s;
 
     while ((s = *head) != NULL) {
         *head = s->next;
-        delete s;
+        cbdataReferenceDone(s);
     }
 }
 

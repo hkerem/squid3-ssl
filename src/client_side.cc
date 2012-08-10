@@ -87,6 +87,7 @@
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
+#include "anyp/PortCfg.h"
 #include "base/Subscription.h"
 #include "base/TextException.h"
 #include "ChunkedCodingParser.h"
@@ -115,7 +116,6 @@
 #include "ipc/StartListening.h"
 #include "MemBuf.h"
 #include "MemObject.h"
-#include "ProtoPort.h"
 #include "rfc1738.h"
 #include "StatCounters.h"
 #include "StatHist.h"
@@ -145,8 +145,8 @@
 class ListeningStartedDialer: public CallDialer, public Ipc::StartListeningCb
 {
 public:
-    typedef void (*Handler)(http_port_list *portCfg, const Ipc::FdNoteId note, const Subscription::Pointer &sub);
-    ListeningStartedDialer(Handler aHandler, http_port_list *aPortCfg, const Ipc::FdNoteId note, const Subscription::Pointer &aSub):
+    typedef void (*Handler)(AnyP::PortCfg *portCfg, const Ipc::FdNoteId note, const Subscription::Pointer &sub);
+    ListeningStartedDialer(Handler aHandler, AnyP::PortCfg *aPortCfg, const Ipc::FdNoteId note, const Subscription::Pointer &aSub):
             handler(aHandler), portCfg(aPortCfg), portTypeNote(note), sub(aSub) {}
 
     virtual void print(std::ostream &os) const {
@@ -161,12 +161,12 @@ public:
     Handler handler;
 
 private:
-    http_port_list *portCfg;   ///< from Config.Sockaddr.http
+    AnyP::PortCfg *portCfg;   ///< from Config.Sockaddr.http
     Ipc::FdNoteId portTypeNote;    ///< Type of IPC socket being opened
     Subscription::Pointer sub; ///< The handler to be subscribed for this connetion listener
 };
 
-static void clientListenerConnectionOpened(http_port_list *s, const Ipc::FdNoteId portTypeNote, const Subscription::Pointer &sub);
+static void clientListenerConnectionOpened(AnyP::PortCfg *s, const Ipc::FdNoteId portTypeNote, const Subscription::Pointer &sub);
 
 /* our socket-related context */
 
@@ -214,7 +214,7 @@ static void clientUpdateStatHistCounters(log_type logType, int svc_time);
 static void clientUpdateStatCounters(log_type logType);
 static void clientUpdateHierCounters(HierarchyLogEntry *);
 static bool clientPingHasFinished(ping_data const *aPing);
-void prepareLogWithRequestDetails(HttpRequest *, AccessLogEntry *);
+void prepareLogWithRequestDetails(HttpRequest *, AccessLogEntry::Pointer &);
 #ifndef PURIFY
 static bool connIsUsable(ConnStateData * conn);
 #endif
@@ -225,7 +225,7 @@ static void clientUpdateSocketStats(log_type logType, size_t size);
 char *skipLeadingSpace(char *aString);
 static void connNoteUseOfBuffer(ConnStateData* conn, size_t byteCount);
 
-static ConnStateData *connStateCreate(const Comm::ConnectionPointer &client, http_port_list *port);
+static ConnStateData *connStateCreate(const Comm::ConnectionPointer &client, AnyP::PortCfg *port);
 
 
 clientStreamNode *
@@ -499,7 +499,7 @@ clientUpdateHierCounters(HierarchyLogEntry * someEntry)
     case CD_PARENT_HIT:
 
     case CD_SIBLING_HIT:
-        statCounter.cd.times_used++;
+        ++ statCounter.cd.times_used;
         break;
 #endif
 
@@ -510,21 +510,21 @@ clientUpdateHierCounters(HierarchyLogEntry * someEntry)
     case FIRST_PARENT_MISS:
 
     case CLOSEST_PARENT_MISS:
-        statCounter.icp.times_used++;
+        ++ statCounter.icp.times_used;
         i = &someEntry->ping;
 
         if (clientPingHasFinished(i))
             statCounter.icp.querySvcTime.count(tvSubUsec(i->start, i->stop));
 
         if (i->timeout)
-            statCounter.icp.query_timeouts++;
+            ++ statCounter.icp.query_timeouts;
 
         break;
 
     case CLOSEST_PARENT:
 
     case CLOSEST_DIRECT:
-        statCounter.netdb.times_used++;
+        ++ statCounter.netdb.times_used;
 
         break;
 
@@ -539,7 +539,7 @@ ClientHttpRequest::updateCounters()
     clientUpdateStatCounters(logType);
 
     if (request->errType != ERR_NONE)
-        statCounter.client_http.errors++;
+        ++ statCounter.client_http.errors;
 
     clientUpdateStatHistCounters(logType,
                                  tvSubMsec(start_time, current_time));
@@ -548,10 +548,10 @@ ClientHttpRequest::updateCounters()
 }
 
 void
-prepareLogWithRequestDetails(HttpRequest * request, AccessLogEntry * aLogEntry)
+prepareLogWithRequestDetails(HttpRequest * request, AccessLogEntry::Pointer &aLogEntry)
 {
     assert(request);
-    assert(aLogEntry);
+    assert(aLogEntry != NULL);
 
     if (Config.onoff.log_mime_hdrs) {
         Packer p;
@@ -622,47 +622,47 @@ ClientHttpRequest::logRequest()
     if (!out.size && !logType)
         debugs(33, 5, HERE << "logging half-baked transaction: " << log_uri);
 
-    al.icp.opcode = ICP_INVALID;
-    al.url = log_uri;
-    debugs(33, 9, "clientLogRequest: al.url='" << al.url << "'");
+    al->icp.opcode = ICP_INVALID;
+    al->url = log_uri;
+    debugs(33, 9, "clientLogRequest: al.url='" << al->url << "'");
 
-    if (al.reply) {
-        al.http.code = al.reply->sline.status;
-        al.http.content_type = al.reply->content_type.termedBuf();
+    if (al->reply) {
+        al->http.code = al->reply->sline.status;
+        al->http.content_type = al->reply->content_type.termedBuf();
     } else if (loggingEntry() && loggingEntry()->mem_obj) {
-        al.http.code = loggingEntry()->mem_obj->getReply()->sline.status;
-        al.http.content_type = loggingEntry()->mem_obj->getReply()->content_type.termedBuf();
+        al->http.code = loggingEntry()->mem_obj->getReply()->sline.status;
+        al->http.content_type = loggingEntry()->mem_obj->getReply()->content_type.termedBuf();
     }
 
-    debugs(33, 9, "clientLogRequest: http.code='" << al.http.code << "'");
+    debugs(33, 9, "clientLogRequest: http.code='" << al->http.code << "'");
 
     if (loggingEntry() && loggingEntry()->mem_obj)
-        al.cache.objectSize = loggingEntry()->contentLen();
+        al->cache.objectSize = loggingEntry()->contentLen();
 
-    al.cache.caddr.SetNoAddr();
+    al->cache.caddr.SetNoAddr();
 
     if (getConn() != NULL) {
-        al.cache.caddr = getConn()->log_addr;
-        al.cache.port =  cbdataReference(getConn()->port);
+        al->cache.caddr = getConn()->log_addr;
+        al->cache.port =  cbdataReference(getConn()->port);
     }
 
-    al.cache.requestSize = req_sz;
-    al.cache.requestHeadersSize = req_sz;
+    al->cache.requestSize = req_sz;
+    al->cache.requestHeadersSize = req_sz;
 
-    al.cache.replySize = out.size;
-    al.cache.replyHeadersSize = out.headers_sz;
+    al->cache.replySize = out.size;
+    al->cache.replyHeadersSize = out.headers_sz;
 
-    al.cache.highOffset = out.offset;
+    al->cache.highOffset = out.offset;
 
-    al.cache.code = logType;
+    al->cache.code = logType;
 
-    al.cache.msec = tvSubMsec(start_time, current_time);
+    al->cache.msec = tvSubMsec(start_time, current_time);
 
     if (request)
-        prepareLogWithRequestDetails(request, &al);
+        prepareLogWithRequestDetails(request, al);
 
     if (getConn() != NULL && getConn()->clientConnection != NULL && getConn()->clientConnection->rfc931[0])
-        al.cache.rfc931 = getConn()->clientConnection->rfc931;
+        al->cache.rfc931 = getConn()->clientConnection->rfc931;
 
 #if USE_SSL && 0
 
@@ -670,19 +670,19 @@ ClientHttpRequest::logRequest()
      * to snarf the ssl details some place earlier..
      */
     if (getConn() != NULL)
-        al.cache.ssluser = sslGetUserEmail(fd_table[getConn()->fd].ssl);
+        al->cache.ssluser = sslGetUserEmail(fd_table[getConn()->fd].ssl);
 
 #endif
 
     ACLFilledChecklist *checklist = clientAclChecklistCreate(Config.accessList.log, this);
 
-    if (al.reply)
-        checklist->reply = HTTPMSGLOCK(al.reply);
+    if (al->reply)
+        checklist->reply = HTTPMSGLOCK(al->reply);
 
     if (!Config.accessList.log || checklist->fastCheck() == ACCESS_ALLOWED) {
         if (request)
-            al.adapted_request = HTTPMSGLOCK(request);
-        accessLogLog(&al, checklist);
+            al->adapted_request = HTTPMSGLOCK(request);
+        accessLogLog(al, checklist);
         updateCounters();
 
         if (getConn() != NULL && getConn()->clientConnection != NULL)
@@ -690,8 +690,6 @@ ClientHttpRequest::logRequest()
     }
 
     delete checklist;
-
-    accessLogFreeMemory(&al);
 }
 
 void
@@ -1001,7 +999,7 @@ ClientSocketContext::packChunk(const StoreIOBuffer &bodyData, MemBuf &mb)
         static_cast<uint64_t>(lengthToSend(bodyData.range()));
     noteSentBodyBytes(length);
 
-    mb.Printf("%"PRIX64"\r\n", length);
+    mb.Printf("%" PRIX64 "\r\n", length);
     mb.append(bodyData.data, length);
     mb.Printf("\r\n");
 }
@@ -1441,7 +1439,7 @@ clientSocketRecipient(clientStreamNode * node, ClientHttpRequest * http,
         context->sendBody(rep, receivedData);
     else {
         assert(rep);
-        http->al.reply = HTTPMSGLOCK(rep);
+        http->al->reply = HTTPMSGLOCK(rep);
         context->sendStartOfMessage(rep, receivedData);
     }
 
@@ -1787,9 +1785,9 @@ ClientSocketContext::noteIoError(const int xerrno)
 {
     if (http) {
         if (xerrno == ETIMEDOUT)
-            http->al.http.timedout = true;
+            http->al->http.timedout = true;
         else // even if xerrno is zero (which means read abort/eof)
-            http->al.http.aborted = true;
+            http->al->http.aborted = true;
     }
 }
 
@@ -1923,7 +1921,7 @@ findTrailingHTTPVersion(const char *uriAndHTTPVersion, const char *end)
         assert(end);
     }
 
-    for (; end > uriAndHTTPVersion; end--) {
+    for (; end > uriAndHTTPVersion; --end) {
         if (*end == '\n' || *end == '\r')
             continue;
 
@@ -1974,9 +1972,11 @@ setLogUri(ClientHttpRequest * http, char const *uri, bool cleanUrl)
             char *q = tmp_uri;
             t = uri;
             while (*t) {
-                if (!xisspace(*t))
-                    *q++ = *t;
-                t++;
+                if (!xisspace(*t)) {
+                    *q = *t;
+                    ++q;
+                }
+                ++t;
             }
             *q = '\0';
             http->log_uri = xstrndup(rfc1738_escape_unescaped(tmp_uri), MAX_URL);
@@ -2087,21 +2087,20 @@ prepareTransparentURL(ConnStateData * conn, ClientHttpRequest *http, char *url, 
         return; /* already in good shape */
 
     /* BUG: Squid cannot deal with '*' URLs (RFC2616 5.1.2) */
-    // BUG 2976: Squid only accepts intercepted HTTP.
 
     if ((host = mime_get_header(req_hdr, "Host")) != NULL) {
         int url_sz = strlen(url) + 32 + Config.appendDomainLen +
                      strlen(host);
         http->uri = (char *)xcalloc(url_sz, 1);
-        snprintf(http->uri, url_sz, "http://%s%s", /*conn->port->protocol,*/ host, url);
+        snprintf(http->uri, url_sz, "%s://%s%s", conn->port->protocol, host, url);
         debugs(33, 5, "TRANSPARENT HOST REWRITE: '" << http->uri <<"'");
     } else {
         /* Put the local socket IP address as the hostname.  */
         int url_sz = strlen(url) + 32 + Config.appendDomainLen;
         http->uri = (char *)xcalloc(url_sz, 1);
-        http->getConn()->clientConnection->local.ToHostname(ipbuf,MAX_IPSTRLEN),
-        snprintf(http->uri, url_sz, "http://%s:%d%s",
-                 // http->getConn()->port->protocol,
+        http->getConn()->clientConnection->local.ToHostname(ipbuf,MAX_IPSTRLEN);
+        snprintf(http->uri, url_sz, "%s://%s:%d%s",
+                 http->getConn()->port->protocol,
                  ipbuf, http->getConn()->clientConnection->local.GetPort(), url);
         debugs(33, 5, "TRANSPARENT REWRITE: '" << http->uri << "'");
     }
@@ -2714,7 +2713,7 @@ connStripBufferWhitespace (ConnStateData * conn)
 {
     while (conn->in.notYetUsed > 0 && xisspace(conn->in.buf[0])) {
         memmove(conn->in.buf, conn->in.buf + 1, conn->in.notYetUsed - 1);
-        --conn->in.notYetUsed;
+        -- conn->in.notYetUsed;
     }
 }
 
@@ -3142,13 +3141,13 @@ clientLifetimeTimeout(const CommTimeoutCbParams &io)
     ClientHttpRequest *http = static_cast<ClientHttpRequest *>(io.data);
     debugs(33, DBG_IMPORTANT, "WARNING: Closing client connection due to lifetime timeout");
     debugs(33, DBG_IMPORTANT, "\t" << http->uri);
-    http->al.http.timedout = true;
+    http->al->http.timedout = true;
     if (Comm::IsConnOpen(io.conn))
         io.conn->close();
 }
 
 ConnStateData *
-connStateCreate(const Comm::ConnectionPointer &client, http_port_list *port)
+connStateCreate(const Comm::ConnectionPointer &client, AnyP::PortCfg *port)
 {
     ConnStateData *result = new ConnStateData;
 
@@ -3210,7 +3209,7 @@ connStateCreate(const Comm::ConnectionPointer &client, http_port_list *port)
 void
 httpAccept(const CommAcceptCbParams &params)
 {
-    http_port_list *s = (http_port_list *)params.data;
+    AnyP::PortCfg *s = static_cast<AnyP::PortCfg *>(params.data);
 
     if (params.flag != COMM_OK) {
         // Its possible the call was still queued when the client disconnected
@@ -3225,7 +3224,7 @@ httpAccept(const CommAcceptCbParams &params)
         commSetTcpKeepalive(params.conn->fd, s->tcp_keepalive.idle, s->tcp_keepalive.interval, s->tcp_keepalive.timeout);
     }
 
-    incoming_sockets_accepted++;
+    ++ incoming_sockets_accepted;
 
     // Socket is ready, setup the connection manager to start using it
     ConnStateData *connState = connStateCreate(params.conn, s);
@@ -3252,7 +3251,7 @@ httpAccept(const CommAcceptCbParams &params)
         ch.src_addr = params.conn->remote;
         ch.my_addr = params.conn->local;
 
-        for (unsigned int pool = 0; pool < pools.size(); pool++) {
+        for (unsigned int pool = 0; pool < pools.size(); ++pool) {
 
             /* pools require explicit 'allow' to assign a client into them */
             if (pools[pool].access) {
@@ -3431,7 +3430,7 @@ clientNegotiateSSL(int fd, void *data)
 static void
 httpsAccept(const CommAcceptCbParams &params)
 {
-    http_port_list *s = (http_port_list *)params.data;
+    AnyP::PortCfg *s = static_cast<AnyP::PortCfg *>(params.data);
 
     if (params.flag != COMM_OK) {
         // Its possible the call was still queued when the client disconnected
@@ -3451,7 +3450,7 @@ httpsAccept(const CommAcceptCbParams &params)
         commSetTcpKeepalive(params.conn->fd, s->tcp_keepalive.idle, s->tcp_keepalive.interval, s->tcp_keepalive.timeout);
     }
 
-    incoming_sockets_accepted++;
+    ++incoming_sockets_accepted;
 
     // Socket is ready, setup the connection manager to start using it
     ConnStateData *connState = connStateCreate(params.conn, s);
@@ -3622,7 +3621,7 @@ static bool
 AddOpenedHttpSocket(const Comm::ConnectionPointer &conn)
 {
     bool found = false;
-    for (int i = 0; i < NHttpSockets && !found; i++) {
+    for (int i = 0; i < NHttpSockets && !found; ++i) {
         if ((found = HttpSockets[i] < 0))
             HttpSockets[i] = conn->fd;
     }
@@ -3632,12 +3631,12 @@ AddOpenedHttpSocket(const Comm::ConnectionPointer &conn)
 static void
 clientHttpConnectionsOpen(void)
 {
-    http_port_list *s = NULL;
+    AnyP::PortCfg *s = NULL;
 
     for (s = Config.Sockaddr.http; s; s = s->next) {
-        if (MAXHTTPPORTS == NHttpSockets) {
+        if (MAXTCPLISTENPORTS == NHttpSockets) {
             debugs(1, 1, "WARNING: You have too many 'http_port' lines.");
-            debugs(1, 1, "         The limit is " << MAXHTTPPORTS);
+            debugs(1, 1, "         The limit is " << MAXTCPLISTENPORTS << " HTTP ports.");
             continue;
         }
 
@@ -3672,7 +3671,8 @@ clientHttpConnectionsOpen(void)
                                         ListeningStartedDialer(&clientListenerConnectionOpened, s, Ipc::fdnHttpSocket, sub));
         Ipc::StartListening(SOCK_STREAM, IPPROTO_TCP, s->listenConn, Ipc::fdnHttpSocket, listenCall);
 
-        HttpSockets[NHttpSockets++] = -1; // set in clientListenerConnectionOpened
+        HttpSockets[NHttpSockets] = -1; // set in clientListenerConnectionOpened
+        ++NHttpSockets;
     }
 }
 
@@ -3680,12 +3680,12 @@ clientHttpConnectionsOpen(void)
 static void
 clientHttpsConnectionsOpen(void)
 {
-    http_port_list *s;
+    AnyP::PortCfg *s;
 
     for (s = Config.Sockaddr.https; s; s = s->next) {
-        if (MAXHTTPPORTS == NHttpSockets) {
+        if (MAXTCPLISTENPORTS == NHttpSockets) {
             debugs(1, 1, "Ignoring 'https_port' lines exceeding the limit.");
-            debugs(1, 1, "The limit is " << MAXHTTPPORTS << " HTTPS ports.");
+            debugs(1, 1, "The limit is " << MAXTCPLISTENPORTS << " HTTPS ports.");
             continue;
         }
 
@@ -3710,14 +3710,15 @@ clientHttpsConnectionsOpen(void)
                                         ListeningStartedDialer(&clientListenerConnectionOpened,
                                                                s, Ipc::fdnHttpsSocket, sub));
         Ipc::StartListening(SOCK_STREAM, IPPROTO_TCP, s->listenConn, Ipc::fdnHttpsSocket, listenCall);
-        HttpSockets[NHttpSockets++] = -1;
+        HttpSockets[NHttpSockets] = -1;
+        ++NHttpSockets;
     }
 }
 #endif
 
 /// process clientHttpConnectionsOpen result
 static void
-clientListenerConnectionOpened(http_port_list *s, const Ipc::FdNoteId portTypeNote, const Subscription::Pointer &sub)
+clientListenerConnectionOpened(AnyP::PortCfg *s, const Ipc::FdNoteId portTypeNote, const Subscription::Pointer &sub)
 {
     if (!OpenedHttpSocket(s->listenConn, portTypeNote))
         return;
@@ -3754,7 +3755,7 @@ clientOpenListenSockets(void)
 void
 clientHttpConnectionsClose(void)
 {
-    for (http_port_list *s = Config.Sockaddr.http; s; s = s->next) {
+    for (AnyP::PortCfg *s = Config.Sockaddr.http; s; s = s->next) {
         if (s->listenConn != NULL) {
             debugs(1, 1, "Closing HTTP port " << s->listenConn->local);
             s->listenConn->close();
@@ -3763,7 +3764,7 @@ clientHttpConnectionsClose(void)
     }
 
 #if USE_SSL
-    for (http_port_list *s = Config.Sockaddr.https; s; s = s->next) {
+    for (AnyP::PortCfg *s = Config.Sockaddr.https; s; s = s->next) {
         if (s->listenConn != NULL) {
             debugs(1, 1, "Closing HTTPS port " << s->listenConn->local);
             s->listenConn->close();
@@ -3773,7 +3774,7 @@ clientHttpConnectionsClose(void)
 #endif
 
     // TODO see if we can drop HttpSockets array entirely */
-    for (int i = 0; i < NHttpSockets; i++) {
+    for (int i = 0; i < NHttpSockets; ++i) {
         HttpSockets[i] = -1;
     }
 

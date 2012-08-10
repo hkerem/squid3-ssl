@@ -204,7 +204,7 @@ storeDirSelectSwapDirRoundRobin(const StoreEntry * e)
     if (objsize != -1)
         objsize += e->mem_obj->swap_hdr_sz;
 
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (++dirn >= Config.cacheSwap.n_configured)
             dirn = 0;
 
@@ -253,7 +253,7 @@ storeDirSelectSwapDirLeastLoad(const StoreEntry * e)
     if (objsize != -1)
         objsize += e->mem_obj->swap_hdr_sz;
 
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         SD = dynamic_cast<SwapDir *>(INDEXSD(i));
         SD->flags.selected = 0;
 
@@ -352,7 +352,7 @@ StoreController::stat(StoreEntry &output) const
     storeAppendPrintf(&output, "Store Directory Statistics:\n");
     storeAppendPrintf(&output, "Store Entries          : %lu\n",
                       (unsigned long int)StoreEntry::inUseCount());
-    storeAppendPrintf(&output, "Maximum Swap Size      : %"PRIu64" KB\n",
+    storeAppendPrintf(&output, "Maximum Swap Size      : %" PRIu64 " KB\n",
                       maxSize() >> 10);
     storeAppendPrintf(&output, "Current Store Swap Size: %.2f KB\n",
                       currentSize() / 1024.0);
@@ -456,7 +456,7 @@ storeDirWriteCleanLogs(int reopen)
     getCurrentTime();
     start = current_time;
 
-    for (dirn = 0; dirn < Config.cacheSwap.n_configured; dirn++) {
+    for (dirn = 0; dirn < Config.cacheSwap.n_configured; ++dirn) {
         sd = dynamic_cast<SwapDir *>(INDEXSD(dirn));
 
         if (sd->writeCleanStart() < 0) {
@@ -473,7 +473,7 @@ storeDirWriteCleanLogs(int reopen)
     while (notdone) {
         notdone = 0;
 
-        for (dirn = 0; dirn < Config.cacheSwap.n_configured; dirn++) {
+        for (dirn = 0; dirn < Config.cacheSwap.n_configured; ++dirn) {
             sd = dynamic_cast<SwapDir *>(INDEXSD(dirn));
 
             if (NULL == sd->cleanLog)
@@ -500,7 +500,7 @@ storeDirWriteCleanLogs(int reopen)
     }
 
     /* Flush */
-    for (dirn = 0; dirn < Config.cacheSwap.n_configured; dirn++)
+    for (dirn = 0; dirn < Config.cacheSwap.n_configured; ++dirn)
         dynamic_cast<SwapDir *>(INDEXSD(dirn))->writeCleanDone();
 
     if (reopen)
@@ -663,7 +663,7 @@ free_cachedir(SquidConfig::_cacheSwap * swap)
     if (reconfiguring)
         return;
 
-    for (i = 0; i < swap->n_configured; i++) {
+    for (i = 0; i < swap->n_configured; ++i) {
         /* TODO XXX this lets the swapdir free resources asynchronously
         * swap->swapDirs[i]->deactivate();
         * but there may be such a means already.
@@ -781,6 +781,40 @@ StoreController::get(String const key, STOREGETCLIENT aCallback, void *aCallback
     fatal("not implemented");
 }
 
+// move this into [non-shared] memory cache class when we have one
+/// whether e should be kept in local RAM for possible future caching
+bool
+StoreController::keepForLocalMemoryCache(const StoreEntry &e) const
+{
+    if (!e.memoryCachable())
+        return false;
+
+    // does the current and expected size obey memory caching limits?
+    assert(e.mem_obj);
+    const int64_t loadedSize = e.mem_obj->endOffset();
+    const int64_t expectedSize = e.mem_obj->expectedReplySize(); // may be < 0
+    const int64_t ramSize = max(loadedSize, expectedSize);
+    const int64_t ramLimit = min(
+                                 static_cast<int64_t>(Config.memMaxSize),
+                                 static_cast<int64_t>(Config.Store.maxInMemObjSize));
+    return ramSize <= ramLimit;
+}
+
+void
+StoreController::maybeTrimMemory(StoreEntry &e, const bool preserveSwappable)
+{
+    bool keepInLocalMemory = false;
+    if (memStore)
+        keepInLocalMemory = memStore->keepInLocalMemory(e);
+    else
+        keepInLocalMemory = keepForLocalMemoryCache(e);
+
+    debugs(20, 7, HERE << "keepInLocalMemory: " << keepInLocalMemory);
+
+    if (!keepInLocalMemory)
+        e.trimMemory(preserveSwappable);
+}
+
 void
 StoreController::handleIdleEntry(StoreEntry &e)
 {
@@ -795,7 +829,7 @@ StoreController::handleIdleEntry(StoreEntry &e)
         memStore->considerKeeping(e);
         // leave keepInLocalMemory false; memStore maintains its own cache
     } else {
-        keepInLocalMemory = e.memoryCachable() && // entry is in good shape and
+        keepInLocalMemory = keepForLocalMemoryCache(e) && // in good shape and
                             // the local memory cache is not overflowing
                             (mem_node::InUseCount() <= store_pages_max);
     }
@@ -845,7 +879,7 @@ StoreHashIndex::callback()
     do {
         j = 0;
 
-        for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+        for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
             if (ndir >= Config.cacheSwap.n_configured)
                 ndir = ndir % Config.cacheSwap.n_configured;
 
@@ -862,7 +896,7 @@ StoreHashIndex::callback()
         }
     } while (j > 0);
 
-    ndir++;
+    ++ndir;
 
     return result;
 }
@@ -870,7 +904,7 @@ StoreHashIndex::callback()
 void
 StoreHashIndex::create()
 {
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).active())
             store(i)->create();
     }
@@ -916,7 +950,7 @@ StoreHashIndex::init()
     store_table = hash_create(storeKeyHashCmp,
                               store_hash_buckets, storeKeyHashHash);
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         /* this starts a search of the store dirs, loading their
          * index. under the new Store api this should be
          * driven by the StoreHashIndex, not by each store.
@@ -941,7 +975,7 @@ StoreHashIndex::maxSize() const
 {
     uint64_t result = 0;
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).doReportStat())
             result += store(i)->maxSize();
     }
@@ -954,7 +988,7 @@ StoreHashIndex::minSize() const
 {
     uint64_t result = 0;
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).doReportStat())
             result += store(i)->minSize();
     }
@@ -967,7 +1001,7 @@ StoreHashIndex::currentSize() const
 {
     uint64_t result = 0;
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).doReportStat())
             result += store(i)->currentSize();
     }
@@ -980,7 +1014,7 @@ StoreHashIndex::currentCount() const
 {
     uint64_t result = 0;
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).doReportStat())
             result += store(i)->currentCount();
     }
@@ -993,7 +1027,7 @@ StoreHashIndex::maxObjectSize() const
 {
     int64_t result = -1;
 
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         if (dir(i).active() && store(i)->maxObjectSize() > result)
             result = store(i)->maxObjectSize();
     }
@@ -1005,7 +1039,7 @@ void
 StoreHashIndex::getStats(StoreInfoStats &stats) const
 {
     // accumulate per-disk cache stats
-    for (int i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (int i = 0; i < Config.cacheSwap.n_configured; ++i) {
         StoreInfoStats dirStats;
         store(i)->getStats(dirStats);
         stats += dirStats;
@@ -1024,7 +1058,7 @@ StoreHashIndex::stat(StoreEntry & output) const
 
     /* Now go through each store, calling its stat routine */
 
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         storeAppendPrintf(&output, "\n");
         store(i)->stat(output);
     }
@@ -1048,7 +1082,7 @@ StoreHashIndex::maintain()
     int i;
     /* walk each fs */
 
-    for (i = 0; i < Config.cacheSwap.n_configured; i++) {
+    for (i = 0; i < Config.cacheSwap.n_configured; ++i) {
         /* XXX FixMe: This should be done "in parallell" on the different
          * cache_dirs, not one at a time.
          */
@@ -1143,6 +1177,6 @@ StoreSearchHashIndex::copyBucket()
         entries.push_back(e);
     }
 
-    bucket++;
+    ++bucket;
     debugs(47,3, "got entries: " << entries.size());
 }

@@ -70,7 +70,7 @@ int WIN32_pipe(int handles[2])
 
     handles[0] = handles[1] = -1;
 
-    statCounter.syscalls.sock.sockets++;
+    ++statCounter.syscalls.sock.sockets;
 
     handle0 = localhost;
     handle0.SetPort(0);
@@ -159,9 +159,8 @@ int WIN32_getrusage(int who, struct rusage *usage)
     return 0;
 }
 
-
-int Win32__WSAFDIsSet(int fd, fd_set FAR * set
-                     )
+int
+Win32__WSAFDIsSet(int fd, fd_set FAR * set)
 {
     fde *F = &fd_table[fd];
     SOCKET s = F->win32.handle;
