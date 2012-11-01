@@ -2,6 +2,7 @@
 #define SQUID_IPC_STORE_MAP_H
 
 #include "ipc/ReadWriteLock.h"
+#include "ipc/mem/FlexibleArray.h"
 #include "ipc/mem/Pointer.h"
 #include "typedefs.h"
 
@@ -66,7 +67,7 @@ public:
         const int limit; ///< maximum number of map slots
         const size_t extrasSize; ///< size of slot extra data
         Atomic::Word count; ///< current number of map slots
-        Slot slots[]; ///< slots storage
+        Ipc::Mem::FlexibleArray<Slot> slots; ///< slots storage
     };
 
 public:

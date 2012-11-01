@@ -3856,16 +3856,6 @@ clientAclChecklistCreate(const acl_access * acl, ClientHttpRequest * http)
      * the ident result on persistent connections...
      */
     /* connection oriented auth also needs these two lines for it's operation. */
-    /*
-     * Internal requests do not have a connection reference, because: A) their
-     * byte count may be transformed before being applied to an outbound
-     * connection B) they are internal - any limiting on them should be done on
-     * the server end.
-     */
-
-    if (conn != NULL)
-        ch->conn(conn);	/* unreferenced in FilledCheckList.cc */
-
     return ch;
 }
 
@@ -4044,11 +4034,8 @@ ConnStateData::pinConnection(const Comm::ConnectionPointer &pinServer, HttpReque
     if (Comm::IsConnOpen(pinning.serverConnection)) {
         if (pinning.serverConnection->fd == pinServer->fd)
             return;
-
-        unpinConnection(); // clears fields ready for re-use. Prevent close() scheduling our close handler.
-        pinning.serverConnection->close();
-    } else
-        unpinConnection(); // clears fields ready for re-use.
+    }
+    unpinConnection(); // clears fields ready for re-use. Prevent close() scheduling our close handler.
 
     pinning.serverConnection = pinServer;
     pinning.host = xstrdup(request->GetHost());
@@ -4106,7 +4093,8 @@ ConnStateData::unpinConnection()
         pinning.closeHandler = NULL;
     }
     /// also close the server side socket, we should not use it for any future requests...
-    pinning.serverConnection->close();
+    if (Comm::IsConnOpen(pinning.serverConnection))
+        pinning.serverConnection->close();
     safe_free(pinning.host);
 
     /* NOTE: pinning.pinned should be kept. This combined with fd == -1 at the end of a request indicates that the host

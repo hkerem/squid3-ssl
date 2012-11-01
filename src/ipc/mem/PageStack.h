@@ -7,6 +7,7 @@
 #define SQUID_IPC_MEM_PAGE_STACK_H
 
 #include "ipc/AtomicWord.h"
+#include "ipc/mem/FlexibleArray.h"
 
 namespace Ipc
 {
@@ -67,7 +68,7 @@ private:
     Atomic::WordT<Offset> theFirstWritable;
 
     typedef Atomic::WordT<Value> Item;
-    Item theItems[]; ///< page number storage
+    Ipc::Mem::FlexibleArray<Item> theItems; ///< page number storage
 };
 
 } // namespace Mem

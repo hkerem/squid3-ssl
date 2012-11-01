@@ -3,7 +3,7 @@ dnl  $Id$
 dnl
 dnl
 dnl
-AC_INIT([Squid Web Proxy],[3.2.0.19],[http://www.squid-cache.org/bugs/],[squid])
+AC_INIT([Squid Web Proxy],[3.2.3],[http://www.squid-cache.org/bugs/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -1115,7 +1115,6 @@ if test "x${enable_eui:=yes}" = "xyes" ; then
   esac
   #Iphlpapi.h check delayed after winsock2.h
   AC_CHECK_HEADERS( \
-    net/if_dl.h \
     sys/sockio.h \
     sys/param.h
   )
@@ -1127,9 +1126,12 @@ if test "x${enable_eui:=yes}" = "xyes" ; then
 #include <sys/socket.h>
 ]])
 
-  # openbsd requires sys/param.h to be included before sysctl.h
-  AC_CHECK_HEADERS(sys/sysctl.h, [], [],
-  [[#if HAVE_SYS_PARAM_H
+  # OpenBSD, FreeBSD and NetBSD requires sys/param.h to be included before sysctl.h and net/if_dl.h
+  AC_CHECK_HEADERS( \
+    net/if_dl.h \
+    sys/sysctl.h,
+  [], [], [[
+#if HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
   ]])
@@ -3166,7 +3168,6 @@ AC_CHECK_FUNCS(\
 	seteuid \
 	setgroups \
 	setpgrp \
-	setrlimit \
 	setsid \
 	sigaction \
 	snprintf \
@@ -3337,17 +3338,17 @@ SQUID_DEFINE_BOOL(LINUX_NETFILTER,$enable_linux_netfilter,
 dnl Netfilter TPROXY depends on libcap but the NAT parts can still work.
 AC_MSG_NOTICE([Support for Netfilter-based interception proxy requested: $enable_linux_netfilter])
 if test "x$enable_linux_netfilter" = "xyes" -a "x$with_libcap" != "xyes" ; then
-    AC_MSG_WARN([Missing needed capabilities (libcap or libcap2) for TPROXY])
-    AC_MSG_WARN([Linux Transparent Proxy support WILL NOT be enabled])
-    AC_MSG_WARN([Reduced support to Interception Proxy])
+    AC_MSG_WARN([Missing needed capabilities (libcap 2.09+) for TPROXY])
+    AC_MSG_WARN([Linux Transparent Proxy (version 4+) support WILL NOT be enabled])
+    AC_MSG_WARN([Reduced support to NAT Interception Proxy])
     # AC_DEFINEd later
 fi
 
 if test "x$squid_opt_netfilterconntrack" = "xyes" -a "x$with_libcap" != "xyes" ; then
-    AC_MSG_ERROR([Linux netfilter conntrack requires libcap support (libcap or libcap2)])
+    AC_MSG_ERROR([Linux netfilter conntrack requires libcap support (libcap 2.09+)])
 fi
 if test "x$with_netfilter_conntrack" = "xyes" -a "x$with_libcap" != "xyes" ; then
-    AC_MSG_WARN([Missing needed capabilities (libcap or libcap2) for netfilter mark support])
+    AC_MSG_WARN([Missing needed capabilities (libcap 2.09+) for netfilter mark support])
     AC_MSG_WARN([Linux netfilter marking support WILL NOT be enabled])
     with_netfilter_conntrack=no
 fi

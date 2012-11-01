@@ -10,6 +10,7 @@
 #include "Debug.h"
 #include "base/InstanceId.h"
 #include "ipc/AtomicWord.h"
+#include "ipc/mem/FlexibleArray.h"
 #include "ipc/mem/Pointer.h"
 #include "util.h"
 
@@ -68,7 +69,7 @@ public:
     static size_t SharedMemorySize(const int capacity);
 
     const int theCapacity; /// number of readers
-    QueueReader theReaders[]; /// readers
+    Ipc::Mem::FlexibleArray<QueueReader> theReaders; /// readers
 };
 
 /**

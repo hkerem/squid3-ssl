@@ -123,6 +123,12 @@ DOC_START
 	Remove this line. Configure FTP page display using the CSS controls in errorpages.css instead.
 DOC_END
 
+NAME: maximum_single_addr_tries
+TYPE: obsolete
+DOC_START
+	Replaced by connect_retries. The behaviour has changed, please read the documentation before altering.
+DOC_END
+
 NAME: url_rewrite_concurrency
 TYPE: obsolete
 DOC_START
@@ -141,6 +147,11 @@ TYPE: obsolete
 DOC_START
 	Remove this line. All valid methods for HTTP are accepted by default.
 DOC_END
+
+# 2.7 Options Removed/Replaced in 3.2
+NAME: zero_buffers
+TYPE: obsolete
+DOC_NONE
 
 # 2.7 Options Removed/Replaced in 3.1
 NAME: incoming_rate
@@ -1778,7 +1789,7 @@ DOC_START
 		 * Reverse-proxy traffic is not checked at all.
 	
 		 * Intercepted traffic which passes verification is handled
-		   normally.
+		   according to client_dst_passthru.
 	
 		 * Intercepted requests which fail verification are sent
 		   to the client original destination instead of DIRECT.
@@ -3346,12 +3357,16 @@ LOC: Config.Log.store
 DOC_START
 	Logs the activities of the storage manager.  Shows which
 	objects are ejected from the cache, and which objects are
-	saved and for how long.  To disable, enter "none" or remove the line.
+	saved and for how long.
 	There are not really utilities to analyze this data, so you can safely
-	disable it.
-
+	disable it (the default).
+	
+	Store log uses modular logging outputs. See access_log for the list
+	of modules supported.
+	
 	Example:
-		cache_store_log @DEFAULT_STORE_LOG@
+		cache_store_log stdio:@DEFAULT_STORE_LOG@
+		cache_store_log daemon:@DEFAULT_STORE_LOG@
 DOC_END
 
 NAME: cache_swap_state cache_swap_log
@@ -3928,7 +3943,6 @@ DOC_START
 		 override-lastmod
 		 reload-into-ims
 		 ignore-reload
-		 ignore-no-cache
 		 ignore-no-store
 		 ignore-must-revalidate
 		 ignore-private
@@ -3960,12 +3974,6 @@ DOC_START
 		header. Doing this VIOLATES the HTTP standard. Enabling
 		this feature could make you liable for problems which
 		it causes.
-
-		ignore-no-cache ignores any ``Pragma: no-cache'' and
-		``Cache-control: no-cache'' headers received from a server.
-		The HTTP RFC never allows the use of this (Pragma) header
-		from a server, only a client, though plenty of servers
-		send it anyway.
 
 		ignore-no-store ignores any ``Cache-control: no-store''
 		headers received from a server. Doing this VIOLATES

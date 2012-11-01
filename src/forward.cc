@@ -125,6 +125,7 @@ void FwdState::start(Pointer aSelf)
 
     entry->registerAbort(FwdState::abort, this);
 
+#if STRICT_ORIGINAL_DST
     // Bug 3243: CVE 2009-0801
     // Bypass of browser same-origin access control in intercepted communication
     // To resolve this we must force DIRECT and only to the original client destination.
@@ -132,17 +133,18 @@ void FwdState::start(Pointer aSelf)
     const bool useOriginalDst = Config.onoff.client_dst_passthru || (request && !request->flags.hostVerified);
     if (isIntercepted && useOriginalDst) {
         selectPeerForIntercepted();
-#if STRICT_ORIGINAL_DST
         // 3.2 does not suppro re-wrapping inside CONNECT.
         // our only alternative is to fake destination "found" and continue with the forwarding.
         startConnectionOrFail();
         return;
-#endif
     }
+#endif
+
     // do full route options selection
     peerSelect(&serverDestinations, request, entry, fwdPeerSelectionCompleteWrapper, this);
 }
 
+#if STRICT_ORIGINAL_DST
 /// bypasses peerSelect() when dealing with intercepted requests
 void
 FwdState::selectPeerForIntercepted()
@@ -170,6 +172,7 @@ FwdState::selectPeerForIntercepted()
     debugs(17, 3, HERE << "using client original destination: " << *p);
     serverDestinations.push_back(p);
 }
+#endif
 
 void
 FwdState::completed()
@@ -342,6 +345,7 @@ FwdState::startConnectionOrFail()
         // this server link regardless of what happens when connecting to it.
         // IF sucessfuly connected this top destination will become the serverConnection().
         request->hier.note(serverDestinations[0], request->GetHost());
+        request->clearError();
 
         connectStart();
     } else {
@@ -544,6 +548,12 @@ FwdState::checkRetry()
 bool
 FwdState::checkRetriable()
 {
+    // Optimize: A compliant proxy may retry PUTs, but Squid lacks the [rather
+    // complicated] code required to protect the PUT request body from being
+    // nibbled during the first try. Thus, Squid cannot retry some PUTs today.
+    if (request->body_pipe != NULL)
+        return false;
+
     /* RFC2616 9.1 Safe and Idempotent Methods */
     switch (request->method.id()) {
         /* 9.1.1 Safe Methods */
@@ -758,7 +768,6 @@ FwdState::initiateSSL()
     // The list is used in ssl_verify_cb() and is freed in ssl_free().
     if (acl_access *acl = Config.ssl_client.cert_error) {
         ACLFilledChecklist *check = new ACLFilledChecklist(acl, request, dash_str);
-        check->fd(fd);
         SSL_set_ex_data(ssl, ssl_ex_index_cert_error_check, check);
     }
 
