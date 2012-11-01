@@ -1,0 +1,27 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## peer-sslbump-accept.dpatch by  <kerem@ubuntu-devel>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' squid3-ssl~/src/forward.cc squid3-ssl/src/forward.cc
+--- squid3-ssl~/src/forward.cc	2012-11-01 13:31:10.000000000 +0200
++++ squid3-ssl/src/forward.cc	2012-11-01 13:34:00.289669389 +0200
+@@ -875,6 +875,8 @@
+     if (ftimeout < ctimeout)
+         ctimeout = ftimeout;
+ 
++    // Commented out to use peer with sslbumping, in spite of transfering ssl encapsulated data clearly
++    /*
+     if (serverDestinations[0]->getPeer() && request->flags.sslBumped == true) {
+         debugs(50, 4, "fwdConnectStart: Ssl bumped connections through parrent proxy are not allowed");
+         ErrorState *anErr = new ErrorState(ERR_CANNOT_FORWARD, HTTP_SERVICE_UNAVAILABLE, request);
+@@ -882,6 +884,7 @@
+         self = NULL; // refcounted
+         return;
+     }
++    */
+ 
+     request->flags.pinned = 0; // XXX: what if the ConnStateData set this to flag existing credentials?
+     // XXX: answer: the peer selection *should* catch it and give us only the pinned peer. so we reverse the =0 step below.
