@@ -74,11 +74,12 @@ am__libacls_la_SOURCES_DIST = IntRange.cc IntRange.h RegexData.cc \
 	Referer.cc Referer.h ReplyHeaderStrategy.h ReplyMimeType.cc \
 	ReplyMimeType.h RequestHeaderStrategy.h RequestMimeType.cc \
 	RequestMimeType.h SourceAsn.h SourceDomain.cc SourceDomain.h \
-	SourceIp.cc SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlPath.cc \
-	UrlPath.h UrlPort.cc UrlPort.h UserData.cc UserData.h \
-	Gadgets.cc Gadgets.h CertificateData.cc CertificateData.h \
-	Certificate.cc Certificate.h SslError.cc SslError.h \
-	SslErrorData.cc SslErrorData.h Arp.cc Arp.h Eui64.cc Eui64.h
+	SourceIp.cc SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlLogin.cc \
+	UrlLogin.h UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h \
+	UserData.cc UserData.h Gadgets.cc Gadgets.h CertificateData.cc \
+	CertificateData.h Certificate.cc Certificate.h SslError.cc \
+	SslError.h SslErrorData.cc SslErrorData.h Arp.cc Arp.h \
+	Eui64.cc Eui64.h
 am__objects_1 = CertificateData.lo Certificate.lo SslError.lo \
 	SslErrorData.lo
 @ENABLE_SSL_TRUE@am__objects_2 = $(am__objects_1)
@@ -92,8 +93,8 @@ am_libacls_la_OBJECTS = IntRange.lo RegexData.lo StringData.lo Time.lo \
 	Method.lo MethodData.lo MyIp.lo MyPort.lo MyPortName.lo \
 	PeerName.lo Protocol.lo ProtocolData.lo Random.lo Referer.lo \
 	ReplyMimeType.lo RequestMimeType.lo SourceDomain.lo \
-	SourceIp.lo Tag.lo Url.lo UrlPath.lo UrlPort.lo UserData.lo \
-	Gadgets.lo $(am__objects_2) $(am__objects_4)
+	SourceIp.lo Tag.lo Url.lo UrlLogin.lo UrlPath.lo UrlPort.lo \
+	UserData.lo Gadgets.lo $(am__objects_2) $(am__objects_4)
 libacls_la_OBJECTS = $(am_libacls_la_OBJECTS)
 libapi_la_LIBADD =
 am_libapi_la_OBJECTS = Acl.lo Checklist.lo
@@ -386,9 +387,10 @@ libacls_la_SOURCES = IntRange.cc IntRange.h RegexData.cc RegexData.h \
 	ReplyHeaderStrategy.h ReplyMimeType.cc ReplyMimeType.h \
 	RequestHeaderStrategy.h RequestMimeType.cc RequestMimeType.h \
 	SourceAsn.h SourceDomain.cc SourceDomain.h SourceIp.cc \
-	SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlPath.cc UrlPath.h \
-	UrlPort.cc UrlPort.h UserData.cc UserData.h Gadgets.cc \
-	Gadgets.h $(am__append_2) $(am__append_3)
+	SourceIp.h Tag.cc Tag.h Url.cc Url.h UrlLogin.cc UrlLogin.h \
+	UrlPath.cc UrlPath.h UrlPort.cc UrlPort.h UserData.cc \
+	UserData.h Gadgets.cc Gadgets.h $(am__append_2) \
+	$(am__append_3)
 EXTRA_libacls_la_SOURCES = $(SSL_ACLS) $(ARP_ACLS)
 SSL_ACLS = \
         CertificateData.cc \
@@ -512,6 +514,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Time.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TimeData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Url.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlLogin.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlPath.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UrlPort.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UserData.Plo@am__quote@

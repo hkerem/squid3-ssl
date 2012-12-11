@@ -754,10 +754,10 @@ leave_suid(void)
 void
 enter_suid(void)
 {
-    debugs(21, 3, "enter_suid: PID " << getpid() << " taking root priveleges");
+    debugs(21, 3, "enter_suid: PID " << getpid() << " taking root privileges");
 #if HAVE_SETRESUID
-
-    setresuid((uid_t)-1, 0, (uid_t)-1);
+    if (setresuid((uid_t)-1, 0, (uid_t)-1) < 0)
+        debugs (21, 3, "enter_suid: setresuid failed: " << xstrerror ());
 #else
 
     setuid(0);
@@ -782,10 +782,11 @@ no_suid(void)
     uid = geteuid();
     debugs(21, 3, "no_suid: PID " << getpid() << " giving up root priveleges forever");
 
-    setuid(0);
+    if (setuid(0) < 0)
+        debugs(50, DBG_IMPORTANT, "WARNING: no_suid: setuid(0): " << xstrerror());
 
     if (setuid(uid) < 0)
-        debugs(50, 1, "no_suid: setuid: " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "ERROR: no_suid: setuid(" << uid << "): " << xstrerror());
 
     restoreCapabilities(0);
 
@@ -1226,8 +1227,9 @@ parseEtcHosts(void)
             /* For IPV6 addresses also check for a colon */
             if (Config.appendDomain && !strchr(lt, '.') && !strchr(lt, ':')) {
                 /* I know it's ugly, but it's only at reconfig */
-                strncpy(buf2, lt, 512);
-                strncat(buf2, Config.appendDomain, 512 - strlen(lt) - 1);
+                strncpy(buf2, lt, sizeof(buf2)-1);
+                strncat(buf2, Config.appendDomain, sizeof(buf2) - strlen(lt) - 1);
+                buf2[sizeof(buf2)-1] = '\0';
                 host = buf2;
             } else {
                 host = lt;
@@ -1382,14 +1384,4 @@ restoreCapabilities(int keep)
 #elif _SQUID_LINUX_
     Ip::Interceptor.StopTransparency("Missing needed capability support.");
 #endif /* HAVE_SYS_CAPABILITY_H */
-}
-
-void *
-xmemset(void *dst, int val, size_t sz)
-{
-    // do debugs output
-    debugs(63, 9, "memset: dst=" << dst << ", val=" << val << ", bytes=" << sz);
-
-    // call the system one to do the actual work ~safely.
-    return memset(dst, val, sz);
 }

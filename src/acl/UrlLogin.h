@@ -1,6 +1,7 @@
+
 /*
- * DEBUG: section 05    Disk I/O pipe manager
- * AUTHOR: Harvest Derived
+ * $Id$
+ *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,66 +33,41 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid.h"
-#include "squid-old.h"
-#include "comm/Loops.h"
-#include "DiskIO/DiskThreads/CommIO.h"
+#ifndef SQUID_ACLURLLOGIN_H
+#define SQUID_ACLURLLOGIN_H
 
-void
-CommIO::Initialize()
+#include "acl/Acl.h"
+#include "acl/Data.h"
+#include "acl/Strategy.h"
+#include "acl/Strategised.h"
+
+class ACLUrlLoginStrategy : public ACLStrategy<char const *>
 {
-    if (CommIO::Initialized)
-        return;
 
-    /* Initialize done pipe signal */
-    int DonePipe[2];
-    if (pipe(DonePipe)) {}
-    DoneFD = DonePipe[1];
-    DoneReadFD = DonePipe[0];
-    fd_open(DoneReadFD, FD_PIPE, "async-io completion event: main");
-    fd_open(DoneFD, FD_PIPE, "async-io completion event: threads");
-    commSetNonBlocking(DoneReadFD);
-    commSetNonBlocking(DoneFD);
-    Comm::SetSelect(DoneReadFD, COMM_SELECT_READ, NULLFDHandler, NULL, 0);
-    Initialized = true;
-}
+public:
+    virtual int match (ACLData<char const *> * &, ACLFilledChecklist *);
+    virtual bool requiresRequest() const {return true;}
 
-void
-CommIO::NotifyIOClose()
+    static ACLUrlLoginStrategy *Instance();
+    /* Not implemented to prevent copies of the instance. */
+    /* Not private to prevent brain dead g+++ warnings about
+     * private constructors with no friends */
+    ACLUrlLoginStrategy(ACLUrlLoginStrategy const &);
+
+private:
+    static ACLUrlLoginStrategy Instance_;
+    ACLUrlLoginStrategy() {}
+
+    ACLUrlLoginStrategy&operator=(ACLUrlLoginStrategy const &);
+};
+
+class ACLUrlLogin
 {
-    /* Close done pipe signal */
-    FlushPipe();
-    close(DoneFD);
-    close(DoneReadFD);
-    fd_close(DoneFD);
-    fd_close(DoneReadFD);
-    Initialized = false;
-}
 
-bool CommIO::Initialized = false;
-bool CommIO::DoneSignalled = false;
-int CommIO::DoneFD = -1;
-int CommIO::DoneReadFD = -1;
+public:
+    static ACL::Prototype RegistryProtoype;
+    static ACL::Prototype LegacyRegistryProtoype;
+    static ACLStrategised<char const *> RegistryEntry_;
+};
 
-void
-CommIO::FlushPipe()
-{
-    char buf[256];
-    FD_READ_METHOD(DoneReadFD, buf, sizeof(buf));
-}
-
-void
-CommIO::NULLFDHandler(int fd, void *data)
-{
-    FlushPipe();
-    Comm::SetSelect(fd, COMM_SELECT_READ, NULLFDHandler, NULL, 0);
-}
-
-void
-CommIO::ResetNotifications()
-{
-    if (DoneSignalled) {
-        FlushPipe();
-        DoneSignalled = false;
-    }
-}
+#endif /* SQUID_ACLURLLOGIN_H */
