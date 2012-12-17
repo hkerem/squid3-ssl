@@ -83,7 +83,7 @@ install/squid3-ssl::
 	install -m 755 -g root -d $(INSTALLDIR)/etc/ufw/applications.d
 	install -m 755 -g root debian/squid3-ssl.rc $(INSTALLDIR)/etc/init.d/squid3
 	install -m 755 -g root debian/squid3-ssl.resolvconf $(INSTALLDIR)/etc/resolvconf/update-libc.d/squid3
-	install -m 644 -g root debian/squid3-ssl.logrotate $(INSTALLDIR)/etc/logrotate.d/squid3
+	install -m 644 -g root debian/squid3-ssl.logrotate $(INSTALLDIR)/etc/logrotate.d/squid3-ssl
 	install -m 644 -g root debian/squid3-ssl.ufw.profile $(INSTALLDIR)/etc/ufw/applications.d/squid3
 	install -m 755 -g root -d debian/squid3-ssl/var/log
 	install -m 755 -g root -d debian/squid3-ssl/var/spool
