@@ -18,7 +18,7 @@ etc/ufw/applications.d/squid3
 etc/init.d
 etc/init.d/squid3
 etc/logrotate.d
-etc/logrotate.d/squid3
+etc/logrotate.d/squid3-ssl
 usr
 usr/lib
 usr/lib/cgi-bin
