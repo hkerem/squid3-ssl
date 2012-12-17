@@ -1,3 +1,9 @@
+squid3-ssl (3.2.5-2.1ubuntu1) precise; urgency=low
+
+  * Fixed duplicate logrotate entry.
+
+ -- MyDLP Development Team (Release) <devel@mydlp.com>  Tue, 17 December 2012 10:16:01 +0200
+
 squid3-ssl (3.2.5-1.1ubuntu1) precise; urgency=low
 
   * Upgraded to 3.2.5
