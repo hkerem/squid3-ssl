@@ -980,10 +980,10 @@ read_post_request(void)
 
     // limit the input to something reasonable.
     // 4KB should be enough for the GET/POST data length, but may be extended.
-    size_t bufLen = (len >= 4096 ? len : 4095);
+    size_t bufLen = (len < 4096 ? len : 4095);
     char *buf = (char *)xmalloc(bufLen + 1);
 
-    size_t readLen = fread(buf, bufLen, 1, stdin);
+    size_t readLen = fread(buf, 1, bufLen, stdin);
     if (readLen == 0) {
         xfree(buf);
         return NULL;
@@ -992,9 +992,9 @@ read_post_request(void)
     len -= readLen;
 
     // purge the remainder of the request entity
-    while (len > 0) {
+    while (len > 0 && readLen) {
         char temp[65535];
-        readLen = fread(temp, 65535, 1, stdin);
+        readLen = fread(temp, 1, 65535, stdin);
         len -= readLen;
     }
 
