@@ -1,3 +1,9 @@
+squid3-ssl (3.3.5-1.1ubuntu1) precise; urgency=low
+
+  * Upgraded to 3.3.5
+
+ -- MyDLP Development Team (Release) <devel@mydlp.com>  Thu, 20 Aug 2013 14:25:12 +0300
+
 squid3-ssl (3.2.11-1.1ubuntu1) precise; urgency=low
 
   * Upgraded to 3.2.11
