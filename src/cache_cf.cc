@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 03    Configuration File Parsing
  * AUTHOR: Harvest Derived
  *
@@ -32,11 +30,56 @@
  *
  */
 
-#include "squid-old.h"
-
+#include "squid.h"
 #include "acl/Acl.h"
+#include "acl/AclAddress.h"
+#include "acl/AclDenyInfoList.h"
+#include "acl/AclNameList.h"
+#include "acl/AclSizeLimit.h"
 #include "acl/Gadgets.h"
 #include "acl/MethodData.h"
+#include "anyp/PortCfg.h"
+#include "AuthReg.h"
+#include "base/RunnersRegistry.h"
+#include "mgr/ActionPasswordList.h"
+#include "CachePeer.h"
+#include "CachePeerDomainList.h"
+#include "cache_cf.h"
+#include "ConfigParser.h"
+#include "CpuAffinityMap.h"
+#include "DiskIO/DiskIOModule.h"
+#include "eui/Config.h"
+#include "ExternalACL.h"
+#include "format/Format.h"
+#include "globals.h"
+#include "HttpHeaderTools.h"
+#include "HttpRequestMethod.h"
+#include "ident/Config.h"
+#include "ip/Intercept.h"
+#include "ip/QosConfig.h"
+#include "ip/tools.h"
+#include "ipc/Kids.h"
+#include "log/Config.h"
+#include "log/CustomLog.h"
+#include "Mem.h"
+#include "MemBuf.h"
+#include "mgr/Registration.h"
+#include "NeighborTypeDomainList.h"
+#include "Parsing.h"
+#include "PeerDigest.h"
+#include "RefreshPattern.h"
+#include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidString.h"
+#include "ssl/ProxyCerts.h"
+#include "Store.h"
+#include "StoreFileSystem.h"
+#include "SwapDir.h"
+#include "wordlist.h"
+#include "neighbors.h"
+#include "tools.h"
+/* wccp2 has its own conditional definitions */
+#include "wccp2.h"
 #if USE_ADAPTATION
 #include "adaptation/Config.h"
 #endif
@@ -46,7 +89,6 @@
 #if USE_ECAP
 #include "adaptation/ecap/Config.h"
 #endif
-#include "anyp/PortCfg.h"
 #if USE_SSL
 #include "ssl/support.h"
 #include "ssl/Config.h"
@@ -55,39 +97,33 @@
 #include "auth/Config.h"
 #include "auth/Scheme.h"
 #endif
-#include "ConfigParser.h"
-#include "CpuAffinityMap.h"
-#include "DiskIO/DiskIOModule.h"
-#include "eui/Config.h"
 #if USE_SQUID_ESI
 #include "esi/Parser.h"
 #endif
-#include "format/Format.h"
-#include "HttpRequestMethod.h"
-#include "ident/Config.h"
-#include "ip/Intercept.h"
-#include "ip/QosConfig.h"
-#include "ip/tools.h"
-#include "log/Config.h"
-#include "MemBuf.h"
-#include "mgr/Registration.h"
-#include "Parsing.h"
-#include "rfc1738.h"
 #if SQUID_SNMP
 #include "snmp.h"
 #endif
-#include "Store.h"
-#include "StoreFileSystem.h"
-#include "SwapDir.h"
-#include "wordlist.h"
-#include "ipc/Kids.h"
 
 #if HAVE_GLOB_H
 #include <glob.h>
 #endif
-
 #if HAVE_LIMITS_H
 #include <limits>
+#endif
+#if HAVE_LIST
+#include <list>
+#endif
+#if HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#if HAVE_PWD_H
+#include <pwd.h>
+#endif
+#if HAVE_GRP_H
+#include <grp.h>
+#endif
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
 #endif
 
 #if USE_SSL
@@ -121,7 +157,9 @@ static void dump_ecap_service_type(StoreEntry *, const char *, const Adaptation:
 static void free_ecap_service_type(Adaptation::Ecap::Config *);
 #endif
 
-CBDATA_TYPE(peer);
+static peer_t parseNeighborType(const char *s);
+
+CBDATA_TYPE(CachePeer);
 
 static const char *const T_MILLISECOND_STR = "millisecond";
 static const char *const T_SECOND_STR = "second";
@@ -141,20 +179,21 @@ static const char *const B_GBYTES_STR = "GB";
 
 static const char *const list_sep = ", \t\n\r";
 
-static void parse_access_log(customlog ** customlog_definitions);
-static int check_null_access_log(customlog *customlog_definitions);
-static void dump_access_log(StoreEntry * entry, const char *name, customlog * definitions);
-static void free_access_log(customlog ** definitions);
+static void parse_access_log(CustomLog ** customlog_definitions);
+static int check_null_access_log(CustomLog *customlog_definitions);
+static void dump_access_log(StoreEntry * entry, const char *name, CustomLog * definitions);
+static void free_access_log(CustomLog ** definitions);
 
 static void update_maxobjsize(void);
 static void configDoConfigure(void);
-static void parse_refreshpattern(refresh_t **);
+static void parse_refreshpattern(RefreshPattern **);
 static uint64_t parseTimeUnits(const char *unit,  bool allowMsec);
 static void parseTimeLine(time_msec_t * tptr, const char *units, bool allowMsec);
 static void parse_u_short(unsigned short * var);
 static void parse_string(char **);
 static void default_all(void);
 static void defaults_if_none(void);
+static void defaults_postscriptum(void);
 static int parse_line(char *);
 static void parse_obsolete(const char *);
 static void parseBytesLine(size_t * bptr, const char *units);
@@ -177,9 +216,12 @@ static void dump_http_header_replace(StoreEntry * entry, const char *name, const
 static void parse_http_header_replace(HeaderManglers **manglers);
 #define free_http_header_replace free_HeaderManglers
 #endif
-static void parse_denyinfo(acl_deny_info_list ** var);
-static void dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var);
-static void free_denyinfo(acl_deny_info_list ** var);
+static void dump_HeaderWithAclList(StoreEntry * entry, const char *name, HeaderWithAclList *headers);
+static void parse_HeaderWithAclList(HeaderWithAclList **header);
+static void free_HeaderWithAclList(HeaderWithAclList **header);
+static void parse_denyinfo(AclDenyInfoList ** var);
+static void dump_denyinfo(StoreEntry * entry, const char *name, AclDenyInfoList * var);
+static void free_denyinfo(AclDenyInfoList ** var);
 
 #if USE_WCCPv2
 static void parse_IpAddress_list(Ip::Address_list **);
@@ -194,6 +236,18 @@ static void parsePortCfg(AnyP::PortCfg **, const char *protocol);
 #define parse_PortCfg(l) parsePortCfg((l), token)
 static void dump_PortCfg(StoreEntry *, const char *, const AnyP::PortCfg *);
 static void free_PortCfg(AnyP::PortCfg **);
+
+#if USE_SSL
+static void parse_sslproxy_cert_sign(sslproxy_cert_sign **cert_sign);
+static void dump_sslproxy_cert_sign(StoreEntry *entry, const char *name, sslproxy_cert_sign *cert_sign);
+static void free_sslproxy_cert_sign(sslproxy_cert_sign **cert_sign);
+static void parse_sslproxy_cert_adapt(sslproxy_cert_adapt **cert_adapt);
+static void dump_sslproxy_cert_adapt(StoreEntry *entry, const char *name, sslproxy_cert_adapt *cert_adapt);
+static void free_sslproxy_cert_adapt(sslproxy_cert_adapt **cert_adapt);
+static void parse_sslproxy_ssl_bump(acl_access **ssl_bump);
+static void dump_sslproxy_ssl_bump(StoreEntry *entry, const char *name, acl_access *ssl_bump);
+static void free_sslproxy_ssl_bump(acl_access **ssl_bump);
+#endif /* USE_SSL */
 
 static void parse_b_size_t(size_t * var);
 static void parse_b_int64_t(int64_t * var);
@@ -246,14 +300,10 @@ update_maxobjsize(void)
 static void
 SetConfigFilename(char const *file_name, bool is_pipe)
 {
-    cfg_filename = file_name;
-
-    char const *token;
-
     if (is_pipe)
         cfg_filename = file_name + 1;
-    else if ((token = strrchr(cfg_filename, '/')))
-        cfg_filename = token + 1;
+    else
+        cfg_filename = file_name;
 }
 
 static const char*
@@ -411,7 +461,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
     int err_count = 0;
     int is_pipe = 0;
 
-    debugs(3, 1, "Processing Configuration File: " << file_name << " (depth " << depth << ")");
+    debugs(3, DBG_IMPORTANT, "Processing Configuration File: " << file_name << " (depth " << depth << ")");
     if (depth > 16) {
         fatalf("WARNING: can't include %s: includes are nested too deeply (>16)!\n", file_name);
         return 1;
@@ -474,7 +524,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
                 if ((token = strchr(new_file_name, '"')))
                     *token = '\0';
 
-                cfg_filename = new_file_name;
+                SetConfigFilename(new_file_name, false);
             }
 
             config_lineno = new_lineno;
@@ -523,7 +573,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
             if (tmp_line_len >= 9 && strncmp(tmp_line, "include", 7) == 0 && xisspace(tmp_line[7])) {
                 err_count += parseManyConfigFiles(tmp_line + 8, depth + 1);
             } else if (!parse_line(tmp_line)) {
-                debugs(3, 0, HERE << cfg_filename << ":" << config_lineno << " unrecognized: '" << tmp_line << "'");
+                debugs(3, DBG_CRITICAL, HERE << cfg_filename << ":" << config_lineno << " unrecognized: '" << tmp_line << "'");
                 ++err_count;
             }
         }
@@ -544,7 +594,7 @@ parseOneConfigFile(const char *file_name, unsigned int depth)
         fclose(fp);
     }
 
-    cfg_filename = orig_cfg_filename;
+    SetConfigFilename(orig_cfg_filename, false);
     config_lineno = orig_config_lineno;
 
     xfree(tmp_line);
@@ -566,6 +616,8 @@ parseConfigFile(const char *file_name)
     err_count = parseOneConfigFile(file_name, 0);
 
     defaults_if_none();
+
+    defaults_postscriptum();
 
     /*
      * We must call configDoConfigure() before leave_suid() because
@@ -590,7 +642,6 @@ parseConfigFile(const char *file_name)
 
     return err_count;
 }
-
 
 static void
 configDoConfigure(void)
@@ -619,7 +670,7 @@ configDoConfigure(void)
 
 #if SIZEOF_OFF_T <= 4
     if (Config.Store.maxObjectSize > 0x7FFF0000) {
-        debugs(3, 0, "WARNING: This Squid binary can not handle files larger than 2GB. Limiting maximum_object_size to just below 2GB");
+        debugs(3, DBG_CRITICAL, "WARNING: This Squid binary can not handle files larger than 2GB. Limiting maximum_object_size to just below 2GB");
         Config.Store.maxObjectSize = 0x7FFF0000;
     }
 #endif
@@ -628,7 +679,7 @@ configDoConfigure(void)
         (void) 0;
     else if (Store::Root().maxSize() < Config.memMaxSize)
         /* This is bogus. folk with NULL caches will want this */
-        debugs(3, 0, "WARNING cache_mem is larger than total disk cache space!");
+        debugs(3, DBG_CRITICAL, "WARNING cache_mem is larger than total disk cache space!");
 
     if (Config.Announce.period > 0) {
         Config.onoff.announce = 1;
@@ -724,13 +775,13 @@ configDoConfigure(void)
 #if USE_HTTP_VIOLATIONS
 
     {
-        const refresh_t *R;
+        const RefreshPattern *R;
 
         for (R = Config.Refresh; R; R = R->next) {
             if (!R->flags.override_expire)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'override-expire' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'override-expire' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -739,7 +790,7 @@ configDoConfigure(void)
             if (!R->flags.override_lastmod)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'override-lastmod' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'override-lastmod' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -748,7 +799,7 @@ configDoConfigure(void)
             if (!R->flags.reload_into_ims)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'reload-into-ims' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'reload-into-ims' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -757,7 +808,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_reload)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'ignore-reload' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-reload' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -766,7 +817,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_no_store)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'ignore-no-store' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-no-store' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -774,7 +825,7 @@ configDoConfigure(void)
         for (R = Config.Refresh; R; R = R->next) {
             if (!R->flags.ignore_must_revalidate)
                 continue;
-            debugs(22, 1, "WARNING: use of 'ignore-must-revalidate' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-must-revalidate' in 'refresh_pattern' violates HTTP");
             break;
         }
 
@@ -782,7 +833,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_private)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'ignore-private' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-private' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -791,7 +842,7 @@ configDoConfigure(void)
             if (!R->flags.ignore_auth)
                 continue;
 
-            debugs(22, 1, "WARNING: use of 'ignore-auth' in 'refresh_pattern' violates HTTP");
+            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-auth' in 'refresh_pattern' violates HTTP");
 
             break;
         }
@@ -803,7 +854,7 @@ configDoConfigure(void)
 #else
 
     if (!Config.onoff.via)
-        debugs(22, 1, "WARNING: HTTP requires the use of Via");
+        debugs(22, DBG_IMPORTANT, "WARNING: HTTP requires the use of Via");
 
 #endif
 
@@ -870,40 +921,28 @@ configDoConfigure(void)
     HttpRequestMethod::Configure(Config);
 #if USE_SSL
 
-    debugs(3, 1, "Initializing https proxy context");
+    debugs(3, DBG_IMPORTANT, "Initializing https proxy context");
 
     Config.ssl_client.sslContext = sslCreateClientContext(Config.ssl_client.cert, Config.ssl_client.key, Config.ssl_client.version, Config.ssl_client.cipher, Config.ssl_client.options, Config.ssl_client.flags, Config.ssl_client.cafile, Config.ssl_client.capath, Config.ssl_client.crlfile);
 
-    for (peer *p = Config.peers; p != NULL; p = p->next) {
+    for (CachePeer *p = Config.peers; p != NULL; p = p->next) {
         if (p->use_ssl) {
-            debugs(3, 1, "Initializing cache_peer " << p->name << " SSL context");
+            debugs(3, DBG_IMPORTANT, "Initializing cache_peer " << p->name << " SSL context");
             p->sslContext = sslCreateClientContext(p->sslcert, p->sslkey, p->sslversion, p->sslcipher, p->ssloptions, p->sslflags, p->sslcafile, p->sslcapath, p->sslcrlfile);
         }
     }
 
     for (AnyP::PortCfg *s = Config.Sockaddr.http; s != NULL; s = s->next) {
-        if (!s->cert && !s->key)
+        if (!s->sslBump)
             continue;
 
-        debugs(3, 1, "Initializing http_port " << s->s << " SSL context");
-
-        s->staticSslContext.reset(
-            sslCreateServerContext(s->cert, s->key,
-                                   s->version, s->cipher, s->options, s->sslflags, s->clientca,
-                                   s->cafile, s->capath, s->crlfile, s->dhfile,
-                                   s->sslContextSessionId));
-
-        Ssl::readCertChainAndPrivateKeyFromFiles(s->signingCert, s->signPkey, s->certsToChain, s->cert, s->key);
+        debugs(3, DBG_IMPORTANT, "Initializing http_port " << s->s << " SSL context");
+        s->configureSslServerContext();
     }
 
     for (AnyP::PortCfg *s = Config.Sockaddr.https; s != NULL; s = s->next) {
-        debugs(3, 1, "Initializing https_port " << s->s << " SSL context");
-
-        s->staticSslContext.reset(
-            sslCreateServerContext(s->cert, s->key,
-                                   s->version, s->cipher, s->options, s->sslflags, s->clientca,
-                                   s->cafile, s->capath, s->crlfile, s->dhfile,
-                                   s->sslContextSessionId));
+        debugs(3, DBG_IMPORTANT, "Initializing https_port " << s->s << " SSL context");
+        s->configureSslServerContext();
     }
 
 #endif
@@ -976,13 +1015,19 @@ parseTimeLine(time_msec_t * tptr, const char *units,  bool allowMsec)
     if (0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debugs(3, 0, "WARNING: No units on '" <<
+        debugs(3, DBG_CRITICAL, "WARNING: No units on '" <<
                config_input_line << "', assuming " <<
                d << " " << units  );
     else if ((m = parseTimeUnits(token, allowMsec)) == 0)
         self_destruct();
 
     *tptr = static_cast<time_msec_t>(m * d);
+
+    if (static_cast<double>(*tptr) * 2 != m * d * 2) {
+        debugs(3, DBG_CRITICAL, "ERROR: Invalid value '" <<
+               d << " " << token << ": integer overflow (time_msec_t).");
+        self_destruct();
+    }
 }
 
 static uint64_t
@@ -1018,7 +1063,7 @@ parseTimeUnits(const char *unit, bool allowMsec)
     if (!strncasecmp(unit, T_DECADE_STR, strlen(T_DECADE_STR)))
         return static_cast<uint64_t>(86400 * 1000 * 365.2522 * 10);
 
-    debugs(3, 1, "parseTimeUnits: unknown time unit '" << unit << "'");
+    debugs(3, DBG_IMPORTANT, "parseTimeUnits: unknown time unit '" << unit << "'");
 
     return 0;
 }
@@ -1053,7 +1098,7 @@ parseBytesLine64(int64_t * bptr, const char *units)
     if (0.0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debugs(3, 0, "WARNING: No units on '" <<
+        debugs(3, DBG_CRITICAL, "WARNING: No units on '" <<
                config_input_line << "', assuming " <<
                d << " " <<  units  );
     else if ((m = parseBytesUnits(token)) == 0) {
@@ -1063,10 +1108,12 @@ parseBytesLine64(int64_t * bptr, const char *units)
 
     *bptr = static_cast<int64_t>(m * d / u);
 
-    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+    if (static_cast<double>(*bptr) * 2 != (m * d / u) * 2) {
+        debugs(3, DBG_CRITICAL, "ERROR: Invalid value '" <<
+               d << " " << token << ": integer overflow (int64_t).");
         self_destruct();
+    }
 }
-
 
 static void
 parseBytesLine(size_t * bptr, const char *units)
@@ -1098,7 +1145,7 @@ parseBytesLine(size_t * bptr, const char *units)
     if (0.0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debugs(3, 0, "WARNING: No units on '" <<
+        debugs(3, DBG_CRITICAL, "WARNING: No units on '" <<
                config_input_line << "', assuming " <<
                d << " " <<  units  );
     else if ((m = parseBytesUnits(token)) == 0) {
@@ -1108,8 +1155,11 @@ parseBytesLine(size_t * bptr, const char *units)
 
     *bptr = static_cast<size_t>(m * d / u);
 
-    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+    if (static_cast<double>(*bptr) * 2 != (m * d / u) * 2) {
+        debugs(3, DBG_CRITICAL, "ERROR: Invalid value '" <<
+               d << " " << token << ": integer overflow (size_t).");
         self_destruct();
+    }
 }
 
 #if !USE_DNSHELPER
@@ -1143,7 +1193,7 @@ parseBytesLineSigned(ssize_t * bptr, const char *units)
     if (0.0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL)
-        debugs(3, 0, "WARNING: No units on '" <<
+        debugs(3, DBG_CRITICAL, "WARNING: No units on '" <<
                config_input_line << "', assuming " <<
                d << " " <<  units  );
     else if ((m = parseBytesUnits(token)) == 0) {
@@ -1151,10 +1201,13 @@ parseBytesLineSigned(ssize_t * bptr, const char *units)
         return;
     }
 
-    *bptr = static_cast<size_t>(m * d / u);
+    *bptr = static_cast<ssize_t>(m * d / u);
 
-    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+    if (static_cast<double>(*bptr) * 2 != (m * d / u) * 2) {
+        debugs(3, DBG_CRITICAL, "ERROR: Invalid value '" <<
+               d << " " << token << ": integer overflow (ssize_t).");
         self_destruct();
+    }
 }
 #endif
 
@@ -1191,7 +1244,7 @@ static void parseBytesOptionValue(size_t * bptr, const char *units, char const *
     }
 
     *bptr = static_cast<size_t>(m * d / u);
-    if (static_cast<double>(*bptr) * 2 != m * d / u * 2)
+    if (static_cast<double>(*bptr) * 2 != (m * d / u) * 2)
         self_destruct();
 }
 #endif
@@ -1329,13 +1382,13 @@ free_address(Ip::Address *addr)
     addr->SetEmpty();
 }
 
-CBDATA_TYPE(acl_address);
+CBDATA_TYPE(AclAddress);
 
 static void
-dump_acl_address(StoreEntry * entry, const char *name, acl_address * head)
+dump_acl_address(StoreEntry * entry, const char *name, AclAddress * head)
 {
     char buf[MAX_IPSTRLEN];
-    acl_address *l;
+    AclAddress *l;
 
     for (l = head; l; l = l->next) {
         if (!l->addr.IsAnyAddr())
@@ -1352,17 +1405,17 @@ dump_acl_address(StoreEntry * entry, const char *name, acl_address * head)
 static void
 freed_acl_address(void *data)
 {
-    acl_address *l = static_cast<acl_address *>(data);
+    AclAddress *l = static_cast<AclAddress *>(data);
     aclDestroyAclList(&l->aclList);
 }
 
 static void
-parse_acl_address(acl_address ** head)
+parse_acl_address(AclAddress ** head)
 {
-    acl_address *l;
-    acl_address **tail = head;	/* sane name below */
-    CBDATA_INIT_TYPE_FREECB(acl_address, freed_acl_address);
-    l = cbdataAlloc(acl_address);
+    AclAddress *l;
+    AclAddress **tail = head;	/* sane name below */
+    CBDATA_INIT_TYPE_FREECB(AclAddress, freed_acl_address);
+    l = cbdataAlloc(AclAddress);
     parse_address(&l->addr);
     aclParseAclList(LegacyParser, &l->aclList);
 
@@ -1373,10 +1426,10 @@ parse_acl_address(acl_address ** head)
 }
 
 static void
-free_acl_address(acl_address ** head)
+free_acl_address(AclAddress ** head)
 {
     while (*head) {
-        acl_address *l = *head;
+        AclAddress *l = *head;
         *head = l->next;
         cbdataFree(l);
     }
@@ -1523,12 +1576,12 @@ free_acl_nfmark(acl_nfmark ** head)
 }
 #endif /* SO_MARK */
 
-CBDATA_TYPE(acl_size_t);
+CBDATA_TYPE(AclSizeLimit);
 
 static void
-dump_acl_b_size_t(StoreEntry * entry, const char *name, acl_size_t * head)
+dump_acl_b_size_t(StoreEntry * entry, const char *name, AclSizeLimit * head)
 {
-    acl_size_t *l;
+    AclSizeLimit *l;
 
     for (l = head; l; l = l->next) {
         if (l->size != -1)
@@ -1545,19 +1598,19 @@ dump_acl_b_size_t(StoreEntry * entry, const char *name, acl_size_t * head)
 static void
 freed_acl_b_size_t(void *data)
 {
-    acl_size_t *l = static_cast<acl_size_t *>(data);
+    AclSizeLimit *l = static_cast<AclSizeLimit *>(data);
     aclDestroyAclList(&l->aclList);
 }
 
 static void
-parse_acl_b_size_t(acl_size_t ** head)
+parse_acl_b_size_t(AclSizeLimit ** head)
 {
-    acl_size_t *l;
-    acl_size_t **tail = head;	/* sane name below */
+    AclSizeLimit *l;
+    AclSizeLimit **tail = head;	/* sane name below */
 
-    CBDATA_INIT_TYPE_FREECB(acl_size_t, freed_acl_b_size_t);
+    CBDATA_INIT_TYPE_FREECB(AclSizeLimit, freed_acl_b_size_t);
 
-    l = cbdataAlloc(acl_size_t);
+    l = cbdataAlloc(AclSizeLimit);
 
     parse_b_int64_t(&l->size);
 
@@ -1570,10 +1623,10 @@ parse_acl_b_size_t(acl_size_t ** head)
 }
 
 static void
-free_acl_b_size_t(acl_size_t ** head)
+free_acl_b_size_t(AclSizeLimit ** head)
 {
     while (*head) {
-        acl_size_t *l = *head;
+        AclSizeLimit *l = *head;
         *head = l->next;
         l->next = NULL;
         cbdataFree(l);
@@ -1688,15 +1741,15 @@ parse_http_header_access(HeaderManglers **pm)
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
-        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(3, 0, "parse_http_header_access: missing header name.");
+        debugs(3, DBG_CRITICAL, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, DBG_CRITICAL, "parse_http_header_access: missing header name.");
         return;
     }
 
     if (!*pm)
         *pm = new HeaderManglers;
     HeaderManglers *manglers = *pm;
-    header_mangler *mangler = manglers->track(t);
+    headerMangler *mangler = manglers->track(t);
     assert(mangler);
     parse_acl_access(&mangler->access_list);
 }
@@ -1724,8 +1777,8 @@ parse_http_header_replace(HeaderManglers **pm)
     char *t = NULL;
 
     if ((t = strtok(NULL, w_space)) == NULL) {
-        debugs(3, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(3, 0, "parse_http_header_replace: missing header name.");
+        debugs(3, DBG_CRITICAL, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(3, DBG_CRITICAL, "parse_http_header_replace: missing header name.");
         return;
     }
 
@@ -1850,8 +1903,10 @@ parse_cachedir(SquidConfig::_cacheSwap * swap)
 
     fs = find_fstype(type_str);
 
-    if (fs < 0)
-        self_destruct();
+    if (fs < 0) {
+        debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "ERROR: This proxy does not support the '" << type_str << "' cache type. Ignoring.");
+        return;
+    }
 
     /* reconfigure existing dir */
 
@@ -1869,7 +1924,7 @@ parse_cachedir(SquidConfig::_cacheSwap * swap)
             sd = dynamic_cast<SwapDir *>(swap->swapDirs[i].getRaw());
 
             if (strcmp(sd->type(), StoreFileSystem::FileSystems().items[fs]->type()) != 0) {
-                debugs(3, 0, "ERROR: Can't change type of existing cache_dir " <<
+                debugs(3, DBG_CRITICAL, "ERROR: Can't change type of existing cache_dir " <<
                        sd->type() << " " << sd->path << " to " << type_str << ". Restart required");
                 return;
             }
@@ -1934,10 +1989,10 @@ peer_type_str(const peer_t type)
 }
 
 static void
-dump_peer(StoreEntry * entry, const char *name, peer * p)
+dump_peer(StoreEntry * entry, const char *name, CachePeer * p)
 {
-    domain_ping *d;
-    domain_type *t;
+    CachePeerDomainList *d;
+    NeighborTypeDomainList *t;
     LOCAL_ARRAY(char, xname, 128);
 
     while (p != NULL) {
@@ -2034,12 +2089,12 @@ GetUdpService(void)
 }
 
 static void
-parse_peer(peer ** head)
+parse_peer(CachePeer ** head)
 {
     char *token = NULL;
-    peer *p;
-    CBDATA_INIT_TYPE_FREECB(peer, peerDestroy);
-    p = cbdataAlloc(peer);
+    CachePeer *p;
+    CBDATA_INIT_TYPE_FREECB(CachePeer, peerDestroy);
+    p = cbdataAlloc(CachePeer);
     p->http_port = CACHE_HTTP_PORT;
     p->icp.port = CACHE_ICP_PORT;
     p->weight = 1;
@@ -2233,7 +2288,7 @@ parse_peer(peer ** head)
             safe_free(p->sslkey);
             p->sslkey = xstrdup(token + 7);
         } else if (strncmp(token, "sslversion=", 11) == 0) {
-            p->sslversion = atoi(token + 11);
+            p->sslversion = xatoi(token + 11);
         } else if (strncmp(token, "ssloptions=", 11) == 0) {
             safe_free(p->ssloptions);
             p->ssloptions = xstrdup(token + 11);
@@ -2272,7 +2327,7 @@ parse_peer(peer ** head)
         } else if (strcmp(token, "connection-auth=auto") == 0) {
             p->connection_auth = 2;
         } else {
-            debugs(3, 0, "parse_peer: token='" << token << "'");
+            debugs(3, DBG_CRITICAL, "parse_peer: token='" << token << "'");
             self_destruct();
         }
     }
@@ -2313,9 +2368,9 @@ parse_peer(peer ** head)
 }
 
 static void
-free_peer(peer ** P)
+free_peer(CachePeer ** P)
 {
-    peer *p;
+    CachePeer *p;
 
     while ((p = *P) != NULL) {
         *P = p->next;
@@ -2331,7 +2386,7 @@ free_peer(peer ** P)
 }
 
 static void
-dump_cachemgrpasswd(StoreEntry * entry, const char *name, cachemgr_passwd * list)
+dump_cachemgrpasswd(StoreEntry * entry, const char *name, Mgr::ActionPasswordList * list)
 {
     wordlist *w;
 
@@ -2351,15 +2406,15 @@ dump_cachemgrpasswd(StoreEntry * entry, const char *name, cachemgr_passwd * list
 }
 
 static void
-parse_cachemgrpasswd(cachemgr_passwd ** head)
+parse_cachemgrpasswd(Mgr::ActionPasswordList ** head)
 {
     char *passwd = NULL;
     wordlist *actions = NULL;
-    cachemgr_passwd *p;
-    cachemgr_passwd **P;
+    Mgr::ActionPasswordList *p;
+    Mgr::ActionPasswordList **P;
     parse_string(&passwd);
     parse_wordlist(&actions);
-    p = static_cast<cachemgr_passwd *>(xcalloc(1, sizeof(cachemgr_passwd)));
+    p = new Mgr::ActionPasswordList;
     p->passwd = passwd;
     p->actions = actions;
 
@@ -2368,7 +2423,7 @@ parse_cachemgrpasswd(cachemgr_passwd ** head)
          * See if any of the actions from this line already have a
          * password from previous lines.  The password checking
          * routines in cache_manager.c take the the password from
-         * the first cachemgr_passwd struct that contains the
+         * the first Mgr::ActionPasswordList that contains the
          * requested action.  Thus, we should warn users who might
          * think they can have two passwords for the same action.
          */
@@ -2380,7 +2435,7 @@ parse_cachemgrpasswd(cachemgr_passwd ** head)
                 if (strcmp(w->key, u->key))
                     continue;
 
-                debugs(0, 0, "WARNING: action '" << u->key << "' (line " << config_lineno << ") already has a password");
+                debugs(0, DBG_CRITICAL, "WARNING: action '" << u->key << "' (line " << config_lineno << ") already has a password");
             }
         }
     }
@@ -2389,9 +2444,9 @@ parse_cachemgrpasswd(cachemgr_passwd ** head)
 }
 
 static void
-free_cachemgrpasswd(cachemgr_passwd ** head)
+free_cachemgrpasswd(Mgr::ActionPasswordList ** head)
 {
-    cachemgr_passwd *p;
+    Mgr::ActionPasswordList *p;
 
     while ((p = *head) != NULL) {
         *head = p->next;
@@ -2402,9 +2457,9 @@ free_cachemgrpasswd(cachemgr_passwd ** head)
 }
 
 static void
-dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var)
+dump_denyinfo(StoreEntry * entry, const char *name, AclDenyInfoList * var)
 {
-    acl_name_list *a;
+    AclNameList *a;
 
     while (var != NULL) {
         storeAppendPrintf(entry, "%s %s", name, var->err_page_name);
@@ -2419,18 +2474,18 @@ dump_denyinfo(StoreEntry * entry, const char *name, acl_deny_info_list * var)
 }
 
 static void
-parse_denyinfo(acl_deny_info_list ** var)
+parse_denyinfo(AclDenyInfoList ** var)
 {
     aclParseDenyInfoLine(var);
 }
 
 void
-free_denyinfo(acl_deny_info_list ** list)
+free_denyinfo(AclDenyInfoList ** list)
 {
-    acl_deny_info_list *a = NULL;
-    acl_deny_info_list *a_next = NULL;
-    acl_name_list *l = NULL;
-    acl_name_list *l_next = NULL;
+    AclDenyInfoList *a = NULL;
+    AclDenyInfoList *a_next = NULL;
+    AclNameList *l = NULL;
+    AclNameList *l_next = NULL;
 
     for (a = *list; a; a = a_next) {
         for (l = a->acl_list; l; l = l_next) {
@@ -2451,13 +2506,13 @@ static void
 parse_peer_access(void)
 {
     char *host = NULL;
-    peer *p;
+    CachePeer *p;
 
     if (!(host = strtok(NULL, w_space)))
         self_destruct();
 
     if ((p = peerFindByName(host)) == NULL) {
-        debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
+        debugs(15, DBG_CRITICAL, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
         return;
     }
 
@@ -2474,20 +2529,20 @@ parse_hostdomain(void)
         self_destruct();
 
     while ((domain = strtok(NULL, list_sep))) {
-        domain_ping *l = NULL;
-        domain_ping **L = NULL;
-        peer *p;
+        CachePeerDomainList *l = NULL;
+        CachePeerDomainList **L = NULL;
+        CachePeer *p;
 
         if ((p = peerFindByName(host)) == NULL) {
-            debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
+            debugs(15, DBG_CRITICAL, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
             continue;
         }
 
-        l = static_cast<domain_ping *>(xcalloc(1, sizeof(domain_ping)));
-        l->do_ping = 1;
+        l = static_cast<CachePeerDomainList *>(xcalloc(1, sizeof(CachePeerDomainList)));
+        l->do_ping = true;
 
         if (*domain == '!') {	/* check for !.edu */
-            l->do_ping = 0;
+            l->do_ping = false;
             ++domain;
         }
 
@@ -2512,16 +2567,16 @@ parse_hostdomaintype(void)
         self_destruct();
 
     while ((domain = strtok(NULL, list_sep))) {
-        domain_type *l = NULL;
-        domain_type **L = NULL;
-        peer *p;
+        NeighborTypeDomainList *l = NULL;
+        NeighborTypeDomainList **L = NULL;
+        CachePeer *p;
 
         if ((p = peerFindByName(host)) == NULL) {
-            debugs(15, 0, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
+            debugs(15, DBG_CRITICAL, "" << cfg_filename << ", line " << config_lineno << ": No cache_peer '" << host << "'");
             return;
         }
 
-        l = static_cast<domain_type *>(xcalloc(1, sizeof(domain_type)));
+        l = static_cast<NeighborTypeDomainList *>(xcalloc(1, sizeof(NeighborTypeDomainList)));
         l->type = parseNeighborType(type);
         l->domain = xstrdup(domain);
 
@@ -2564,10 +2619,20 @@ parse_onoff(int *var)
     if (token == NULL)
         self_destruct();
 
-    if (!strcasecmp(token, "on") || !strcasecmp(token, "enable"))
+    if (!strcasecmp(token, "on")) {
         *var = 1;
-    else
+    } else if (!strcasecmp(token, "enable")) {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: 'enable' is deprecated. Please update to use 'on'.");
+        *var = 1;
+    } else if (!strcasecmp(token, "off")) {
         *var = 0;
+    } else if (!strcasecmp(token, "disable")) {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: 'disable' is deprecated. Please update to use 'off'.");
+        *var = 0;
+    } else {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "ERROR: Invalid option: Boolean options can only be 'on' or 'off'.");
+        self_destruct();
+    }
 }
 
 #define free_onoff free_int
@@ -2595,18 +2660,28 @@ parse_tristate(int *var)
     if (token == NULL)
         self_destruct();
 
-    if (!strcasecmp(token, "on") || !strcasecmp(token, "enable"))
+    if (!strcasecmp(token, "on")) {
         *var = 1;
-    else if (!strcasecmp(token, "warn"))
+    } else if (!strcasecmp(token, "enable")) {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: 'enable' is deprecated. Please update to use value 'on'.");
+        *var = 1;
+    } else if (!strcasecmp(token, "warn")) {
         *var = -1;
-    else
+    } else if (!strcasecmp(token, "off")) {
         *var = 0;
+    } else if (!strcasecmp(token, "disable")) {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: 'disable' is deprecated. Please update to use value 'off'.");
+        *var = 0;
+    } else {
+        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), "ERROR: Invalid option: Tristate options can only be 'on', 'off', or 'warn'.");
+        self_destruct();
+    }
 }
 
 #define free_tristate free_int
 
 static void
-dump_refreshpattern(StoreEntry * entry, const char *name, refresh_t * head)
+dump_refreshpattern(StoreEntry * entry, const char *name, RefreshPattern * head)
 {
     while (head != NULL) {
         storeAppendPrintf(entry, "%s%s %s %d %d%% %d",
@@ -2661,7 +2736,7 @@ dump_refreshpattern(StoreEntry * entry, const char *name, refresh_t * head)
 }
 
 static void
-parse_refreshpattern(refresh_t ** head)
+parse_refreshpattern(RefreshPattern ** head)
 {
     char *token;
     char *pattern;
@@ -2685,7 +2760,7 @@ parse_refreshpattern(refresh_t ** head)
 #endif
 
     int i;
-    refresh_t *t;
+    RefreshPattern *t;
     regex_t comp;
     int errcode;
     int flags = REG_EXTENDED | REG_NOSUB;
@@ -2724,7 +2799,7 @@ parse_refreshpattern(refresh_t ** head)
 
     min = (time_t) (i * 60);	/* convert minutes to seconds */
 
-    i = GetInteger();		/* token: pct */
+    i = GetPercentage();	/* token: pct */
 
     pct = (double) i / 100.0;
 
@@ -2749,7 +2824,7 @@ parse_refreshpattern(refresh_t ** head)
         } else if (!strcmp(token, "store-stale")) {
             store_stale = 1;
         } else if (!strncmp(token, "max-stale=", 10)) {
-            max_stale = atoi(token + 10);
+            max_stale = xatoi(token + 10);
 #if USE_HTTP_VIOLATIONS
 
         } else if (!strcmp(token, "override-expire"))
@@ -2777,20 +2852,20 @@ parse_refreshpattern(refresh_t ** head)
         } else if (!strcmp(token, "ignore-no-cache")) {
             debugs(22, DBG_PARSE_NOTE(2), "UPGRADE: refresh_pattern option 'ignore-no-cache' is obsolete. Remove it.");
         } else
-            debugs(22, 0, "refreshAddToList: Unknown option '" << pattern << "': " << token);
+            debugs(22, DBG_CRITICAL, "refreshAddToList: Unknown option '" << pattern << "': " << token);
     }
 
     if ((errcode = regcomp(&comp, pattern, flags)) != 0) {
         char errbuf[256];
         regerror(errcode, &comp, errbuf, sizeof errbuf);
-        debugs(22, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(22, 0, "refreshAddToList: Invalid regular expression '" << pattern << "': " << errbuf);
+        debugs(22, DBG_CRITICAL, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(22, DBG_CRITICAL, "refreshAddToList: Invalid regular expression '" << pattern << "': " << errbuf);
         return;
     }
 
     pct = pct < 0.0 ? 0.0 : pct;
     max = max < 0 ? 0 : max;
-    t = static_cast<refresh_t *>(xcalloc(1, sizeof(refresh_t)));
+    t = static_cast<RefreshPattern *>(xcalloc(1, sizeof(RefreshPattern)));
     t->pattern = (char *) xstrdup(pattern);
     t->compiled_pattern = comp;
     t->min = min;
@@ -2847,9 +2922,9 @@ parse_refreshpattern(refresh_t ** head)
 }
 
 static void
-free_refreshpattern(refresh_t ** head)
+free_refreshpattern(RefreshPattern ** head)
 {
-    refresh_t *t;
+    RefreshPattern *t;
 
     while ((t = *head) != NULL) {
         *head = t->next;
@@ -3190,8 +3265,10 @@ parse_uri_whitespace(int *var)
         *var = URI_WHITESPACE_ENCODE;
     else if (!strcasecmp(token, "chop"))
         *var = URI_WHITESPACE_CHOP;
-    else
+    else {
+        debugs(0, DBG_PARSE_NOTE(2), "ERROR: Invalid option '" << token << "': 'uri_whitespace' accepts 'strip', 'deny', 'allow', 'encode', and 'chop'.");
         self_destruct();
+    }
 }
 
 static void
@@ -3256,19 +3333,6 @@ dump_removalpolicy(StoreEntry * entry, const char *name, RemovalPolicySettings *
     storeAppendPrintf(entry, "\n");
 }
 
-void
-YesNoNone::configure(bool beSet)
-{
-    option = beSet ? +1 : -1;
-}
-
-YesNoNone::operator void*() const
-{
-    assert(option != 0); // must call configure() first
-    return option > 0 ? (void*)this : NULL;
-}
-
-
 inline void
 free_YesNoNone(YesNoNone *)
 {
@@ -3315,8 +3379,10 @@ parse_memcachemode(SquidConfig * config)
     } else if (strcmp(token, "never") == 0) {
         Config.onoff.memory_cache_first = 0;
         Config.onoff.memory_cache_disk = 0;
-    } else
+    } else {
+        debugs(0, DBG_PARSE_NOTE(2), "ERROR: Invalid option '" << token << "': 'memory_cache_mode' accepts 'always', 'disk', 'network', and 'never'.");
         self_destruct();
+    }
 }
 
 static void
@@ -3354,7 +3420,7 @@ parseNeighborType(const char *s)
     if (!strcasecmp(s, "multicast"))
         return PEER_MULTICAST;
 
-    debugs(15, 0, "WARNING: Unknown neighbor type: " << s);
+    debugs(15, DBG_CRITICAL, "WARNING: Unknown neighbor type: " << s);
 
     return PEER_SIBLING;
 }
@@ -3453,8 +3519,8 @@ parsePortSpecification(AnyP::PortCfg * s, char *token)
         *t = '\0';
         port = xatos(t + 1);
 
-    } else if ((port = strtol(token, &junk, 10)), !*junk) {
-        /* port */
+    } else if (strtol(token, &junk, 10) && !*junk) {
+        port = xatos(token);
         debugs(3, 3, s->protocol << "_port: found Listen on Port: " << port);
     } else {
         debugs(3, DBG_CRITICAL, s->protocol << "_port: missing Port: " << token);
@@ -3619,17 +3685,16 @@ parse_port_option(AnyP::PortCfg * s, char *token)
     } else if (strncmp(token, "tcpkeepalive=", 13) == 0) {
         char *t = token + 13;
         s->tcp_keepalive.enabled = 1;
-        s->tcp_keepalive.idle = atoi(t);
+        s->tcp_keepalive.idle = xatoui(t,',');
         t = strchr(t, ',');
         if (t) {
             ++t;
-            s->tcp_keepalive.interval = atoi(t);
+            s->tcp_keepalive.interval = xatoui(t,',');
             t = strchr(t, ',');
         }
         if (t) {
             ++t;
-            s->tcp_keepalive.timeout = atoi(t);
-            // t = strchr(t, ','); // not really needed, left in as documentation
+            s->tcp_keepalive.timeout = xatoui(t);
         }
 #if USE_SSL
     } else if (strcasecmp(token, "sslBump") == 0) {
@@ -3685,6 +3750,7 @@ parse_port_option(AnyP::PortCfg * s, char *token)
         parseBytesOptionValue(&s->dynamicCertMemCacheSize, B_BYTES_STR, token + 28);
 #endif
     } else {
+        debugs(3, DBG_CRITICAL, "FATAL: Unknown http(s)_port option '" << token << "'.");
         self_destruct();
     }
 }
@@ -3729,6 +3795,21 @@ parsePortCfg(AnyP::PortCfg ** head, const char *optionName)
     while ((token = strtok(NULL, w_space))) {
         parse_port_option(s, token);
     }
+
+#if USE_SSL
+    if (strcasecmp(protocol, "https") == 0) {
+        /* ssl-bump on https_port configuration requires either tproxy or intercept, and vice versa */
+        const bool hijacked = s->spoof_client_ip || s->intercepted;
+        if (s->sslBump && !hijacked) {
+            debugs(3, DBG_CRITICAL, "FATAL: ssl-bump on https_port requires tproxy/intercept which is missing.");
+            self_destruct();
+        }
+        if (hijacked && !s->sslBump) {
+            debugs(3, DBG_CRITICAL, "FATAL: tproxy/intercept on https_port requires ssl-bump which is missing.");
+            self_destruct();
+        }
+    }
+#endif
 
     if (Ip::EnableIpv6&IPV6_SPECIAL_SPLITSTACK && s->s.IsAnyAddr()) {
         // clone the port options from *s to *(s->next)
@@ -3929,11 +4010,11 @@ strtokFile(void)
 #include "AccessLogEntry.h"
 
 static void
-parse_access_log(customlog ** logs)
+parse_access_log(CustomLog ** logs)
 {
     const char *filename, *logdef_name;
 
-    customlog *cl = (customlog *)xcalloc(1, sizeof(*cl));
+    CustomLog *cl = (CustomLog *)xcalloc(1, sizeof(*cl));
 
     if ((filename = strtok(NULL, w_space)) == NULL) {
         self_destruct();
@@ -3972,7 +4053,7 @@ parse_access_log(customlog ** logs)
         cl->type = Log::Format::CLF_CUSTOM;
         cl->logFormat = lf;
     } else if (strcmp(logdef_name, "auto") == 0) {
-        debugs(0,0, "WARNING: Log format 'auto' no longer exists. Using 'squid' instead.");
+        debugs(0, DBG_CRITICAL, "WARNING: Log format 'auto' no longer exists. Using 'squid' instead.");
         cl->type = Log::Format::CLF_SQUID;
     } else if (strcmp(logdef_name, "squid") == 0) {
         cl->type = Log::Format::CLF_SQUID;
@@ -3989,7 +4070,7 @@ parse_access_log(customlog ** logs)
     } else if (strcmp(logdef_name, "referrer") == 0) {
         cl->type = Log::Format::CLF_REFERER;
     } else {
-        debugs(3, 0, "Log format '" << logdef_name << "' is not defined");
+        debugs(3, DBG_CRITICAL, "Log format '" << logdef_name << "' is not defined");
         self_destruct();
         return;
     }
@@ -4003,15 +4084,15 @@ parse_access_log(customlog ** logs)
 }
 
 static int
-check_null_access_log(customlog *customlog_definitions)
+check_null_access_log(CustomLog *customlog_definitions)
 {
     return customlog_definitions == NULL;
 }
 
 static void
-dump_access_log(StoreEntry * entry, const char *name, customlog * logs)
+dump_access_log(StoreEntry * entry, const char *name, CustomLog * logs)
 {
-    customlog *log;
+    CustomLog *log;
 
     for (log = logs; log; log = log->next) {
         storeAppendPrintf(entry, "%s ", name);
@@ -4063,10 +4144,10 @@ dump_access_log(StoreEntry * entry, const char *name, customlog * logs)
 }
 
 static void
-free_access_log(customlog ** definitions)
+free_access_log(CustomLog ** definitions)
 {
     while (*definitions) {
-        customlog *log = *definitions;
+        CustomLog *log = *definitions;
         *definitions = log->next;
 
         log->logFormat = NULL;
@@ -4197,7 +4278,6 @@ free_adaptation_meta_type(Adaptation::Config::MetaHeaders *)
 }
 #endif /* USE_ADAPTATION */
 
-
 #if ICAP_CLIENT
 
 static void
@@ -4221,7 +4301,7 @@ dump_icap_service_type(StoreEntry * entry, const char *name, const Adaptation::I
 static void
 parse_icap_class_type()
 {
-    debugs(93, 0, "WARNING: 'icap_class' is depricated. " <<
+    debugs(93, DBG_CRITICAL, "WARNING: 'icap_class' is depricated. " <<
            "Use 'adaptation_service_set' instead");
     Adaptation::Config::ParseServiceSet();
 }
@@ -4229,13 +4309,12 @@ parse_icap_class_type()
 static void
 parse_icap_access_type()
 {
-    debugs(93, 0, "WARNING: 'icap_access' is depricated. " <<
+    debugs(93, DBG_CRITICAL, "WARNING: 'icap_access' is depricated. " <<
            "Use 'adaptation_access' instead");
     Adaptation::Config::ParseAccess(LegacyParser);
 }
 
 #endif
-
 
 #if USE_ECAP
 
@@ -4271,7 +4350,7 @@ static void parse_icap_service_failure_limit(Adaptation::Icap::Config *cfg)
         return;
 
     if (strcmp(token,"in") != 0) {
-        debugs(3, 0, "expecting 'in' on'"  << config_input_line << "'");
+        debugs(3, DBG_CRITICAL, "expecting 'in' on'"  << config_input_line << "'");
         self_destruct();
     }
 
@@ -4286,7 +4365,7 @@ static void parse_icap_service_failure_limit(Adaptation::Icap::Config *cfg)
     if (0 == d)
         (void) 0;
     else if ((token = strtok(NULL, w_space)) == NULL) {
-        debugs(3, 0, "No time-units on '" << config_input_line << "'");
+        debugs(3, DBG_CRITICAL, "No time-units on '" << config_input_line << "'");
         self_destruct();
     } else if ((m = parseTimeUnits(token, false)) == 0)
         self_destruct();
@@ -4308,5 +4387,323 @@ static void free_icap_service_failure_limit(Adaptation::Icap::Config *cfg)
     cfg->oldest_service_failure = 0;
     cfg->service_failure_limit = 0;
 }
+#endif
+
+#if USE_SSL
+static void parse_sslproxy_cert_adapt(sslproxy_cert_adapt **cert_adapt)
+{
+    char *al;
+    sslproxy_cert_adapt *ca = (sslproxy_cert_adapt *) xcalloc(1, sizeof(sslproxy_cert_adapt));
+    if ((al = strtok(NULL, w_space)) == NULL) {
+        self_destruct();
+        return;
+    }
+
+    const char *param;
+    if ( char *s = strchr(al, '{')) {
+        *s = '\0'; // terminate the al string
+        ++s;
+        param = s;
+        s = strchr(s, '}');
+        if (!s) {
+            self_destruct();
+            return;
+        }
+        *s = '\0';
+    } else
+        param = NULL;
+
+    if (strcmp(al, Ssl::CertAdaptAlgorithmStr[Ssl::algSetValidAfter]) == 0) {
+        ca->alg = Ssl::algSetValidAfter;
+        ca->param = strdup("on");
+    } else if (strcmp(al, Ssl::CertAdaptAlgorithmStr[Ssl::algSetValidBefore]) == 0) {
+        ca->alg = Ssl::algSetValidBefore;
+        ca->param = strdup("on");
+    } else if (strcmp(al, Ssl::CertAdaptAlgorithmStr[Ssl::algSetCommonName]) == 0) {
+        ca->alg = Ssl::algSetCommonName;
+        if (param) {
+            if (strlen(param) > 64) {
+                debugs(3, DBG_CRITICAL, "FATAL: sslproxy_cert_adapt: setCommonName{" <<param << "} : using common name longer than 64 bytes is not supported");
+                self_destruct();
+                return;
+            }
+            ca->param = strdup(param);
+        }
+    } else {
+        debugs(3, DBG_CRITICAL, "FATAL: sslproxy_cert_adapt: unknown cert adaptation algorithm: " << al);
+        self_destruct();
+        return;
+    }
+
+    aclParseAclList(LegacyParser, &ca->aclList);
+
+    while (*cert_adapt)
+        cert_adapt = &(*cert_adapt)->next;
+
+    *cert_adapt = ca;
+}
+
+static void dump_sslproxy_cert_adapt(StoreEntry *entry, const char *name, sslproxy_cert_adapt *cert_adapt)
+{
+    for (sslproxy_cert_adapt *ca = cert_adapt; ca != NULL; ca = ca->next) {
+        storeAppendPrintf(entry, "%s ", name);
+        storeAppendPrintf(entry, "%s{%s} ", Ssl::sslCertAdaptAlgoritm(ca->alg), ca->param);
+        if (ca->aclList)
+            dump_acl_list(entry, ca->aclList);
+        storeAppendPrintf(entry, "\n");
+    }
+}
+
+static void free_sslproxy_cert_adapt(sslproxy_cert_adapt **cert_adapt)
+{
+    while (*cert_adapt) {
+        sslproxy_cert_adapt *ca = *cert_adapt;
+        *cert_adapt = ca->next;
+        safe_free(ca->param);
+
+        if (ca->aclList)
+            aclDestroyAclList(&ca->aclList);
+
+        safe_free(ca);
+    }
+}
+
+static void parse_sslproxy_cert_sign(sslproxy_cert_sign **cert_sign)
+{
+    char *al;
+    sslproxy_cert_sign *cs = (sslproxy_cert_sign *) xcalloc(1, sizeof(sslproxy_cert_sign));
+    if ((al = strtok(NULL, w_space)) == NULL) {
+        self_destruct();
+        return;
+    }
+
+    if (strcmp(al, Ssl::CertSignAlgorithmStr[Ssl::algSignTrusted]) == 0)
+        cs->alg = Ssl::algSignTrusted;
+    else if (strcmp(al, Ssl::CertSignAlgorithmStr[Ssl::algSignUntrusted]) == 0)
+        cs->alg = Ssl::algSignUntrusted;
+    else if (strcmp(al, Ssl::CertSignAlgorithmStr[Ssl::algSignSelf]) == 0)
+        cs->alg = Ssl::algSignSelf;
+    else {
+        debugs(3, DBG_CRITICAL, "FATAL: sslproxy_cert_sign: unknown cert signing algorithm: " << al);
+        self_destruct();
+        return;
+    }
+
+    aclParseAclList(LegacyParser, &cs->aclList);
+
+    while (*cert_sign)
+        cert_sign = &(*cert_sign)->next;
+
+    *cert_sign = cs;
+}
+
+static void dump_sslproxy_cert_sign(StoreEntry *entry, const char *name, sslproxy_cert_sign *cert_sign)
+{
+    sslproxy_cert_sign *cs;
+    for (cs = cert_sign; cs != NULL; cs = cs->next) {
+        storeAppendPrintf(entry, "%s ", name);
+        storeAppendPrintf(entry, "%s ", Ssl::certSignAlgorithm(cs->alg));
+        if (cs->aclList)
+            dump_acl_list(entry, cs->aclList);
+        storeAppendPrintf(entry, "\n");
+    }
+}
+
+static void free_sslproxy_cert_sign(sslproxy_cert_sign **cert_sign)
+{
+    while (*cert_sign) {
+        sslproxy_cert_sign *cs = *cert_sign;
+        *cert_sign = cs->next;
+
+        if (cs->aclList)
+            aclDestroyAclList(&cs->aclList);
+
+        safe_free(cs);
+    }
+}
+
+class sslBumpCfgRr: public ::RegisteredRunner
+{
+public:
+    static Ssl::BumpMode lastDeprecatedRule;
+    /* RegisteredRunner API */
+    virtual void run(const RunnerRegistry &);
+};
+
+Ssl::BumpMode sslBumpCfgRr::lastDeprecatedRule = Ssl::bumpEnd;
+
+RunnerRegistrationEntry(rrFinalizeConfig, sslBumpCfgRr);
+
+void sslBumpCfgRr::run(const RunnerRegistry &r)
+{
+    if (lastDeprecatedRule != Ssl::bumpEnd) {
+        assert( lastDeprecatedRule == Ssl::bumpClientFirst || lastDeprecatedRule == Ssl::bumpNone);
+        static char buf[1024];
+        if (lastDeprecatedRule == Ssl::bumpClientFirst) {
+            strcpy(buf, "ssl_bump deny all");
+            debugs(3, DBG_CRITICAL, "WARNING: auto-converting deprecated implicit "
+                   "\"ssl_bump deny all\" to \"ssl_bump none all\". New ssl_bump configurations "
+                   "must not use implicit rules. Update your ssl_bump rules.");
+        } else {
+            strcpy(buf, "ssl_bump allow all");
+            debugs(3, DBG_CRITICAL, "SECURITY NOTICE: auto-converting deprecated implicit "
+                   "\"ssl_bump allow all\" to \"ssl_bump client-first all\" which is usually "
+                   "inferior to the newer server-first bumping mode. New ssl_bump"
+                   " configurations must not use implicit rules. Update your ssl_bump rules.");
+        }
+        parse_line(buf);
+    }
+}
+
+static void parse_sslproxy_ssl_bump(acl_access **ssl_bump)
+{
+    typedef const char *BumpCfgStyle;
+    BumpCfgStyle bcsNone = NULL;
+    BumpCfgStyle bcsNew = "new client/server-first/none";
+    BumpCfgStyle bcsOld = "deprecated allow/deny";
+    static BumpCfgStyle bumpCfgStyleLast = bcsNone;
+    BumpCfgStyle bumpCfgStyleNow = bcsNone;
+    char *bm;
+    if ((bm = strtok(NULL, w_space)) == NULL) {
+        self_destruct();
+        return;
+    }
+
+    // if this is the first rule proccessed
+    if (*ssl_bump == NULL) {
+        bumpCfgStyleLast = bcsNone;
+        sslBumpCfgRr::lastDeprecatedRule = Ssl::bumpEnd;
+    }
+
+    acl_access *A = new acl_access;
+    A->allow = allow_t(ACCESS_ALLOWED);
+
+    if (strcmp(bm, Ssl::BumpModeStr[Ssl::bumpClientFirst]) == 0) {
+        A->allow.kind = Ssl::bumpClientFirst;
+        bumpCfgStyleNow = bcsNew;
+    } else if (strcmp(bm, Ssl::BumpModeStr[Ssl::bumpServerFirst]) == 0) {
+        A->allow.kind = Ssl::bumpServerFirst;
+        bumpCfgStyleNow = bcsNew;
+    } else if (strcmp(bm, Ssl::BumpModeStr[Ssl::bumpNone]) == 0) {
+        A->allow.kind = Ssl::bumpNone;
+        bumpCfgStyleNow = bcsNew;
+    } else if (strcmp(bm, "allow") == 0) {
+        debugs(3, DBG_CRITICAL, "SECURITY NOTICE: auto-converting deprecated "
+               "\"ssl_bump allow <acl>\" to \"ssl_bump client-first <acl>\" which "
+               "is usually inferior to the newer server-first "
+               "bumping mode. Update your ssl_bump rules.");
+        A->allow.kind = Ssl::bumpClientFirst;
+        bumpCfgStyleNow = bcsOld;
+        sslBumpCfgRr::lastDeprecatedRule = Ssl::bumpClientFirst;
+    } else if (strcmp(bm, "deny") == 0) {
+        debugs(3, DBG_CRITICAL, "WARNING: auto-converting deprecated "
+               "\"ssl_bump deny <acl>\" to \"ssl_bump none <acl>\". Update "
+               "your ssl_bump rules.");
+        A->allow.kind = Ssl::bumpNone;
+        bumpCfgStyleNow = bcsOld;
+        sslBumpCfgRr::lastDeprecatedRule = Ssl::bumpNone;
+    } else {
+        debugs(3, DBG_CRITICAL, "FATAL: unknown ssl_bump mode: " << bm);
+        self_destruct();
+        return;
+    }
+
+    if (bumpCfgStyleLast != bcsNone && bumpCfgStyleNow != bumpCfgStyleLast) {
+        debugs(3, DBG_CRITICAL, "FATAL: do not mix " << bumpCfgStyleNow << " actions with " <<
+               bumpCfgStyleLast << " actions. Update your ssl_bump rules.");
+        self_destruct();
+        return;
+    }
+
+    bumpCfgStyleLast = bumpCfgStyleNow;
+
+    aclParseAclList(LegacyParser, &A->aclList);
+
+    acl_access *B, **T;
+    for (B = *ssl_bump, T = ssl_bump; B; T = &B->next, B = B->next);
+    *T = A;
+}
+
+static void dump_sslproxy_ssl_bump(StoreEntry *entry, const char *name, acl_access *ssl_bump)
+{
+    acl_access *sb;
+    for (sb = ssl_bump; sb != NULL; sb = sb->next) {
+        storeAppendPrintf(entry, "%s ", name);
+        storeAppendPrintf(entry, "%s ", Ssl::bumpMode(sb->allow.kind));
+        if (sb->aclList)
+            dump_acl_list(entry, sb->aclList);
+        storeAppendPrintf(entry, "\n");
+    }
+}
+
+static void free_sslproxy_ssl_bump(acl_access **ssl_bump)
+{
+    free_acl_access(ssl_bump);
+}
 
 #endif
+
+static void dump_HeaderWithAclList(StoreEntry * entry, const char *name, HeaderWithAclList *headers)
+{
+    if (!headers)
+        return;
+
+    for (HeaderWithAclList::iterator hwa = headers->begin(); hwa != headers->end(); ++hwa) {
+        storeAppendPrintf(entry, "%s ", hwa->fieldName.c_str());
+        storeAppendPrintf(entry, "%s ", hwa->fieldValue.c_str());
+        if (hwa->aclList)
+            dump_acl_list(entry, hwa->aclList);
+        storeAppendPrintf(entry, "\n");
+    }
+}
+
+static void parse_HeaderWithAclList(HeaderWithAclList **headers)
+{
+    char *fn;
+    if (!*headers) {
+        *headers = new HeaderWithAclList;
+    }
+    if ((fn = strtok(NULL, w_space)) == NULL) {
+        self_destruct();
+        return;
+    }
+    HeaderWithAcl hwa;
+    hwa.fieldName = fn;
+    hwa.fieldId = httpHeaderIdByNameDef(fn, strlen(fn));
+    if (hwa.fieldId == HDR_BAD_HDR)
+        hwa.fieldId = HDR_OTHER;
+
+    String buf;
+    bool wasQuoted;
+    ConfigParser::ParseQuotedString(&buf, &wasQuoted);
+    hwa.fieldValue = buf.termedBuf();
+    hwa.quoted = wasQuoted;
+    if (hwa.quoted) {
+        Format::Format *nlf =  new ::Format::Format("hdrWithAcl");
+        if (!nlf->parse(hwa.fieldValue.c_str())) {
+            self_destruct();
+            return;
+        }
+        hwa.valueFormat = nlf;
+    }
+    aclParseAclList(LegacyParser, &hwa.aclList);
+    (*headers)->push_back(hwa);
+}
+
+static void free_HeaderWithAclList(HeaderWithAclList **header)
+{
+    if (!(*header))
+        return;
+
+    for (HeaderWithAclList::iterator hwa = (*header)->begin(); hwa != (*header)->end(); ++hwa) {
+        if (hwa->aclList)
+            aclDestroyAclList(&hwa->aclList);
+
+        if (hwa->valueFormat) {
+            delete hwa->valueFormat;
+            hwa->valueFormat = NULL;
+        }
+    }
+    delete *header;
+    *header = NULL;
+}

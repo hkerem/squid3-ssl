@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 13    High Level Memory Pool Management
  * AUTHOR: Harvest Derived
  *
@@ -32,16 +30,25 @@
  *
  */
 
-#include "squid-old.h"
-#include "event.h"
-#include "mgr/Registration.h"
+#include "squid.h"
+#include "acl/AclDenyInfoList.h"
+#include "acl/AclNameList.h"
+#include "CacheDigest.h"
 #include "ClientInfo.h"
+#include "disk.h"
+#include "event.h"
+#include "md5.h"
 #include "Mem.h"
+#include "MemBuf.h"
 #include "memMeter.h"
+#include "mgr/Registration.h"
+#include "icmp/net_db.h"
+#include "RegexList.h"
+#include "SquidConfig.h"
+#include "SquidList.h"
+#include "SquidTime.h"
 #include "Store.h"
 #include "StoreEntryStream.h"
-#include "MemBuf.h"
-#include "SquidTime.h"
 
 #if HAVE_IOMANIP
 #include <iomanip>
@@ -49,6 +56,14 @@
 #if HAVE_OSTREAM
 #include <ostream>
 #endif
+
+/* forward declarations */
+static void memFree2K(void *);
+static void memFree4K(void *);
+static void memFree8K(void *);
+static void memFree16K(void *);
+static void memFree32K(void *);
+static void memFree64K(void *);
 
 /* module globals */
 const size_t squidSystemPageSize=getpagesize();
@@ -162,9 +177,9 @@ Mem::Stats(StoreEntry * sentry)
         long int leaked = 0, dubious = 0, reachable = 0, suppressed = 0;
         stream << "Valgrind Report:\n";
         stream << "Type\tAmount\n";
-        debugs(13, 1, "Asking valgrind for memleaks");
+        debugs(13, DBG_IMPORTANT, "Asking valgrind for memleaks");
         VALGRIND_DO_LEAK_CHECK;
-        debugs(13, 1, "Getting valgrind statistics");
+        debugs(13, DBG_IMPORTANT, "Getting valgrind statistics");
         VALGRIND_COUNT_LEAKS(leaked, dubious, reachable, suppressed);
         stream << "Leaked\t" << leaked << "\n";
         stream << "Dubious\t" << dubious << "\n";
@@ -196,7 +211,6 @@ memDataInit(mem_type type, const char *name, size_t size, int max_pages_notused,
     MemPools[type] = memPoolCreate(name, size);
     MemPools[type]->zeroOnPush(zeroOnPush);
 }
-
 
 /* find appropriate pool and use it (pools always init buffer with 0s) */
 void *
@@ -243,7 +257,6 @@ memAllocString(size_t net_size, size_t * gross_size)
     return pool ? pool->alloc() : xcalloc(1, net_size);
 }
 
-extern size_t memStringCount();
 size_t
 memStringCount()
 {
@@ -389,7 +402,7 @@ memConfigure(void)
         new_pool_limit = Config.MemPools.limit;
     else {
         if (Config.MemPools.limit == 0)
-            debugs(13, 1, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
+            debugs(13, DBG_IMPORTANT, "memory_pools_limit 0 has been chagned to memory_pools_limit none. Please update your config");
         new_pool_limit = -1;
     }
 
@@ -401,7 +414,7 @@ memConfigure(void)
      * stderr when doing things like 'squid -k reconfigure'
      */
     if (MemPools::GetInstance().idleLimit() > new_pool_limit)
-        debugs(13, 1, "Shrinking idle mem pools to "<< std::setprecision(3) << toMB(new_pool_limit) << " MB");
+        debugs(13, DBG_IMPORTANT, "Shrinking idle mem pools to "<< std::setprecision(3) << toMB(new_pool_limit) << " MB");
 #endif
 
     MemPools::GetInstance().setIdleLimit(new_pool_limit);
@@ -441,9 +454,9 @@ Mem::Init(void)
     memDataInit(MEM_16K_BUF, "16K Buffer", 16384, 10, false);
     memDataInit(MEM_32K_BUF, "32K Buffer", 32768, 10, false);
     memDataInit(MEM_64K_BUF, "64K Buffer", 65536, 10, false);
-    memDataInit(MEM_ACL_DENY_INFO_LIST, "acl_deny_info_list",
-                sizeof(acl_deny_info_list), 0);
-    memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(acl_name_list), 0);
+    memDataInit(MEM_ACL_DENY_INFO_LIST, "AclDenyInfoList",
+                sizeof(AclDenyInfoList), 0);
+    memDataInit(MEM_ACL_NAME_LIST, "acl_name_list", sizeof(AclNameList), 0);
 #if USE_CACHE_DIGESTS
 
     memDataInit(MEM_CACHE_DIGEST, "CacheDigest", sizeof(CacheDigest), 0);
@@ -456,7 +469,7 @@ Mem::Init(void)
     memDataInit(MEM_HTTP_HDR_CONTENT_RANGE, "HttpHdrContRange", sizeof(HttpHdrContRange), 0);
     memDataInit(MEM_NETDBENTRY, "netdbEntry", sizeof(netdbEntry), 0);
     memDataInit(MEM_NET_DB_NAME, "net_db_name", sizeof(net_db_name), 0);
-    memDataInit(MEM_RELIST, "relist", sizeof(relist), 0);
+    memDataInit(MEM_RELIST, "RegexList", sizeof(RegexList), 0);
     memDataInit(MEM_CLIENT_INFO, "ClientInfo", sizeof(ClientInfo), 0);
     memDataInit(MEM_MD5_DIGEST, "MD5 digest", SQUID_MD5_DIGEST_LENGTH, 0);
     MemPools[MEM_MD5_DIGEST]->setChunkSize(512 * 1024);
@@ -467,7 +480,7 @@ Mem::Init(void)
         StrPools[i].pool->zeroOnPush(false);
 
         if (StrPools[i].pool->objectSize() != StrPoolsAttrs[i].obj_size)
-            debugs(13, 1, "Notice: " << StrPoolsAttrs[i].name << " is " << StrPools[i].pool->objectSize() << " bytes instead of requested " << StrPoolsAttrs[i].obj_size << " bytes");
+            debugs(13, DBG_IMPORTANT, "Notice: " << StrPoolsAttrs[i].name << " is " << StrPools[i].pool->objectSize() << " bytes instead of requested " << StrPoolsAttrs[i].obj_size << " bytes");
     }
 
     MemIsInitialized = true;

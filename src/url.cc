@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 23    URL Parsing
  * AUTHOR: Duane Wessels
  *
@@ -34,10 +32,13 @@
  */
 
 #include "squid.h"
-#include "URL.h"
+#include "globals.h"
 #include "HttpRequest.h"
-#include "URLScheme.h"
 #include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidString.h"
+#include "URL.h"
+#include "URLScheme.h"
 
 static HttpRequest *urlParseFinish(const HttpRequestMethod& method,
                                    const AnyP::ProtocolType protocol,
@@ -232,7 +233,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     if ((l = strlen(url)) + Config.appendDomainLen > (MAX_URL - 1)) {
         /* terminate so it doesn't overflow other buffers */
         *(url + (MAX_URL >> 1)) = '\0';
-        debugs(23, 1, "urlParse: URL too large (" << l << " bytes)");
+        debugs(23, DBG_IMPORTANT, "urlParse: URL too large (" << l << " bytes)");
         return NULL;
     }
     if (method == METHOD_CONNECT) {
@@ -385,7 +386,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     debugs(23, 3, "urlParse: Split URL '" << url << "' into proto='" << proto << "', host='" << host << "', port='" << port << "', path='" << urlpath << "'");
 
     if (Config.onoff.check_hostnames && strspn(host, Config.onoff.allow_underscore ? valid_hostname_chars_u : valid_hostname_chars) != strlen(host)) {
-        debugs(23, 1, "urlParse: Illegal character in hostname '" << host << "'");
+        debugs(23, DBG_IMPORTANT, "urlParse: Illegal character in hostname '" << host << "'");
         return NULL;
     }
 
@@ -399,7 +400,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
 
     /* reject duplicate or leading dots */
     if (strstr(host, "..") || *host == '.') {
-        debugs(23, 1, "urlParse: Illegal hostname '" << host << "'");
+        debugs(23, DBG_IMPORTANT, "urlParse: Illegal hostname '" << host << "'");
         return NULL;
     }
 
@@ -412,7 +413,7 @@ urlParse(const HttpRequestMethod& method, char *url, HttpRequest *request)
     /* These ports are filtered in the default squid.conf, but
      * maybe someone wants them hardcoded... */
     if (port == 7 || port == 9 || port == 19) {
-        debugs(23, 0, "urlParse: Deny access to port " << port);
+        debugs(23, DBG_CRITICAL, "urlParse: Deny access to port " << port);
         return NULL;
     }
 #endif
@@ -627,7 +628,6 @@ urlCanonicalFakeHttps(const HttpRequest * request)
     return urlCanonicalClean(request);
 }
 
-
 /*
  * Test if a URL is relative.
  *
@@ -823,7 +823,6 @@ matchDomainName(const char *h, const char *d)
 
     return (xtolower(h[hl]) - xtolower(d[dl]));
 }
-
 
 /*
  * return true if we can serve requests for this method.

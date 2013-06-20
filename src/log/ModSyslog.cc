@@ -30,7 +30,8 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
 
 #if HAVE_SYSLOG
 
@@ -108,7 +109,7 @@ syslog_ntoa(const char *s)
         if (!strcmp(s, p->name) || !strcasecmp(s, p->name + 4))
             return p->value;
 
-    debugs(1, 1, "Unknown syslog facility/priority '" << s << "'");
+    debugs(1, DBG_IMPORTANT, "Unknown syslog facility/priority '" << s << "'");
     return 0;
 }
 
@@ -151,8 +152,6 @@ logfile_mod_syslog_close(Logfile * lf)
     xfree(lf->data);
     lf->data = NULL;
 }
-
-
 
 /*
  * This code expects the path to be syslog:<priority>

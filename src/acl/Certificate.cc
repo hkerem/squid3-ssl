@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,7 +32,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the SSL code from compile process when not needed.
@@ -44,9 +42,10 @@
 #include "acl/Certificate.h"
 #include "acl/Checklist.h"
 #include "acl/CertificateData.h"
-#include "fde.h"
+#include "HttpRequest.h"
 #include "client_side.h"
-
+#include "fde.h"
+#include "globals.h"
 
 int
 ACLCertificateStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

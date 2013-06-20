@@ -1,23 +1,23 @@
-/* $Id$
-* Copyright (C) 2002 Rodrigo Campos
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*
-* Author: Rodrigo Campos (rodrigo@geekbunker.org)
-*
-*/
+/*
+ * Copyright (C) 2002 Rodrigo Campos
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * Author: Rodrigo Campos (rodrigo@geekbunker.org)
+ *
+ */
 #include "squid.h"
 #include "helpers/defines.h"
 #include "rfc1738.h"
@@ -44,7 +44,6 @@
 #if HAVE_GRP_H
 #include <grp.h>
 #endif
-
 
 struct ip_user_dict {
     unsigned long address; // IP address (assumes IPv4)
@@ -190,7 +189,7 @@ int
 match_group(char *dict_group, char *username)
 {
     struct group *g;		/* a struct to hold group entries */
-    dict_group++;			/* the @ should be the first char
+    ++dict_group;			/* the @ should be the first char
 				   so we rip it off by incrementing
 				   * the pointer by one */
 

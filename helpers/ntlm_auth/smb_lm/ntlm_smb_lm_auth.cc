@@ -56,7 +56,6 @@
 #include <time.h>
 #endif
 
-
 /************* CONFIGURATION ***************/
 
 #define DEAD_DC_RETRY_INTERVAL 30
@@ -89,12 +88,10 @@ struct _dc {
 };
 
 /* local functions */
-void send_bh_or_ld(char const *bhmessage, ntlm_authenticate * failedauth, int authlen);
 void usage(void);
 void process_options(int argc, char *argv[]);
 const char * obtain_challenge(void);
 void manage_request(void);
-
 
 #define ENCODED_PASS_LEN 24
 #define MAX_USERNAME_LEN 255
@@ -113,14 +110,10 @@ static char errstr[1001];
 char error_messages_buffer[NTLM_BLOB_BUFFER_SIZE];
 #endif
 char load_balance = 0, protocol_pedantic = 0;
-#if NTLM_FAIL_OPEN
-char last_ditch_enabled = 0;
-#endif
 dc *controllers = NULL;
 int numcontrollers = 0;
 dc *current_dc;
 char smb_error_buffer[1000];
-
 
 /* Disconnects from the DC. A reconnection will be done upon the next request
  */
@@ -162,7 +155,6 @@ init_challenge(char *domain, char *domain_controller)
     handle = SMB_Connect_Server(NULL, domain_controller, domain);
     smberr = SMB_Get_Last_Error();
     SMB_Get_Error_Msg(smberr, errstr, 1000);
-
 
     if (handle == NULL) {	/* couldn't connect */
         debug("Couldn't connect to SMB Server. Error:%s\n", errstr);
@@ -264,7 +256,6 @@ ntlm_check_auth(ntlm_authenticate * auth, int auth_length)
     memcpy(user, tmp.str, tmp.l);
     *(user + tmp.l) = '\0';
 
-
     /* Authenticating against the NT response doesn't seem to work... */
     tmp = ntlm_fetch_string(&(auth->hdr), auth_length, &auth->lmresponse, auth->flags);
     if (tmp.str == NULL || tmp.l == 0) {
@@ -305,7 +296,6 @@ ntlm_check_auth(ntlm_authenticate * auth, int auth_length)
 
     /* TODO: check against empty password!!!!! */
 
-
     debug("checking domain: '%s', user: '%s', pass='%s'\n", domain, user, pass);
 
     rv = SMB_Logon_Server(handle, user, pass, domain, 1);
@@ -332,30 +322,6 @@ timeout_during_auth(int signum)
     dc_disconnect();
 }
 
-void
-send_bh_or_ld(char const *bhmessage, ntlm_authenticate * failedauth, int authlen)
-{
-#if NTLM_FAIL_OPEN
-    char user[NTLM_MAX_FIELD_LENGTH];
-    char domain[NTLM_MAX_FIELD_LENGTH];
-    if (last_ditch_enabled) {
-        user[0] = '\0';
-        domain[0] = '\0';
-        if (ntlm_unpack_auth(failedauth, user, domain, authlen) == 0) {
-            lc(domain);
-            lc(user);
-            SEND3("LD %s%s%s", domain, (domain[0]!='\0'?"//":""), user);
-        } else {
-            SEND("NA last-ditch on, but no credentials");
-        }
-    } else {
-#endif
-        SEND2("BH %s", bhmessage);
-#if NTLM_FAIL_OPEN
-    }
-#endif
-}
-
 /*
  * options:
  * -b try load-balancing the domain-controllers
@@ -373,7 +339,6 @@ usage()
             "%s usage:\n%s [-b] [-f] [-d] [-l] domain\\controller [domain\\controller ...]\n"
             "-b enables load-balancing among controllers\n"
             "-f enables failover among controllers (DEPRECATED and always active)\n"
-            "-l changes behavior on domain controller failyures to last-ditch.\n"
             "-d enables debugging statements if DEBUG was defined at build-time.\n\n"
             "You MUST specify at least one Domain Controller.\n"
             "You can use either \\ or / as separator between the domain name \n"
@@ -397,11 +362,6 @@ process_options(int argc, char *argv[])
             fprintf(stderr,
                     "WARNING. The -f flag is DEPRECATED and always active.\n");
             break;
-#if NTLM_FAIL_OPEN
-        case 'l':
-            last_ditch_enabled = 1;
-            break;
-#endif
         case 'd':
             debug_enabled=1;
             break;
@@ -415,7 +375,7 @@ process_options(int argc, char *argv[])
         exit(1);
     /* Okay, now begin filling controllers up */
     /* we can avoid memcpy-ing, and just reuse argv[] */
-    for (j = optind; j < argc; j++) {
+    for (j = optind; j < argc; ++j) {
         char *d, *c;
         /* d will not be freed in case of non-error. Since we don't reconfigure,
          * it's going to live as long as the process anyways */
@@ -444,7 +404,7 @@ process_options(int argc, char *argv[])
         /* capitalize */
         uc(c);
         uc(d);
-        numcontrollers++;
+        ++numcontrollers;
         new_dc->domain = d;
         new_dc->controller = c;
         new_dc->dead = 0;
@@ -473,7 +433,7 @@ obtain_challenge()
 {
     int j = 0;
     const char *ch = NULL;
-    for (j = 0; j < numcontrollers; j++) {
+    for (j = 0; j < numcontrollers; ++j) {
         debug("obtain_challenge: selecting %s\\%s (attempt #%d)\n",
               current_dc->domain, current_dc->controller, j + 1);
         if (current_dc->dead != 0) {
@@ -504,7 +464,6 @@ obtain_challenge()
     /* all DCs failed. */
     return NULL;
 }
-
 
 void
 manage_request()
@@ -585,8 +544,7 @@ manage_request()
                 /* Should I use smblib_err? Actually it seems I can do as well
                  * without it.. */
                 if (nb_error != 0) {	/* netbios-level error */
-                    send_bh_or_ld("NetBios error!",
-                                  (ntlm_authenticate *) decoded, decodedLen);
+                    SEND("BH NetBios error!");
                     fprintf(stderr, "NetBios error code %d (%s)\n", nb_error,
                             RFCNB_Error_Strings[abs(nb_error)]);
                     return;
@@ -595,10 +553,6 @@ manage_request()
                 case SMBC_SUCCESS:
                     debug("Huh? Got a SMB success code but could check auth..");
                     SEND("NA Authentication failed");
-                    /*
-                     * send_bh_or_ld("SMB success, but no creds. Internal error?",
-                     * (ntlm_authenticate *) decoded, decodedLen);
-                     */
                     return;
                 case SMBC_ERRDOS:
                     /*this is the most important one for errors */
@@ -619,8 +573,7 @@ manage_request()
                         SEND("NA Bad Data");
                         return;
                     default:
-                        send_bh_or_ld("DOS Error",
-                                      (ntlm_authenticate *) decoded, decodedLen);
+                        SEND("BH DOS Error");
                         return;
                     }
                 case SMBC_ERRSRV:	/* server errors */
@@ -634,17 +587,14 @@ manage_request()
                         SEND("NA Server access error");
                         return;
                     default:
-                        send_bh_or_ld("Server Error",
-                                      (ntlm_authenticate *) decoded, decodedLen);
+                        SEND("BH Server Error");
                         return;
                     }
                 case SMBC_ERRHRD:	/* hardware errors don't really matter */
-                    send_bh_or_ld("Domain Controller Hardware error",
-                                  (ntlm_authenticate *) decoded, decodedLen);
+                    SEND("BH Domain Controller Hardware error");
                     return;
                 case SMBC_ERRCMD:
-                    send_bh_or_ld("Domain Controller Command Error",
-                                  (ntlm_authenticate *) decoded, decodedLen);
+                    SEND("BH Domain Controller Command Error");
                     return;
                 }
                 SEND("BH unknown internal error.");
@@ -677,7 +627,6 @@ manage_request()
     return;
     /********* END ********/
 
-
 }
 
 int
@@ -703,7 +652,7 @@ main(int argc, char *argv[])
         debug("load balancing. Selected controller #%d\n", n);
         while (n > 0) {
             current_dc = current_dc->next;
-            n--;
+            --n;
         }
     }
     while (1) {

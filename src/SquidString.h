@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
  *
@@ -44,7 +42,6 @@
 #define SQUIDSTRINGPH "%.*s"
 #define SQUIDSTRINGPRINT(s) (s).psize(),(s).rawBuf()
 #endif /* SQUIDSTRINGPH */
-
 
 #define DEBUGSTRINGS 0
 #if DEBUGSTRINGS
@@ -157,7 +154,6 @@ public:
     void stat(StoreEntry *) const;
 #endif
 
-
 private:
     void allocAndFill(const char *str, int len);
     void allocBuffer(size_type sz);
@@ -184,5 +180,10 @@ _SQUID_INLINE_ bool operator<(const String &a, const String &b);
 #if _USE_INLINE_
 #include "String.cci"
 #endif
+
+const char *checkNullString(const char *p);
+int stringHasWhitespace(const char *);
+int stringHasCntl(const char *);
+char *strwordtok(char *buf, char **t);
 
 #endif /* SQUID_STRING_H */

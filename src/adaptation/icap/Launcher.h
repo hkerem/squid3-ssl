@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -57,7 +55,6 @@
  * implement more sophisticated ICAP transaction handling like chaining of
  * ICAP transactions.
  */
-
 
 namespace Adaptation
 {
@@ -135,6 +132,5 @@ operator <<(std::ostream &os, const XactAbortInfo &xai)
 
 } // namespace Icap
 } // namespace Adaptation
-
 
 #endif /* SQUID_ICAPLAUNCHER_H */

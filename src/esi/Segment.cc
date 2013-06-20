@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -33,7 +31,8 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
 #include "esi/Segment.h"
 #include "SquidString.h"
 

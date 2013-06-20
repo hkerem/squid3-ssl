@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 26    Secure Sockets Layer Proxy
  * AUTHOR: Duane Wessels
  *
@@ -33,26 +31,37 @@
  *
  */
 
-#include "squid-old.h"
-#include "errorpage.h"
-#include "HttpRequest.h"
-#include "fde.h"
+#include "squid.h"
+#include "acl/FilledChecklist.h"
 #include "Array.h"
+#include "CachePeer.h"
+#include "client_side_request.h"
+#include "client_side.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
 #include "comm/Write.h"
-#include "client_side_request.h"
-#include "acl/FilledChecklist.h"
+#include "errorpage.h"
+#include "fde.h"
+#include "http.h"
+#include "HttpRequest.h"
+#include "HttpStateFlags.h"
+#include "ip/QosConfig.h"
+#include "MemBuf.h"
+#include "PeerSelectState.h"
+#include "SquidConfig.h"
+#include "StatCounters.h"
+#include "tools.h"
 #if USE_DELAY_POOLS
 #include "DelayId.h"
 #endif
-#include "client_side.h"
-#include "MemBuf.h"
-#include "http.h"
-#include "ip/QosConfig.h"
-#include "PeerSelectState.h"
-#include "StatCounters.h"
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 class TunnelStateData
 {
@@ -490,10 +499,23 @@ TunnelStateData::copyRead(Connection &from, IOCB *completion)
 }
 
 /**
+ * Set the HTTP status for this request and sets the read handlers for client
+ * and server side connections.
+ */
+static void
+tunnelStartShoveling(TunnelStateData *tunnelState)
+{
+    *tunnelState->status_ptr = HTTP_OK;
+    if (cbdataReferenceValid(tunnelState)) {
+        tunnelState->copyRead(tunnelState->server, TunnelStateData::ReadServer);
+        tunnelState->copyRead(tunnelState->client, TunnelStateData::ReadClient);
+    }
+}
+
+/**
  * All the pieces we need to write to client and/or server connection
  * have been written.
- * - Set the HTTP status for this request.
- * - Start the blind pump.
+ * Call the tunnelStartShoveling to start the blind pump.
  */
 static void
 tunnelConnectedWriteDone(const Comm::ConnectionPointer &conn, char *buf, size_t size, comm_err_t flag, int xerrno, void *data)
@@ -507,11 +529,7 @@ tunnelConnectedWriteDone(const Comm::ConnectionPointer &conn, char *buf, size_t 
         return;
     }
 
-    *tunnelState->status_ptr = HTTP_OK;
-    if (cbdataReferenceValid(tunnelState)) {
-        tunnelState->copyRead(tunnelState->server, TunnelStateData::ReadServer);
-        tunnelState->copyRead(tunnelState->client, TunnelStateData::ReadClient);
-    }
+    tunnelStartShoveling(tunnelState);
 }
 
 /*
@@ -522,9 +540,14 @@ tunnelConnected(const Comm::ConnectionPointer &server, void *data)
 {
     TunnelStateData *tunnelState = (TunnelStateData *)data;
     debugs(26, 3, HERE << server << ", tunnelState=" << tunnelState);
-    AsyncCall::Pointer call = commCbCall(5,5, "tunnelConnectedWriteDone",
-                                         CommIoCbPtrFun(tunnelConnectedWriteDone, tunnelState));
-    Comm::Write(tunnelState->client.conn, conn_established, strlen(conn_established), call, NULL);
+
+    if (tunnelState->request && (tunnelState->request->flags.spoofClientIp || tunnelState->request->flags.intercepted))
+        tunnelStartShoveling(tunnelState); // ssl-bumped connection, be quiet
+    else {
+        AsyncCall::Pointer call = commCbCall(5,5, "tunnelConnectedWriteDone",
+                                             CommIoCbPtrFun(tunnelConnectedWriteDone, tunnelState));
+        Comm::Write(tunnelState->client.conn, conn_established, strlen(conn_established), call, NULL);
+    }
 }
 
 static void
@@ -544,7 +567,6 @@ tunnelErrorComplete(int fd/*const Comm::ConnectionPointer &*/, void *data, size_
 
     cbdataInternalUnlock(tunnelState);
 }
-
 
 static void
 tunnelConnectDone(const Comm::ConnectionPointer &conn, comm_err_t status, int xerrno, void *data)
@@ -619,8 +641,8 @@ tunnelConnectDone(const Comm::ConnectionPointer &conn, comm_err_t status, int xe
     commSetConnTimeout(conn, Config.Timeout.read, timeoutCall);
 }
 
-extern tos_t GetTosToServer(HttpRequest * request);
-extern nfmark_t GetNfmarkToServer(HttpRequest * request);
+tos_t GetTosToServer(HttpRequest * request);
+nfmark_t GetNfmarkToServer(HttpRequest * request);
 
 void
 tunnelStart(ClientHttpRequest * http, int64_t * size_ptr, int *status_ptr)
@@ -689,7 +711,7 @@ tunnelRelayConnectRequest(const Comm::ConnectionPointer &srv, void *data)
     TunnelStateData *tunnelState = (TunnelStateData *)data;
     HttpHeader hdr_out(hoRequest);
     Packer p;
-    http_state_flags flags;
+    HttpStateFlags flags;
     debugs(26, 3, HERE << srv << ", tunnelState=" << tunnelState);
     memset(&flags, '\0', sizeof(flags));
     flags.proxying = tunnelState->request->flags.proxying;

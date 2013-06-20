@@ -193,7 +193,6 @@ StoreMapWithExtras<ExtrasT>::extras(const sfileno fileno) const
     return sharedExtras[fileno];
 }
 
-
 } // namespace Ipc
 
 // We do not reuse FileMap because we cannot control its size,

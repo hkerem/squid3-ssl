@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,9 +32,9 @@
 #ifndef SQUID_ICAPOPTIONS_H
 #define SQUID_ICAPOPTIONS_H
 
-#include "squid-old.h"
 #include "adaptation/icap/ServiceRep.h"
 
+class HttpHeader;
 class wordlist;
 
 namespace Adaptation
@@ -121,9 +119,6 @@ private:
     void cfgIntHeader(const HttpHeader *h, const char *fname, int &value);
     void cfgTransferList(const HttpHeader *h, TransferList &l);
 };
-
-
-
 
 } // namespace Icap
 } // namespace Adaptation

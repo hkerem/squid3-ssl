@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,7 +31,6 @@
 #ifndef SQUID_STOREFILESYSTEM_H
 #define SQUID_STOREFILESYSTEM_H
 
-#include "squid-old.h"
 #include "Array.h"
 
 /* ****** DOCUMENTATION ***** */
@@ -146,6 +143,5 @@ private:
 
 // TODO: Kill this typedef!
 typedef StoreFileSystem storefs_entry_t;
-
 
 #endif /* SQUID_STOREFILESYSTEM_H */

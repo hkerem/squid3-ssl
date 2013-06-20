@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -14,7 +12,6 @@
 #include "ipc/Forwarder.h"
 #include "ipc/Port.h"
 #include "ipc/TypedMsgHdr.h"
-
 
 CBDATA_NAMESPACED_CLASS_INIT(Ipc, Forwarder);
 

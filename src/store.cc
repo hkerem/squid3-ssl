@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager
  * AUTHOR: Harvest Derived
  *
@@ -33,38 +31,54 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "CacheDigest.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
 #include "ETag.h"
 #include "event.h"
 #include "fde.h"
-#include "Store.h"
-#include "mgr/Registration.h"
-#include "StoreClient.h"
-#include "stmem.h"
+#include "globals.h"
+#include "http.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "MemObject.h"
 #include "mem_node.h"
+#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "mgr/StoreIoAction.h"
+#include "profiler/Profiler.h"
+#include "repl_modules.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "Stack.h"
 #include "StatCounters.h"
-#include "StoreMeta.h"
-#include "SwapDir.h"
+#include "stmem.h"
+#include "store_digest.h"
+#include "store_key_md5.h"
+#include "store_key_md5.h"
+#include "store_log.h"
+#include "store_rebuild.h"
+#include "Store.h"
+#include "StoreClient.h"
 #include "StoreIOState.h"
+#include "StoreMeta.h"
+#include "StrList.h"
+#include "swap_log_op.h"
+#include "SwapDir.h"
+#include "tools.h"
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-#include "Stack.h"
-#include "SquidTime.h"
-#include "swap_log_op.h"
-#include "mgr/StoreIoAction.h"
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
 
 static STMCB storeWriteComplete;
 
 #define REBUILD_TIMESTAMP_DELTA_MAX 2
 
 #define STORE_IN_MEM_BUCKETS            (229)
-
 
 /** \todo Convert these string constants to enum string-arrays generated */
 
@@ -90,7 +104,6 @@ const char *swapStatusStr[] = {
     "SWAPOUT_DONE"
 };
 
-
 /*
  * This defines an repl type
  */
@@ -103,7 +116,6 @@ struct _storerepl_entry {
 };
 
 static storerepl_entry_t *storerepl_list = NULL;
-
 
 /*
  * local function prototypes
@@ -323,7 +335,7 @@ StoreEntry::storeClientType() const
 
     if (EBIT_TEST(flags, ENTRY_ABORTED)) {
         /* I don't think we should be adding clients to aborted entries */
-        debugs(20, 1, "storeClientType: adding to ENTRY_ABORTED entry");
+        debugs(20, DBG_IMPORTANT, "storeClientType: adding to ENTRY_ABORTED entry");
         return STORE_MEM_CLIENT;
     }
 
@@ -487,7 +499,6 @@ StoreEntry::hashDelete()
 
 /* -------------------------------------------------------------------------- */
 
-
 /* get rid of memory copy of the object */
 void
 StoreEntry::purgeMem()
@@ -572,7 +583,7 @@ StoreEntry::unlock()
     }
 
     if (EBIT_TEST(flags, KEY_PRIVATE))
-        debugs(20, 1, "WARNING: " << __FILE__ << ":" << __LINE__ << ": found KEY_PRIVATE");
+        debugs(20, DBG_IMPORTANT, "WARNING: " << __FILE__ << ":" << __LINE__ << ": found KEY_PRIVATE");
 
     Store::Root().handleIdleEntry(*this); // may delete us
     return 0;
@@ -709,7 +720,7 @@ StoreEntry::setPublicKey()
 #if MORE_DEBUG_OUTPUT
 
     if (EBIT_TEST(flags, RELEASE_REQUEST))
-        debugs(20, 1, "assertion failed: RELEASE key " << key << ", url " << mem_obj->url);
+        debugs(20, DBG_IMPORTANT, "assertion failed: RELEASE key " << key << ", url " << mem_obj->url);
 
 #endif
 
@@ -807,7 +818,7 @@ StoreEntry::setPublicKey()
 }
 
 StoreEntry *
-storeCreateEntry(const char *url, const char *log_url, request_flags flags, const HttpRequestMethod& method)
+storeCreateEntry(const char *url, const char *log_url, const RequestFlags &flags, const HttpRequestMethod& method)
 {
     StoreEntry *e = NULL;
     MemObject *mem = NULL;
@@ -896,7 +907,6 @@ StoreEntry::append(char const *buf, int len)
     tempBuffer.offset = mem_obj->endOffset() - (getReply() ? getReply()->hdr_sz : 0);
     write(tempBuffer);
 }
-
 
 void
 storeAppendPrintf(StoreEntry * e, const char *fmt,...)
@@ -1127,7 +1137,7 @@ StoreEntry::abort()
      */
     if (mem_obj->abort.callback) {
         if (!cbdataReferenceValid(mem_obj->abort.data))
-            debugs(20,1,HERE << "queueing event when abort.data is not valid");
+            debugs(20, DBG_IMPORTANT,HERE << "queueing event when abort.data is not valid");
         eventAdd("mem_obj->abort.callback",
                  mem_obj->abort.callback,
                  mem_obj->abort.data,
@@ -1195,7 +1205,6 @@ storeGetMemSpace(int size)
     debugs(20, 3, "  " << std::setw(6) << released  << " were released");
     PROF_stop(storeGetMemSpace);
 }
-
 
 /* thunk through to Store::Root().maintain(). Note that this would be better still
  * if registered against the root store itself, but that requires more complex
@@ -1316,7 +1325,7 @@ storeLateRelease(void *unused)
 
         if (e == NULL) {
             /* done! */
-            debugs(20, 1, "storeLateRelease: released " << n << " objects");
+            debugs(20, DBG_IMPORTANT, "storeLateRelease: released " << n << " objects");
             return;
         }
 
@@ -1759,7 +1768,7 @@ storeReplAdd(const char *type, REMOVALPOLICYCREATE * create)
     /* find the number of currently known repl types */
     for (i = 0; storerepl_list && storerepl_list[i].typestr; ++i) {
         if (strcmp(storerepl_list[i].typestr, type) == 0) {
-            debugs(20, 1, "WARNING: Trying to load store replacement policy " << type << " twice.");
+            debugs(20, DBG_IMPORTANT, "WARNING: Trying to load store replacement policy " << type << " twice.");
             return;
         }
     }
@@ -1787,9 +1796,9 @@ createRemovalPolicy(RemovalPolicySettings * settings)
             return r->create(settings->args);
     }
 
-    debugs(20, 1, "ERROR: Unknown policy " << settings->type);
-    debugs(20, 1, "ERROR: Be sure to have set cache_replacement_policy");
-    debugs(20, 1, "ERROR:   and memory_replacement_policy in squid.conf!");
+    debugs(20, DBG_IMPORTANT, "ERROR: Unknown policy " << settings->type);
+    debugs(20, DBG_IMPORTANT, "ERROR: Be sure to have set cache_replacement_policy");
+    debugs(20, DBG_IMPORTANT, "ERROR:   and memory_replacement_policy in squid.conf!");
     fatalf("ERROR: Unknown policy %s\n", settings->type);
     return NULL;                /* NOTREACHED */
 }
@@ -1815,7 +1824,6 @@ storeSwapFileNumberSet(StoreEntry * e, sfileno filn)
 
 #endif
 
-
 /*
  * Replace a store entry with
  * a new reply. This eats the reply.
@@ -1826,7 +1834,7 @@ StoreEntry::replaceHttpReply(HttpReply *rep, bool andStartWriting)
     debugs(20, 3, "StoreEntry::replaceHttpReply: " << url());
 
     if (!mem_obj) {
-        debugs(20, 0, "Attempt to replace object with no in-memory representation");
+        debugs(20, DBG_CRITICAL, "Attempt to replace object with no in-memory representation");
         return;
     }
 
@@ -1835,7 +1843,6 @@ StoreEntry::replaceHttpReply(HttpReply *rep, bool andStartWriting)
     if (andStartWriting)
         startWriting();
 }
-
 
 void
 StoreEntry::startWriting()
@@ -1860,7 +1867,6 @@ StoreEntry::startWriting()
 
     packerClean(&p);
 }
-
 
 char const *
 StoreEntry::getSerialisedMetaData()
@@ -1957,7 +1963,7 @@ StoreEntry::hasIfNoneMatchEtag(const HttpRequest &request) const
 {
     const String reqETags = request.header.getList(HDR_IF_NONE_MATCH);
     // weak comparison is allowed only for HEAD or full-body GET requests
-    const bool allowWeakMatch = !request.flags.range &&
+    const bool allowWeakMatch = !request.flags.isRanged &&
                                 (request.method == METHOD_GET || request.method == METHOD_HEAD);
     return hasOneOfEtags(reqETags, allowWeakMatch);
 }

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 37    ICMP Routines
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -31,7 +29,7 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "squid-old.h"
+#include "squid.h"
 #include "Icmp.h"
 #include "SquidTime.h"
 #include "Debug.h"

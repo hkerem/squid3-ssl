@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  */
 
 #ifndef SQUID_CPU_AFFINITY_MAP_H
@@ -9,7 +7,6 @@
 #include "Array.h"
 
 class CpuAffinitySet;
-
 
 /// stores cpu_affinity_map configuration
 class CpuAffinityMap

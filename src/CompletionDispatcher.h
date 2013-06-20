@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,9 +31,6 @@
 
 #ifndef SQUID_COMPLETIONDISPATCHER_H
 #define SQUID_COMPLETIONDISPATCHER_H
-
-#include "squid-old.h"
-
 
 /* Dispatch code to handle events that have completed. Completed events are queued
  * with a completion dispatcher by the OS Async engine - i.e. the poll or kqueue or

@@ -1,17 +1,18 @@
 #define SQUID_UNIT_TEST 1
-#include "squid-old.h"
+#include "squid.h"
 #include "testCoss.h"
 #include "Store.h"
 #include "SwapDir.h"
 #include "DiskIO/DiskIOModule.h"
-#include "fs/ufs/ufscommon.h"
 #include "fs/coss/CossSwapDir.h"
 #include "Mem.h"
 #include "MemObject.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
+#include "RequestFlags.h"
 #include "StoreFileSystem.h"
 #include "testStoreSupport.h"
+#include "SquidConfig.h"
 
 #if HAVE_STDEXCEPT
 #include <stdexcept>
@@ -188,7 +189,7 @@ testCoss::testCossSearch()
     /* add an entry */
     {
         /* Create "vary" base object */
-        request_flags flags;
+        RequestFlags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const

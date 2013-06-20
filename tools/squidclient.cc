@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section --    WWW Client
  * AUTHOR: Harvest Derived
  *
@@ -134,7 +132,6 @@ SIGHDLR pipe_handler;
 static void set_our_signal(void);
 static ssize_t myread(int fd, void *buf, size_t len);
 static ssize_t mywrite(int fd, void *buf, size_t len);
-
 
 #if HAVE_GSSAPI
 static int check_gss_err(OM_uint32 major_status, OM_uint32 minor_status, const char *function);

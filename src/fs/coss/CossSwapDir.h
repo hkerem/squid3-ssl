@@ -12,7 +12,6 @@ class DiskFile;
 #include "SwapDir.h"
 #include "DiskIO/IORequestor.h"
 
-
 #ifndef COSS_MEMBUF_SZ
 #define	COSS_MEMBUF_SZ	1048576
 #endif
@@ -22,7 +21,6 @@ class DiskFile;
 /* What we're doing in storeCossAllocate() */
 #define COSS_ALLOC_ALLOCATE		1
 #define COSS_ALLOC_REALLOC		2
-
 
 /// \ingroup COSS
 class CossSwapDir : public SwapDir, public IORequestor
@@ -107,12 +105,11 @@ private:
 };
 
 /// \ingroup COSS
-extern void storeCossAdd(CossSwapDir *, StoreEntry *);
+void storeCossAdd(CossSwapDir *, StoreEntry *);
 /// \ingroup COSS
-extern void storeCossRemove(CossSwapDir *, StoreEntry *);
+void storeCossRemove(CossSwapDir *, StoreEntry *);
 /// \ingroup COSS
-extern void storeCossStartMembuf(CossSwapDir * SD);
-
+void storeCossStartMembuf(CossSwapDir * SD);
 
 #include "StoreSearch.h"
 
@@ -136,13 +133,14 @@ public:
     virtual StoreEntry *currentItem();
 
 private:
-    CBDATA_CLASS2(StoreSearchCoss);
     RefCount<CossSwapDir> sd;
     void (*callback)(void *cbdata);
     void *cbdata;
     bool _done;
     dlink_node * current;
     dlink_node * next_;
+
+    CBDATA_CLASS2(StoreSearchCoss);
 };
 
 #endif

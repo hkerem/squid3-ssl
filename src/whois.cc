@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 75    WHOIS protocol
  * AUTHOR: Duane Wessels, Kostas Anagnostakis
  *
@@ -33,16 +31,22 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "comm.h"
 #include "comm/Write.h"
 #include "errorpage.h"
-#include "Store.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "comm.h"
 #include "HttpRequest.h"
 #include "forward.h"
+#include "SquidConfig.h"
 #include "StatCounters.h"
+#include "Store.h"
+#include "tools.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 #define WHOIS_PORT 43
 
@@ -159,7 +163,7 @@ WhoisState::readReply(const Comm::ConnectionPointer &conn, char *aBuffer, size_t
             comm_read(conn, aBuffer, BUFSIZ, call);
         } else {
             ErrorState *err = new ErrorState(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, fwd->request);
-            err->xerrno = errno;
+            err->xerrno = xerrno;
             fwd->fail(err);
             conn->close();
         }

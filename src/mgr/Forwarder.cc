@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,6 +9,7 @@
 #include "CommCalls.h"
 #include "comm/Connection.h"
 #include "errorpage.h"
+#include "globals.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "ipc/Port.h"
@@ -19,9 +18,7 @@
 #include "SquidTime.h"
 #include "Store.h"
 
-
 CBDATA_NAMESPACED_CLASS_INIT(Mgr, Forwarder);
-
 
 Mgr::Forwarder::Forwarder(const Comm::ConnectionPointer &aConn, const ActionParams &aParams,
                           HttpRequest* aRequest, StoreEntry* anEntry):

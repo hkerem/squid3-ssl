@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "mgr/Action.h"
 
 /* a collection of simple, mostly stateless actions */
-
 
 namespace Mgr
 {
@@ -31,7 +28,6 @@ protected:
     IndexAction(const CommandPointer &cmd);
 };
 
-
 /// returns available Cache Manager actions and their access requirements
 class MenuAction: public Action
 {
@@ -43,7 +39,6 @@ public:
 protected:
     MenuAction(const CommandPointer &cmd);
 };
-
 
 /// shuts Squid down
 class ShutdownAction: public Action

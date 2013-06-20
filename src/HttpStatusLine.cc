@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 57    HTTP Status-line
  * AUTHOR: Alex Rousskov
  *
@@ -33,8 +31,10 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
 #include "HttpStatusLine.h"
+#include "Packer.h"
 
 /* local constants */
 /* AYJ: see bug 2469 - RFC2616 confirms stating 'SP characters' plural! */

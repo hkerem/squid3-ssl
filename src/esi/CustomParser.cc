@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -33,11 +31,12 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Array.h"
 #include "esi/CustomParser.h"
+#include "Debug.h"
 #include "Trie.h"
 #include "TrieCharTransform.h"
-#include "Array.h"
 
 Trie *ESICustomParser::SearchTrie=NULL;
 
@@ -69,7 +68,9 @@ ESICustomParser::GetTrie()
     return SearchTrie;
 }
 
-ESICustomParser::ESICustomParser(ESIParserClient *aClient) : theClient (aClient)
+ESICustomParser::ESICustomParser(ESIParserClient *aClient) :
+        theClient(aClient),
+        lastTag(ESITAG)
 {}
 
 ESICustomParser::~ESICustomParser()
@@ -191,7 +192,14 @@ ESICustomParser::parse(char const *dataToParse, size_t const lengthOfData, bool 
                 }
 
                 char *value = equals + 1;
-                char *end = strchr (value, sep);
+                char *end = strchr(value, sep);
+
+                if (!end) {
+                    error = "Missing attribute ending separator (";
+                    error.append(sep);
+                    error.append(")");
+                    return false;
+                }
                 attributes.push_back(value);
                 *end = '\0';
                 attribute = end + 1;

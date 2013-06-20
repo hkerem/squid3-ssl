@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -12,8 +10,9 @@
 #include "mgr/ActionProfile.h"
 #include "mgr/BasicActions.h"
 #include "mgr/Registration.h"
+#include "protos.h"
 #include "Store.h"
-
+#include "SquidConfig.h"
 
 Mgr::IndexAction::Pointer
 Mgr::IndexAction::Create(const Command::Pointer &cmd)

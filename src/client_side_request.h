@@ -1,8 +1,4 @@
-
 /*
- * $Id$
- *
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -31,33 +27,31 @@
  *
  */
 
-
 #ifndef SQUID_CLIENTSIDEREQUEST_H
 #define SQUID_CLIENTSIDEREQUEST_H
 
-#include "squid-old.h"
 #include "HttpHeader.h"
 #include "clientStream.h"
 #include "client_side.h"
 #include "AccessLogEntry.h"
 #include "dlink.h"
 #include "base/AsyncJob.h"
+#include "HttpHeaderRange.h"
 
 #if USE_ADAPTATION
 #include "adaptation/forward.h"
 #include "adaptation/Initiator.h"
-
 class HttpMsg;
 #endif
 
-/* client_side_request.c - client side request related routines (pure logic) */
-extern int clientBeginRequest(const HttpRequestMethod&, char const *, CSCB *, CSD *, ClientStreamData, HttpHeader const *, char *, size_t);
-
+class acl_access;
+class ACLFilledChecklist;
+class ClientRequestContext;
+class ConnStateData;
 class MemObject;
 
-class ConnStateData;
-
-class ClientRequestContext;
+/* client_side_request.c - client side request related routines (pure logic) */
+int clientBeginRequest(const HttpRequestMethod&, char const *, CSCB *, CSD *, ClientStreamData, HttpHeader const *, char *, size_t);
 
 class ClientHttpRequest
 #if USE_ADAPTATION
@@ -148,21 +142,22 @@ public:
 #endif
 
 private:
-    CBDATA_CLASS(ClientHttpRequest);
     int64_t maxReplyBodySize_;
     StoreEntry *entry_;
     StoreEntry *loggingEntry_;
     ConnStateData * conn_;
 
 #if USE_SSL
-    /// whether the request needs to be bumped
-    enum { needUnknown,  needConfirmed,  needNot } sslBumpNeed;
+    /// whether (and how) the request needs to be bumped
+    Ssl::BumpMode sslBumpNeed_;
 
 public:
-    /// return true if the request needs to be bumped
-    bool sslBumpNeeded() const;
+    /// returns raw sslBump mode value
+    Ssl::BumpMode sslBumpNeed() const { return sslBumpNeed_; }
+    /// returns true if and only if the request needs to be bumped
+    bool sslBumpNeeded() const { return sslBumpNeed_ == Ssl::bumpServerFirst || sslBumpNeed_ == Ssl::bumpClientFirst; }
     /// set the sslBumpNeeded state
-    void sslBumpNeeded(bool isNeeded);
+    void sslBumpNeed(Ssl::BumpMode mode);
     void sslBumpStart();
     void sslBumpEstablish(comm_err_t errflag);
 #endif
@@ -198,20 +193,21 @@ private:
     bool request_satisfaction_mode;
     int64_t request_satisfaction_offset;
 #endif
+
+private:
+    CBDATA_CLASS(ClientHttpRequest);
 };
 
 /* client http based routines */
-SQUIDCEXTERN char *clientConstructTraceEcho(ClientHttpRequest *);
+char *clientConstructTraceEcho(ClientHttpRequest *);
 
-class ACLFilledChecklist;
-SQUIDCEXTERN ACLFilledChecklist *clientAclChecklistCreate(const acl_access * acl,ClientHttpRequest * http);
-SQUIDCEXTERN int clientHttpRequestStatus(int fd, ClientHttpRequest const *http);
-SQUIDCEXTERN void clientAccessCheck(ClientHttpRequest *);
+ACLFilledChecklist *clientAclChecklistCreate(const acl_access * acl,ClientHttpRequest * http);
+int clientHttpRequestStatus(int fd, ClientHttpRequest const *http);
+void clientAccessCheck(ClientHttpRequest *);
 
 /* ones that should be elsewhere */
-SQUIDCEXTERN void redirectStart(ClientHttpRequest *, RH *, void *);
-
-SQUIDCEXTERN void tunnelStart(ClientHttpRequest *, int64_t *, int *);
+void redirectStart(ClientHttpRequest *, RH *, void *);
+void tunnelStart(ClientHttpRequest *, int64_t *, int *);
 
 #if _USE_INLINE_
 #include "Store.h"

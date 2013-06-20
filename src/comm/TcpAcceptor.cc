@@ -32,20 +32,27 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/TextException.h"
-#include "CommCalls.h"
+#include "client_db.h"
 #include "comm/AcceptLimiter.h"
+#include "CommCalls.h"
 #include "comm/comm_internal.h"
 #include "comm/Connection.h"
 #include "comm/Loops.h"
 #include "comm/TcpAcceptor.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
 #include "ip/Intercept.h"
-#include "protos.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 #ifdef HAVE_NETINET_TCP_H
 // required for accept_filter to build.
 #include <netinet/tcp.h>
@@ -319,7 +326,7 @@ Comm::TcpAcceptor::oldAccept(Comm::ConnectionPointer &details)
             debugs(50, 3, HERE << status() << ": " << xstrerror());
             return COMM_ERROR;
         } else {
-            debugs(50, 1, HERE << status() << ": " << xstrerror());
+            debugs(50, DBG_IMPORTANT, HERE << status() << ": " << xstrerror());
             return COMM_ERROR;
         }
     }

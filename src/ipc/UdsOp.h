@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -8,9 +6,9 @@
 #ifndef SQUID_IPC_ASYNCUDSOP_H
 #define SQUID_IPC_ASYNCUDSOP_H
 
-
 #include "SquidString.h"
 #include "base/AsyncJob.h"
+#include "cbdata.h"
 #include "comm/forward.h"
 #include "ipc/TypedMsgHdr.h"
 #include "ipc/FdNotes.h"
@@ -57,9 +55,7 @@ private:
 };
 
 /// converts human-readable filename path into UDS address
-extern struct sockaddr_un PathToAddress(const String &pathAddr);
-
-
+struct sockaddr_un PathToAddress(const String &pathAddr);
 
 // XXX: move UdsSender code to UdsSender.{cc,h}
 /// attempts to send an IPC message a few times, with a timeout
@@ -90,11 +86,9 @@ private:
     CBDATA_CLASS2(UdsSender);
 };
 
-
 void SendMessage(const String& toAddress, const TypedMsgHdr& message);
 /// import socket fd from another strand into our Comm state
 const Comm::ConnectionPointer & ImportFdIntoComm(const Comm::ConnectionPointer &conn, int socktype, int protocol, FdNoteId noteId);
-
 
 }
 

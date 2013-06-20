@@ -108,7 +108,6 @@ public:
                       DynamicGroupCfg &current, DynamicGroupCfg &future);
 };
 
-
 /** iterates services stored in a group; iteration is not linear because we
     need to both replace failed services and advance to the next chain link */
 class ServicePlan
@@ -143,9 +142,8 @@ std::ostream &operator <<(std::ostream &os, const ServicePlan &p)
 }
 
 typedef Vector<ServiceGroupPointer> Groups;
-extern Groups &AllGroups();
-extern ServiceGroupPointer FindGroup(const ServiceGroup::Id &id);
-
+Groups &AllGroups();
+ServiceGroupPointer FindGroup(const ServiceGroup::Id &id);
 
 } // namespace Adaptation
 

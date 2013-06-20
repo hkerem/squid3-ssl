@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 52    URN Parsing
  * AUTHOR: Kostas Anagnostakis
  *
@@ -33,16 +30,22 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "errorpage.h"
-#include "StoreClient.h"
-#include "Store.h"
+#include "forward.h"
+#include "globals.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "MemBuf.h"
-#include "forward.h"
-#include "SquidTime.h"
 #include "icmp/net_db.h"
+#include "MemBuf.h"
+#include "mime_header.h"
+#include "RequestFlags.h"
+#include "SquidTime.h"
+#include "Store.h"
+#include "StoreClient.h"
+#include "tools.h"
+#include "URL.h"
+#include "urn.h"
 
 #define	URN_REQBUF_SZ	4096
 
@@ -61,7 +64,6 @@ public:
     void createUriResRequest (String &uri);
 
     virtual ~UrnState();
-
 
     StoreEntry *entry;
     store_client *sc;
@@ -156,7 +158,7 @@ urnFindMinRtt(url_entry * urls, const HttpRequestMethod& m, int *rtt_ret)
     if (rtt_ret)
         *rtt_ret = min_rtt;
 
-    debugs(52, 1, "urnFindMinRtt: Returning '" <<
+    debugs(52, DBG_IMPORTANT, "urnFindMinRtt: Returning '" <<
            (min_u ? min_u->url : "NONE") << "' RTT " <<
            min_rtt  );
 
@@ -254,7 +256,7 @@ UrnState::created(StoreEntry *newEntry)
     urlres_e = newEntry;
 
     if (urlres_e->isNull()) {
-        urlres_e = storeCreateEntry(urlres, urlres, request_flags(), METHOD_GET);
+        urlres_e = storeCreateEntry(urlres, urlres, RequestFlags(), METHOD_GET);
         sc = storeClientListAdd(urlres_e, this);
         FwdState::fwdStart(Comm::ConnectionPointer(), urlres_e, urlres_r);
     } else {
@@ -360,7 +362,7 @@ urnHandleReply(void *data, StoreIOBuffer result)
     k = headersEnd(buf, urnState->reqofs);
 
     if (0 == k) {
-        debugs(52, 1, "urnHandleReply: didn't find end-of-headers for " << e->url()  );
+        debugs(52, DBG_IMPORTANT, "urnHandleReply: didn't find end-of-headers for " << e->url()  );
         urnHandleReplyError(urnState, urlres_e);
         return;
     }

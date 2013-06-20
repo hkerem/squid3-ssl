@@ -1,4 +1,4 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "MmappedDiskIOModule.h"
 #include "MmappedIOStrategy.h"
 
@@ -20,7 +20,6 @@ MmappedDiskIOModule::init()
 void
 MmappedDiskIOModule::shutdown()
 {}
-
 
 DiskIOStrategy*
 MmappedDiskIOModule::createStrategy()

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -18,7 +16,6 @@
 #include "mgr/Response.h"
 #include "SquidTime.h"
 #include "Store.h"
-
 
 Mgr::Action::Action(const Command::Pointer &aCmd): cmd(aCmd)
 {

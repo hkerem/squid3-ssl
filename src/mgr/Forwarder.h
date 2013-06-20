@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "comm/forward.h"
 #include "ipc/Forwarder.h"
 #include "mgr/ActionParams.h"
-
 
 class CommCloseCbParams;
 class HttpRequest;

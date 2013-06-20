@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -80,7 +78,6 @@ private:
 };
 
 extern Config TheConfig;
-
 
 } // namespace Icap
 } // namespace Adaptation

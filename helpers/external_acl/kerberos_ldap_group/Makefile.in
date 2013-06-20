@@ -50,6 +50,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -70,7 +72,8 @@ ext_kerberos_ldap_group_acl_OBJECTS =  \
 @ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
 am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 am__DEPENDENCIES_3 =
-ext_kerberos_ldap_group_acl_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+ext_kerberos_ldap_group_acl_DEPENDENCIES =  \
+	$(top_builddir)/lib/libmiscencoding.la $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3) \
 	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_3) \
 	$(am__DEPENDENCIES_3)
@@ -406,6 +409,7 @@ ext_kerberos_ldap_group_acl_SOURCES = \
 
 ext_kerberos_ldap_group_acl_LDFLAGS = 
 ext_kerberos_ldap_group_acl_LDADD = \
+	$(top_builddir)/lib/libmiscencoding.la \
 	$(COMPAT_LIB) \
 	$(LDAPLIB) \
 	$(LBERLIB) \

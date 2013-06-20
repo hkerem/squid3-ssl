@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 90    HTTP Cache Control Header
  * AUTHOR: Alex Rousskov
  *         Robert Collins (Surrogate-Control is derived from
@@ -35,11 +33,11 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "HttpHdrSc.h"
 #include "StatHist.h"
 
-extern http_hdr_sc_type &operator++ (http_hdr_sc_type &aHeader);
+http_hdr_sc_type &operator++ (http_hdr_sc_type &aHeader);
 /* copies non-extant fields from new_sc to this sc */
 void
 HttpHdrScTarget::mergeWith(const HttpHdrScTarget * new_sc)

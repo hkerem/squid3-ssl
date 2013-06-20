@@ -29,17 +29,23 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "base/CbcPointer.h"
+#include "CachePeer.h"
+#include "client_db.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/Loops.h"
 #include "comm/UdpOpenDialer.h"
 #include "ip/Address.h"
 #include "ip/tools.h"
+#include "snmp_agent.h"
 #include "snmp_core.h"
 #include "snmp/Forwarder.h"
+#include "SnmpRequest.h"
+#include "SquidConfig.h"
+#include "tools.h"
 
 static void snmpPortOpened(const Comm::ConnectionPointer &conn, int errNo);
 
@@ -59,8 +65,8 @@ static oid *static_Inst(oid * name, snint * len, mib_tree_entry * current, oid_P
 static oid *time_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn);
 static oid *peer_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn);
 static oid *client_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn);
-static void snmpDecodePacket(snmp_request_t * rq);
-static void snmpConstructReponse(snmp_request_t * rq);
+static void snmpDecodePacket(SnmpRequest * rq);
+static void snmpConstructReponse(SnmpRequest * rq);
 
 static oid_ParseFn *snmpTreeNext(oid * Current, snint CurrentLen, oid ** Next, snint * NextLen);
 static oid_ParseFn *snmpTreeGet(oid * Current, snint CurrentLen);
@@ -358,7 +364,7 @@ snmpHandleUdp(int sock, void *not_used)
 {
     LOCAL_ARRAY(char, buf, SNMP_REQUEST_SIZE);
     Ip::Address from;
-    snmp_request_t *snmp_rq;
+    SnmpRequest *snmp_rq;
     int len;
 
     debugs(49, 5, "snmpHandleUdp: Called.");
@@ -377,7 +383,7 @@ snmpHandleUdp(int sock, void *not_used)
         buf[len] = '\0';
         debugs(49, 3, "snmpHandleUdp: FD " << sock << ": received " << len << " bytes from " << from << ".");
 
-        snmp_rq = (snmp_request_t *)xcalloc(1, sizeof(snmp_request_t));
+        snmp_rq = (SnmpRequest *)xcalloc(1, sizeof(SnmpRequest));
         snmp_rq->buf = (u_char *) buf;
         snmp_rq->len = len;
         snmp_rq->sock = sock;
@@ -387,7 +393,7 @@ snmpHandleUdp(int sock, void *not_used)
         xfree(snmp_rq->outbuf);
         xfree(snmp_rq);
     } else {
-        debugs(49, 1, "snmpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
+        debugs(49, DBG_IMPORTANT, "snmpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
     }
 }
 
@@ -395,7 +401,7 @@ snmpHandleUdp(int sock, void *not_used)
  * Turn SNMP packet into a PDU, check available ACL's
  */
 static void
-snmpDecodePacket(snmp_request_t * rq)
+snmpDecodePacket(SnmpRequest * rq)
 {
     struct snmp_pdu *PDU;
     u_char *Community;
@@ -442,7 +448,7 @@ snmpDecodePacket(snmp_request_t * rq)
  * Packet OK, ACL Check OK, Create reponse.
  */
 static void
-snmpConstructReponse(snmp_request_t * rq)
+snmpConstructReponse(SnmpRequest * rq)
 {
 
     struct snmp_pdu *RespPDU;
@@ -642,7 +648,6 @@ snmpTreeNext(oid * Current, snint CurrentLen, oid ** Next, snint * NextLen)
     if (mibTreeEntry == mib_tree_last)
         return (Fn);
 
-
     if ((mibTreeEntry) && (mibTreeEntry->parsefunction)) {
         *NextLen = CurrentLen;
         *Next = (*mibTreeEntry->instancefunction) (Current, NextLen, mibTreeEntry, &Fn);
@@ -741,12 +746,11 @@ time_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn)
     return (instance);
 }
 
-
 static oid *
 peer_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn)
 {
     oid *instance = NULL;
-    peer *peers = Config.peers;
+    CachePeer *peers = Config.peers;
 
     if (peers == NULL) {
         debugs(49, 6, "snmp peer_Inst: No Peers.");
@@ -765,7 +769,7 @@ peer_Inst(oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn)
         int no = name[current->len] ;
         int i;
         // Note: This works because the Config.peers keeps its index according to its position.
-        for ( i=0 ; peers && (i < no) ; peers = peers->next , i++ ) ;
+        for ( i=0 ; peers && (i < no) ; peers = peers->next , ++i ) ;
 
         if (peers) {
             debugs(49, 6, "snmp peer_Inst: Encode peer #" << i);
@@ -1002,7 +1006,6 @@ snmpAddNodeStr(const char *base_str, int o, oid_ParseFn * parsefunction, instanc
     return m;
 }
 
-
 /*
  * Adds a node to the MIB tree structure and adds the appropriate children
  */
@@ -1087,8 +1090,6 @@ snmpSnmplibDebug(int lvl, char *buf)
 {
     debugs(49, lvl, buf);
 }
-
-
 
 /*
    IPv4 address: 10.10.0.9  ==>

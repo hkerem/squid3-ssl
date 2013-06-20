@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
  *
@@ -36,15 +34,8 @@
 /* TODO: remove this file as unused */
 
 #include "squid.h"
-#if 0
-#include "StoreFileSystem.h"
-#include "DiskIO/DiskIOModule.h"
-#endif
-
 #include "fs/ufs/StoreFSufs.h"
-
-/** \todo FIXME: break UFSSwapDir out so we don;t need all the extras */
-#include "fs/ufs/ufscommon.h"
+#include "fs/ufs/UFSSwapDir.h"
 
 /**
  \defgroup diskd diskd Storage Filesystem (UFS Based)
@@ -52,4 +43,4 @@
  */
 
 /* Unused variable: */
-StoreFSufs<UFSSwapDir> *DiskdInstance_foo = NULL;
+Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *DiskdInstance_foo = NULL;

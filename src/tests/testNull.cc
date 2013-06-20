@@ -1,15 +1,16 @@
 #define SQUID_UNIT_TEST 1
-#include "squid-old.h"
+#include "squid.h"
 #include "testNull.h"
 #include "Store.h"
 #include "SwapDir.h"
 #include "DiskIO/DiskIOModule.h"
-#include "fs/ufs/ufscommon.h"
 #include "fs/null/store_null.h"
 #include "Mem.h"
 #include "MemObject.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
 #include "StoreFileSystem.h"
 #include "testStoreSupport.h"
 
@@ -159,7 +160,7 @@ testNull::testNullSearch()
     /* add an entry */
     {
         /* Create "vary" base object */
-        request_flags flags;
+        RequestFlags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
         /* We are allowed to do this typecast */

@@ -14,10 +14,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#
-# $Id$
-#
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@

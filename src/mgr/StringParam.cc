@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -8,7 +6,6 @@
 #include "squid.h"
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/StringParam.h"
-
 
 Mgr::StringParam::StringParam():
         QueryParam(QueryParam::ptString), str()

@@ -32,12 +32,14 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 #if USE_SQUID_EUI
 
 #include "acl/Eui64.h"
 #include "acl/FilledChecklist.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "eui/Eui64.h"
 #include "ip/Address.h"
 #include "wordlist.h"
@@ -46,7 +48,6 @@ static void aclParseEuiList(SplayNode<Eui::Eui64 *> **curlist);
 static int aclMatchEui(SplayNode<Eui::Eui64 *> **dataptr, Ip::Address &c);
 static SplayNode<Eui::Eui64 *>::SPLAYCMP aclEui64Compare;
 static SplayNode<Eui::Eui64 *>::SPLAYWALKEE aclDumpEuiListWalkee;
-
 
 ACL *
 ACLEui64::clone() const
@@ -89,21 +90,20 @@ aclParseEuiData(const char *t)
     debugs(28, 5, "aclParseEuiData: " << t);
 
     if (sscanf(t, "%[0-9a-fA-F:]", buf) != 1) {
-        debugs(28, 0, "aclParseEuiData: Bad EUI-64 address: '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclParseEuiData: Bad EUI-64 address: '" << t << "'");
         safe_free(q);
         return NULL;
     }
 
     if (!q->decode(buf)) {
-        debugs(28, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(28, 0, "aclParseEuiData: Ignoring invalid EUI-64 acl entry: can't parse '" << buf << "'");
+        debugs(28, DBG_CRITICAL, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(28, DBG_CRITICAL, "aclParseEuiData: Ignoring invalid EUI-64 acl entry: can't parse '" << buf << "'");
         safe_free(q);
         return NULL;
     }
 
     return q;
 }
-
 
 /*******************/
 /* aclParseEuiList */

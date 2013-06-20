@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * Windows support
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  * inspired by previous work by Romeo Anghelache & Eric Stern.
@@ -236,6 +234,7 @@ statfs(const char *path, struct statfs *sfs)
     return 0;
 }
 
+#if !_SQUID_MINGW_
 int
 WIN32_ftruncate(int fd, off_t size)
 {
@@ -283,6 +282,7 @@ WIN32_truncate(const char *pathname, off_t length)
 
     return res;
 }
+#endif /* !_SQUID_MINGW_ */
 
 struct passwd *
 getpwnam(char *unused) {

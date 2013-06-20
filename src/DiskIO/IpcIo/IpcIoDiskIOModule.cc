@@ -1,4 +1,4 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "IpcIoDiskIOModule.h"
 #include "IpcIoIOStrategy.h"
 
@@ -20,7 +20,6 @@ IpcIoDiskIOModule::init()
 void
 IpcIoDiskIOModule::shutdown()
 {}
-
 
 DiskIOStrategy*
 IpcIoDiskIOModule::createStrategy()

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Heap-based replacement
  * AUTHOR: John Dilley
  *
@@ -41,12 +39,16 @@
  *  http://www.hpl.hp.com/techreports/1999/HPL-1999-69.html
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "heap.h"
 #include "store_heap_replacement.h"
 #include "Store.h"
 #include "MemObject.h"
 #include "SquidTime.h"
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
 
 /*
  * Key generation function to implement the LFU-DA policy (Least
@@ -93,7 +95,6 @@ HeapKeyGen_StoreEntry_LFUDA(void *entry, double heap_age)
 
     return (double) key;
 }
-
 
 /*
  * Key generation function to implement the GDS-Frequency policy.

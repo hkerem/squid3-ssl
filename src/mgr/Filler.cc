@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "mgr/Filler.h"
 #include "mgr/Response.h"
 #include "Store.h"
-
 
 CBDATA_NAMESPACED_CLASS_INIT(Mgr, Filler);
 

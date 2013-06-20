@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -12,7 +10,6 @@
 #include "comm/forward.h"
 #include "mgr/Action.h"
 #include "StoreIOBuffer.h"
-
 
 class store_client;
 class CommIoCbParams;

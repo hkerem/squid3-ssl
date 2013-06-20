@@ -55,6 +55,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -64,7 +66,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__EXEEXT_1 = ESIExpressions$(EXEEXT)
 @USE_ESI_TRUE@am__EXEEXT_2 = $(am__EXEEXT_1)
-am__objects_1 = test_tools.$(OBJEXT) stub_debug.$(OBJEXT)
+am__objects_1 = test_tools.$(OBJEXT) stub_debug.$(OBJEXT) \
+	stub_tools.$(OBJEXT) stub_fatal.$(OBJEXT)
 am_ESIExpressions_OBJECTS = ESIExpressions.$(OBJEXT) $(am__objects_1)
 ESIExpressions_OBJECTS = $(am_ESIExpressions_OBJECTS)
 @ENABLE_XPROF_STATS_TRUE@am__DEPENDENCIES_1 = $(top_builddir)/lib/profiler/libprofiler.la
@@ -385,7 +388,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = $(SQUID_CFLAGS)
 AM_CXXFLAGS = $(SQUID_CXXFLAGS)
-CLEANFILES = stub_debug.cc
+CLEANFILES = stub_debug.cc stub_tools.cc stub_fatal.cc
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include -I$(top_srcdir)/lib \
 	-I$(top_srcdir)/src -I$(top_builddir)/include \
 	$(SQUID_CPPUNIT_INC) $(KRB5INCS) $(am__append_1) -I$(srcdir)
@@ -408,7 +411,7 @@ ESI_ALL_TESTS = \
 @USE_ESI_FALSE@ESI_TESTS = 
 @USE_ESI_TRUE@ESI_TESTS = $(ESI_ALL_TESTS)
 tcp_banger2_LDADD = $(top_builddir)/lib/libmiscutil.la
-DEBUG_SOURCE = test_tools.cc stub_debug.cc
+DEBUG_SOURCE = test_tools.cc stub_debug.cc stub_tools.cc stub_fatal.cc
 debug_SOURCES = debug.cc $(DEBUG_SOURCE)
 ESIExpressions_SOURCES = ESIExpressions.cc $(DEBUG_SOURCE)
 ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
@@ -417,8 +420,10 @@ ESIExpressions_LDADD = $(top_builddir)/src/esi/Expression.o \
 mem_node_test_SOURCES = mem_node_test.cc
 mem_node_test_LDADD = $(top_builddir)/src/mem_node.o $(LDADD)
 mem_hdr_test_SOURCES = mem_hdr_test.cc $(DEBUG_SOURCE)
-mem_hdr_test_LDADD = $(top_builddir)/src/stmem.o \
-		     $(top_builddir)/src/mem_node.o $(LDADD)
+mem_hdr_test_LDADD = \
+	$(top_builddir)/src/stmem.o \
+	$(top_builddir)/src/mem_node.o \
+	$(LDADD)
 
 MemPoolTest_SOURCES = MemPoolTest.cc
 refcount_SOURCES = refcount.cc
@@ -523,6 +528,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/refcount.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/splay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_fatal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_tools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntheticoperators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp-banger2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@
@@ -879,6 +886,12 @@ $(OBJS): $(top_srcdir)/include/version.h $(top_builddir)/include/autoconf.h
 
 stub_debug.cc: $(top_srcdir)/src/tests/stub_debug.cc
 	cp $(top_srcdir)/src/tests/stub_debug.cc .
+
+stub_tools.cc: $(top_srcdir)/src/tests/stub_tools.cc
+	cp $(top_srcdir)/src/tests/stub_tools.cc .
+
+stub_fatal.cc: $(top_srcdir)/src/tests/stub_fatal.cc
+	cp $(top_srcdir)/src/tests/stub_fatal.cc .
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

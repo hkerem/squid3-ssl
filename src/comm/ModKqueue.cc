@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Socket Functions
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -55,16 +53,18 @@
 #include "squid.h"
 
 #if USE_KQUEUE
-
-#include "squid-old.h"
 #include "comm/Loops.h"
 #include "fde.h"
-#include "Store.h"
+#include "globals.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
+#include "Store.h"
 
 #if HAVE_SYS_EVENT_H
 #include <sys/event.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 #define KE_LENGTH        128
@@ -148,16 +148,13 @@ kq_update_events(int fd, short filter, PF * handler)
 
             kqoff = 0;
         } else {
-            kqoff++;
+            ++kqoff;
         }
     }
 }
 
-
-
 /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
 /* Public functions */
-
 
 /*
  * comm_select_init
@@ -282,7 +279,7 @@ Comm::DoSelect(int msec)
     if (num == 0)
         return COMM_OK;		/* No error.. */
 
-    for (i = 0; i < num; i++) {
+    for (i = 0; i < num; ++i) {
         int fd = (int) ke[i].ident;
         PF *hdl = NULL;
         fde *F = &fd_table[fd];
@@ -316,7 +313,7 @@ Comm::DoSelect(int msec)
 
         default:
             /* Bad! -- adrian */
-            debugs(5, 1, "comm_select: kevent returned " << ke[i].filter << "!");
+            debugs(5, DBG_IMPORTANT, "comm_select: kevent returned " << ke[i].filter << "!");
             break;
         }
     }

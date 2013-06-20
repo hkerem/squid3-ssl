@@ -217,7 +217,7 @@ convert_domain_to_bind_path(char *domain)
 
     for (dp = domain; *dp; ++dp) {
         if (*dp == '.')
-            i++;
+            ++i;
     }
     /*
      * add dc= and
@@ -272,7 +272,7 @@ escape_filter(char *filter)
             ldf = ldf + 3;
         } else {
             *ldf = *filter;
-            ldf++;
+            ++ldf;
         }
     }
     *ldf = '\0';
@@ -357,19 +357,18 @@ search_group_tree(struct main_args *margs, LDAP * ld, char *bindp, char *ldap_gr
     search_exp = (char *) xmalloc(strlen(filter) + strlen(ldap_filter_esc) + 1);
     snprintf(search_exp, strlen(filter) + strlen(ldap_filter_esc) + 1, filter, ldap_filter_esc);
 
-    if (ldap_filter_esc)
-        xfree(ldap_filter_esc);
+    xfree(ldap_filter_esc);
 
     if (depth > margs->mdepth) {
         debug((char *) "%s| %s: DEBUG: Max search depth reached %d>%d\n", LogTime(), PROGRAM, depth, margs->mdepth);
+        xfree(search_exp);
         return 0;
     }
     debug((char *) "%s| %s: DEBUG: Search ldap server with bind path %s and filter : %s\n", LogTime(), PROGRAM, bindp, search_exp);
     rc = ldap_search_ext_s(ld, bindp, LDAP_SCOPE_SUBTREE,
                            search_exp, NULL, 0,
                            NULL, NULL, &searchtime, 0, &res);
-    if (search_exp)
-        xfree(search_exp);
+    xfree(search_exp);
 
     if (rc != LDAP_SUCCESS) {
         error((char *) "%s| %s: ERROR: Error searching ldap server: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
@@ -661,22 +660,16 @@ tool_ldap_open(struct main_args * margs, char *host, int port, char *ssl)
     rc = ldap_url_parse(ldapuri, &url);
     if (rc != LDAP_SUCCESS) {
         error((char *) "%s| %s: ERROR: Error while parsing url: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
-        if (ldapuri)
-            xfree(ldapuri);
-        if (url)
-            xfree(url);
+        xfree(ldapuri);
+        xfree(url);
         return NULL;
     }
 #else
 #error "No URL parsing function"
 #endif
-    if (url) {
-        xfree(url);
-        url = NULL;
-    }
+    safe_free(url);
     rc = ldap_initialize(&ld, ldapuri);
-    if (ldapuri)
-        xfree(ldapuri);
+    xfree(ldapuri);
     if (rc != LDAP_SUCCESS) {
         error((char *) "%s| %s: ERROR: Error while initialising connection to ldap server: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
         ldap_unbind(ld);
@@ -732,22 +725,16 @@ tool_ldap_open(struct main_args * margs, char *host, int port, char *ssl)
             rc = ldap_url_parse(ldapuri, &url);
             if (rc != LDAP_SUCCESS) {
                 error((char *) "%s| %s: ERROR: Error while parsing url: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
-                if (ldapuri)
-                    xfree(ldapuri);
-                if (url)
-                    xfree(url);
+                xfree(ldapuri);
+                xfree(url);
                 return NULL;
             }
 #else
 #error "No URL parsing function"
 #endif
-            if (url) {
-                xfree(url);
-                url = NULL;
-            }
+            safe_free(url);
             rc = ldap_initialize(&ld, ldapuri);
-            if (ldapuri)
-                xfree(ldapuri);
+            xfree(ldapuri);
             if (rc != LDAP_SUCCESS) {
                 error((char *) "%s| %s: ERROR: Error while initialising connection to ldap server: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
                 ldap_unbind(ld);
@@ -813,7 +800,6 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
     char *ssl = NULL;
     char *p;
     char *ldap_filter_esc = NULL;
-
 
     searchtime.tv_sec = SEARCH_TIMEOUT;
     searchtime.tv_usec = 0;
@@ -886,7 +872,7 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
                 continue;
             }
             lcreds = (ldap_creds *) xmalloc(sizeof(struct ldap_creds));
-            lcreds->dn = bindp ? xstrdup(bindp) : NULL;
+            lcreds->dn = NULL;
             lcreds->pw = margs->ssl ? xstrdup(margs->ssl) : NULL;
             ldap_set_rebind_proc(ld, ldap_sasl_rebind, (char *) lcreds);
             if (ld != NULL) {
@@ -923,13 +909,11 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
         port = 389;
         if ((p = strchr(host, ':'))) {
             *p = '\0';
-            p++;
+            ++p;
             port = atoi(p);
         }
         nhosts = get_hostname_list(margs, &hlist, 0, host);
-        if (host)
-            xfree(host);
-        host = NULL;
+        safe_free(host);
         for (i = 0; i < nhosts; ++i) {
 
             ld = tool_ldap_open(margs, hlist[i].host, port, ssl);
@@ -956,8 +940,7 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
 
         }
         nhosts = free_hostname_list(&hlist, nhosts);
-        if (bindp)
-            xfree(bindp);
+        xfree(bindp);
         if (margs->lbind) {
             bindp = xstrdup(margs->lbind);
         } else {
@@ -994,15 +977,13 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
     search_exp = (char *) xmalloc(strlen(filter) + strlen(ldap_filter_esc) + 1);
     snprintf(search_exp, strlen(filter) + strlen(ldap_filter_esc) + 1, filter, ldap_filter_esc);
 
-    if (ldap_filter_esc)
-        xfree(ldap_filter_esc);
+    xfree(ldap_filter_esc);
 
     debug((char *) "%s| %s: DEBUG: Search ldap server with bind path %s and filter : %s\n", LogTime(), PROGRAM, bindp, search_exp);
     rc = ldap_search_ext_s(ld, bindp, LDAP_SCOPE_SUBTREE,
                            search_exp, NULL, 0,
                            NULL, NULL, &searchtime, 0, &res);
-    if (search_exp)
-        xfree(search_exp);
+    xfree(search_exp);
 
     if (rc != LDAP_SUCCESS) {
         error((char *) "%s| %s: ERROR: Error searching ldap server: %s\n", LogTime(), PROGRAM, ldap_err2string(rc));
@@ -1110,15 +1091,13 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
         search_exp = (char *) xmalloc(strlen(filter) + strlen(ldap_filter_esc) + 1);
         snprintf(search_exp, strlen(filter) + strlen(ldap_filter_esc) + 1, filter, ldap_filter_esc);
 
-        if (ldap_filter_esc)
-            xfree(ldap_filter_esc);
+        xfree(ldap_filter_esc);
 
         debug((char *) "%s| %s: DEBUG: Search ldap server with bind path %s and filter: %s\n", LogTime(), PROGRAM, bindp, search_exp);
         rc = ldap_search_ext_s(ld, bindp, LDAP_SCOPE_SUBTREE,
                                search_exp, NULL, 0,
                                NULL, NULL, &searchtime, 0, &res);
-        if (search_exp)
-            xfree(search_exp);
+        xfree(search_exp);
 
         debug((char *) "%s| %s: DEBUG: Found %d ldap entr%s\n", LogTime(), PROGRAM, ldap_count_entries(ld, res), ldap_count_entries(ld, res) > 1 || ldap_count_entries(ld, res) == 0 ? "ies" : "y");
 
@@ -1136,15 +1115,13 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
             search_exp = (char *) xmalloc(strlen(filter) + strlen(ldap_filter_esc) + 1);
             snprintf(search_exp, strlen(filter) + strlen(ldap_filter_esc) + 1, filter, ldap_filter_esc);
 
-            if (ldap_filter_esc)
-                xfree(ldap_filter_esc);
+            xfree(ldap_filter_esc);
 
             debug((char *) "%s| %s: DEBUG: Search ldap server with bind path %s and filter: %s\n", LogTime(), PROGRAM, bindp, search_exp);
             rc = ldap_search_ext_s(ld, bindp, LDAP_SCOPE_SUBTREE,
                                    search_exp, NULL, 0,
                                    NULL, NULL, &searchtime, 0, &res);
-            if (search_exp)
-                xfree(search_exp);
+            xfree(search_exp);
 
             max_attr_2 = get_attributes(margs, ld, res, ATTRIBUTE, &attr_value_2);
             /*
@@ -1176,8 +1153,10 @@ get_memberof(struct main_args *margs, char *user, char *domain, char *group)
 
             debug((char *) "%s| %s: DEBUG: Users primary group %s %s\n", LogTime(), PROGRAM, retval ? "matches" : "does not match", group);
 
-        } else
+        } else {
+            ldap_msgfree(res);
             debug((char *) "%s| %s: DEBUG: Did not find ldap entry for group %s\n", LogTime(), PROGRAM, group);
+        }
         /*
          * Cleanup
          */
@@ -1201,16 +1180,11 @@ cleanup:
         krb5_cleanup();
 #endif
     if (lcreds) {
-        if (lcreds->dn)
-            xfree(lcreds->dn);
-        if (lcreds->pw)
-            xfree(lcreds->pw);
+        xfree(lcreds->dn);
+        xfree(lcreds->pw);
         xfree(lcreds);
     }
-    if (bindp)
-        xfree(bindp);
-    bindp = NULL;
+    xfree(bindp);
     return (retval);
-
 }
 #endif

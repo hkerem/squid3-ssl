@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -17,7 +15,6 @@
 #if HAVE_STRING_H
 #include <string.h>
 #endif
-
 
 CpuAffinitySet::CpuAffinitySet()
 {

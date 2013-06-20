@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Disk IO Routines
  * AUTHOR: Robert Collins
  *
@@ -33,15 +31,21 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-
-#include "squid-old.h"
+#include "squid.h"
+#include "disk.h"
 #include "DiskThreadsDiskFile.h"
-#include "Store.h"
-#include "Generic.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "fd.h"
+#include "Generic.h"
+#include "globals.h"
 #include "StatCounters.h"
+#include "Store.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 /* === PUBLIC =========================================================== */
 
@@ -185,8 +189,8 @@ DiskThreadsDiskFile::openDone(int unused, const char *unused2, int anFD, int err
 
     if (errflag || fd < 0) {
         errno = errflag;
-        debugs(79, 0, "DiskThreadsDiskFile::openDone: " << xstrerror());
-        debugs(79, 1, "\t" << path_);
+        debugs(79, DBG_CRITICAL, "DiskThreadsDiskFile::openDone: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "\t" << path_);
         errorOccured = true;
     } else {
         ++store_open_disk_fd;
@@ -231,7 +235,7 @@ DiskThreadsDiskFile::close()
         ioRequestor->closeCompleted();
         return;
     } else {
-        debugs(79,0,HERE << "DiskThreadsDiskFile::close: " <<
+        debugs(79, DBG_CRITICAL, HERE << "DiskThreadsDiskFile::close: " <<
                "did NOT close because ioInProgress() is true.  now what?");
     }
 }

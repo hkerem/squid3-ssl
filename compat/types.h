@@ -81,11 +81,9 @@
 #include <netinet/in_systm.h>
 #endif
 
-
 /******************************************************/
 /* Typedefs for missing entries on a system           */
 /******************************************************/
-
 
 /*
  * ISO C99 Standard printf() macros for 64 bit integers
@@ -151,6 +149,14 @@ typedef int socklen_t;
 
 #ifndef HAVE_MTYP_T
 typedef long mtyp_t;
+#endif
+
+#ifndef NULL
+#if defined(__cplusplus) && HAVE_NULLPTR
+#define NULL nullptr
+#else
+#define NULL 0
+#endif
 #endif
 
 #endif /* SQUID_TYPES_H */

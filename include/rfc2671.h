@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Amos Jeffries
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -42,6 +40,5 @@
 #define RFC1035_TYPE_OPT 41
 
 SQUIDCEXTERN int rfc2671RROptPack(char *buf, size_t sz, ssize_t edns_sz);
-
 
 #endif /* SQUID_RFC3596_H */

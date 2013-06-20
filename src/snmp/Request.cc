@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -9,7 +7,6 @@
 #include "ipc/Messages.h"
 #include "ipc/TypedMsgHdr.h"
 #include "snmp/Request.h"
-
 
 Snmp::Request::Request(int aRequestorId, unsigned int aRequestId,
                        const Pdu& aPdu, const Session& aSession,

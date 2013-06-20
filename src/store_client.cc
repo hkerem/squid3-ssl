@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 90    Storage Manager Client-Side Interface
  * AUTHOR: Duane Wessels
  *
@@ -34,20 +32,24 @@
  * Portions copyright (c) 2003 Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "event.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "MemBuf.h"
+#include "MemObject.h"
+#include "mime_header.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
+#include "StatCounters.h"
 #include "StoreClient.h"
 #include "Store.h"
-#include "HttpReply.h"
-#include "MemObject.h"
-#include "StatCounters.h"
+#include "store_swapin.h"
 #include "StoreMeta.h"
 #include "StoreMetaUnpacker.h"
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-#include "HttpRequest.h"
-#include "MemBuf.h"
 
 /*
  * NOTE: 'Header' refers to the swapfile metadata header.
@@ -412,7 +414,7 @@ store_client::startSwapin()
 
         return;
     } else {
-        debugs(90, 1, "WARNING: Averted multiple fd operation (1)");
+        debugs(90, DBG_IMPORTANT, "WARNING: Averted multiple fd operation (1)");
         flags.store_copying = 0;
         return;
     }
@@ -498,7 +500,7 @@ store_client::readBody(const char *buf, ssize_t len)
         HttpReply *rep = (HttpReply *) entry->getReply(); // bypass const
 
         if (!rep->parseCharBuf(copyInto.data, headersEnd(copyInto.data, len))) {
-            debugs(90, 0, "Could not parse headers from on disk object");
+            debugs(90, DBG_CRITICAL, "Could not parse headers from on disk object");
         } else {
             parsed_header = 1;
         }
@@ -571,7 +573,7 @@ store_client::unpackHeader(char const *buf, ssize_t len)
 
     if (!aBuilder.isBufferSane()) {
         /* oops, bad disk file? */
-        debugs(90, 1, "WARNING: swapfile header inconsistent with available data");
+        debugs(90, DBG_IMPORTANT, "WARNING: swapfile header inconsistent with available data");
         fail();
         return;
     }
@@ -579,7 +581,7 @@ store_client::unpackHeader(char const *buf, ssize_t len)
     tlv *tlv_list = aBuilder.createStoreMeta ();
 
     if (tlv_list == NULL) {
-        debugs(90, 1, "WARNING: failed to unpack meta data");
+        debugs(90, DBG_IMPORTANT, "WARNING: failed to unpack meta data");
         fail();
         return;
     }

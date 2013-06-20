@@ -1,15 +1,25 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  */
 
 #include "squid.h"
+#include "Debug.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/Mmapped/MmappedFile.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "disk.h"
+#include "globals.h"
+
+#if HAVE_SYS_MMAN_H
 #include <sys/mman.h>
+#endif
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 // Some systems such as Hurd provide mmap() API but do not support MAP_NORESERVE
 #ifndef MAP_NORESERVE
@@ -38,7 +48,6 @@ private:
     off_t delta; ///< mapped buffer increment to hit user offset
     void *buf; ///< buffer returned by mmap, needed for munmap
 };
-
 
 void *
 MmappedFile::operator new(size_t sz)
@@ -192,10 +201,10 @@ MmappedFile::write(WriteRequest *aRequest)
     const ssize_t written =
         pwrite(fd, aRequest->buf, aRequest->len, aRequest->offset);
     if (written < 0) {
-        debugs(79,1, HERE << "error: " << xstrerr(errno));
+        debugs(79, DBG_IMPORTANT, HERE << "error: " << xstrerr(errno));
         error_ = true;
     } else if (static_cast<size_t>(written) != aRequest->len) {
-        debugs(79,1, HERE << "problem: " << written << " < " << aRequest->len);
+        debugs(79, DBG_IMPORTANT, HERE << "problem: " << written << " < " << aRequest->len);
         error_ = true;
     }
 

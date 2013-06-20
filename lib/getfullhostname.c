@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Harvest Derived
  *
@@ -33,7 +31,6 @@
  */
 #include "squid.h"
 #include "getfullhostname.h"
-
 
 #if HAVE_UNISTD_H
 /* for gethostname() function */

@@ -1,4 +1,4 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/HierCode.h"
 #include "acl/HierCodeData.h"
 #include "acl/Checklist.h"
@@ -7,7 +7,6 @@
 /* explicit template instantiation required for some systems */
 
 template class ACLStrategised<hier_code>;
-
 
 int
 ACLHierCodeStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

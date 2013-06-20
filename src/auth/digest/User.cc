@@ -3,12 +3,15 @@
 #include "auth/digest/User.h"
 #include "Debug.h"
 #include "dlink.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 Auth::Digest::User::User(Auth::Config *aConfig) :
         Auth::User(aConfig),
         HA1created(0)
-{}
+{
+    memset(HA1, 0, sizeof(HA1));
+}
 
 Auth::Digest::User::~User()
 {

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -12,7 +10,6 @@
 #include "mgr/forward.h"
 #include "mgr/QueryParam.h"
 #include <vector>
-
 
 namespace Mgr
 {

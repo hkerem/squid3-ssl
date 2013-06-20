@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -42,7 +40,6 @@
 // For HTTP responses, request header information is also available
 // as the "cause". ICAP transactions use this class to store virgin
 // and adapted HTTP messages.
-
 
 namespace Adaptation
 {
@@ -89,7 +86,6 @@ public:
 };
 
 // TODO: s/Header/Message/i ?
-
 
 } // namespace Icap
 } // namespace Adaptation

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,7 +32,10 @@
  */
 
 #include "squid.h"
+#include "cache_cf.h"
 #include "ConfigParser.h"
+#include "Debug.h"
+#include "fatal.h"
 #include "globals.h"
 
 void
@@ -71,7 +72,7 @@ ConfigParser::strtokFile(void)
                 *t = '\0';
 
                 if ((wordFile = fopen(fn, "r")) == NULL) {
-                    debugs(28, 0, "strtokFile: " << fn << " not found");
+                    debugs(28, DBG_CRITICAL, "strtokFile: " << fn << " not found");
                     return (NULL);
                 }
 
@@ -116,15 +117,15 @@ ConfigParser::strtokFile(void)
 }
 
 void
-ConfigParser::ParseQuotedString(char **var)
+ConfigParser::ParseQuotedString(char **var, bool *wasQuoted)
 {
     String sVar;
-    ParseQuotedString(&sVar);
+    ParseQuotedString(&sVar, wasQuoted);
     *var = xstrdup(sVar.termedBuf());
 }
 
 void
-ConfigParser::ParseQuotedString(String *var)
+ConfigParser::ParseQuotedString(String *var, bool *wasQuoted)
 {
     // Get all of the remaining string
     char *token = strtok(NULL, "");
@@ -134,8 +135,11 @@ ConfigParser::ParseQuotedString(String *var)
     if (*token != '"') {
         token = strtok(token, w_space);
         var->reset(token);
+        if (wasQuoted)
+            *wasQuoted = false;
         return;
-    }
+    } else if (wasQuoted)
+        *wasQuoted = true;
 
     char  *s = token + 1;
     /* scan until the end of the quoted string, unescaping " and \  */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 21    Misc Functions
  * AUTHOR: Harvest Derived
  *
@@ -32,25 +30,42 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/Subscription.h"
+#include "client_side.h"
+#include "disk.h"
 #include "fde.h"
+#include "fqdncache.h"
 #include "htcp.h"
 #include "ICP.h"
 #include "ip/Intercept.h"
 #include "ip/QosConfig.h"
 #include "MemBuf.h"
 #include "anyp/PortCfg.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
 #include "ipc/Kids.h"
 #include "ipc/Coordinator.h"
 #include "ipcache.h"
+#include "tools.h"
 #include "SwapDir.h"
 #include "wordlist.h"
 
 #if HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
+#endif
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+#if HAVE_GRP_H
+#include <grp.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 #define DEAD_MSG "\
@@ -63,12 +78,10 @@ and report the trace back to squid-bugs@squid-cache.org.\n\
 \n\
 Thanks!\n"
 
-static void fatal_common(const char *);
-static void fatalvf(const char *fmt, va_list args);
 static void mail_warranty(void);
 #if MEM_GEN_TRACE
-extern void log_trace_done();
-extern void log_trace_init(char *);
+void log_trace_done();
+void log_trace_init(char *);
 #endif
 static void restoreCapabilities(int keep);
 int DebugSignal = -1;
@@ -296,7 +309,6 @@ rusage_pagefaults(struct rusage *r)
 #endif
 }
 
-
 void
 PrintRusage(void)
 {
@@ -312,7 +324,6 @@ PrintRusage(void)
     fprintf(debug_log, "Page faults with physical i/o: %d\n",
             rusage_pagefaults(&rusage));
 }
-
 
 void
 death(int sig)
@@ -426,111 +437,9 @@ sigusr2_handle(int sig)
 
 #if !HAVE_SIGACTION
     if (signal(sig, sigusr2_handle) == SIG_ERR)	/* reinstall */
-        debugs(50, 0, "signal: sig=" << sig << " func=sigusr2_handle: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "signal: sig=" << sig << " func=sigusr2_handle: " << xstrerror());
 
 #endif
-}
-
-static void
-fatal_common(const char *message)
-{
-#if HAVE_SYSLOG
-    syslog(LOG_ALERT, "%s", message);
-#endif
-
-    fprintf(debug_log, "FATAL: %s\n", message);
-
-    if (Debug::log_stderr > 0 && debug_log != stderr)
-        fprintf(stderr, "FATAL: %s\n", message);
-
-    fprintf(debug_log, "Squid Cache (Version %s): Terminated abnormally.\n",
-            version_string);
-
-    fflush(debug_log);
-
-    PrintRusage();
-
-    dumpMallocStats();
-}
-
-/* fatal */
-void
-fatal(const char *message)
-{
-    /* suppress secondary errors from the dying */
-    shutting_down = 1;
-
-    releaseServerSockets();
-    /* check for store_dirs_rebuilding because fatal() is often
-     * used in early initialization phases, long before we ever
-     * get to the store log. */
-
-    /* XXX: this should be turned into a callback-on-fatal, or
-     * a mandatory-shutdown-event or something like that.
-     * - RBC 20060819
-     */
-
-    /*
-     * DPW 2007-07-06
-     * Call leave_suid() here to make sure that swap.state files
-     * are written as the effective user, rather than root.  Squid
-     * may take on root privs during reconfigure.  If squid.conf
-     * contains a "Bungled" line, fatal() will be called when the
-     * process still has root privs.
-     */
-    leave_suid();
-
-    if (0 == StoreController::store_dirs_rebuilding)
-        storeDirWriteCleanLogs(0);
-
-    fatal_common(message);
-
-    exit(1);
-}
-
-/* printf-style interface for fatal */
-void
-fatalf(const char *fmt,...)
-{
-    va_list args;
-    va_start(args, fmt);
-    fatalvf(fmt, args);
-    va_end(args);
-}
-
-
-/* used by fatalf */
-static void
-fatalvf(const char *fmt, va_list args)
-{
-    static char fatal_str[BUFSIZ];
-    vsnprintf(fatal_str, sizeof(fatal_str), fmt, args);
-    fatal(fatal_str);
-}
-
-/* fatal with dumping core */
-void
-fatal_dump(const char *message)
-{
-    failure_notify = NULL;
-    releaseServerSockets();
-
-    if (message)
-        fatal_common(message);
-
-    /*
-     * Call leave_suid() here to make sure that swap.state files
-     * are written as the effective user, rather than root.  Squid
-     * may take on root privs during reconfigure.  If squid.conf
-     * contains a "Bungled" line, fatal() will be called when the
-     * process still has root privs.
-     */
-    leave_suid();
-
-    if (opt_catch_signals)
-        storeDirWriteCleanLogs(0);
-
-    abort();
 }
 
 void
@@ -696,7 +605,7 @@ leave_suid(void)
 #endif
 
         if (setgid(Config2.effectiveGroupID) < 0)
-            debugs(50, 0, "ALERT: setgid: " << xstrerror());
+            debugs(50, DBG_CRITICAL, "ALERT: setgid: " << xstrerror());
 
     }
 
@@ -712,10 +621,10 @@ leave_suid(void)
     if (!Config.effectiveGroup) {
 
         if (setgid(Config2.effectiveGroupID) < 0)
-            debugs(50, 0, "ALERT: setgid: " << xstrerror());
+            debugs(50, DBG_CRITICAL, "ALERT: setgid: " << xstrerror());
 
         if (initgroups(Config.effectiveUser, Config2.effectiveGroupID) < 0) {
-            debugs(50, 0, "ALERT: initgroups: unable to set groups for User " <<
+            debugs(50, DBG_CRITICAL, "ALERT: initgroups: unable to set groups for User " <<
                    Config.effectiveUser << " and Group " <<
                    (unsigned) Config2.effectiveGroupID << "");
         }
@@ -724,17 +633,17 @@ leave_suid(void)
 #if HAVE_SETRESUID
 
     if (setresuid(Config2.effectiveUserID, Config2.effectiveUserID, 0) < 0)
-        debugs(50, 0, "ALERT: setresuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: setresuid: " << xstrerror());
 
 #elif HAVE_SETEUID
 
     if (seteuid(Config2.effectiveUserID) < 0)
-        debugs(50, 0, "ALERT: seteuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: seteuid: " << xstrerror());
 
 #else
 
     if (setuid(Config2.effectiveUserID) < 0)
-        debugs(50, 0, "ALERT: setuid: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "ALERT: setuid: " << xstrerror());
 
 #endif
 
@@ -910,7 +819,7 @@ writePidFile(void)
     leave_suid();
 
     if (fd < 0) {
-        debugs(50, 0, "" << f << ": " << xstrerror());
+        debugs(50, DBG_CRITICAL, "" << f << ": " << xstrerror());
         debug_trap("Could not write pid file");
         return;
     }
@@ -919,7 +828,6 @@ writePidFile(void)
     FD_WRITE_METHOD(fd, buf, strlen(buf));
     file_close(fd);
 }
-
 
 pid_t
 readPidFile(void)
@@ -1176,7 +1084,7 @@ parseEtcHosts(void)
     fp = fopen(Config.etcHostsPath, "r");
 
     if (fp == NULL) {
-        debugs(1, 1, "parseEtcHosts: " << Config.etcHostsPath << ": " << xstrerror());
+        debugs(1, DBG_IMPORTANT, "parseEtcHosts: " << Config.etcHostsPath << ": " << xstrerror());
         return;
     }
 

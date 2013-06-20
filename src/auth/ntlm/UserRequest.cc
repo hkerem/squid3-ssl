@@ -3,6 +3,8 @@
 #include "auth/ntlm/UserRequest.h"
 #include "auth/State.h"
 #include "cbdata.h"
+#include "client_side.h"
+#include "globals.h"
 #include "HttpRequest.h"
 #include "SquidTime.h"
 
@@ -173,13 +175,13 @@ Auth::Ntlm::UserRequest::authenticate(HttpRequest * aRequest, ConnStateData * co
     /* if proxy_auth is actually NULL, we'd better not manipulate it. */
     if (blob) {
         while (xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
 
         while (!xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
 
         while (xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
     }
 
     switch (user()->credentials()) {
@@ -197,7 +199,7 @@ Auth::Ntlm::UserRequest::authenticate(HttpRequest * aRequest, ConnStateData * co
         break;
 
     case Auth::Pending:
-        debugs(29, 1, HERE << "need to ask helper");
+        debugs(29, DBG_IMPORTANT, HERE << "need to ask helper");
         break;
 
     case Auth::Handshake:
@@ -262,13 +264,13 @@ Auth::Ntlm::UserRequest::HandleReply(void *data, void *lastserver, char *reply)
     /* seperate out the useful data */
     blob = strchr(reply, ' ');
     if (blob)
-        blob++;
+        ++blob;
 
     if (strncasecmp(reply, "TT ", 3) == 0) {
         /* we have been given a blob to send to the client */
         safe_free(lm_request->server_blob);
-        lm_request->request->flags.must_keepalive = 1;
-        if (lm_request->request->flags.proxy_keepalive) {
+        lm_request->request->flags.mustKeepalive = 1;
+        if (lm_request->request->flags.proxyKeepalive) {
             lm_request->server_blob = xstrdup(blob);
             auth_user_request->user()->credentials(Auth::Handshake);
             auth_user_request->denyMessage("Authentication in progress");

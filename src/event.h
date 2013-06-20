@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,11 +32,9 @@
 #ifndef SQUID_EVENT_H
 #define SQUID_EVENT_H
 
-#include "squid-old.h"
 #include "Array.h"
 #include "AsyncEngine.h"
-
-/* forward decls */
+#include "MemPool.h"
 
 class StoreEntry;
 
@@ -46,12 +42,12 @@ class StoreEntry;
 
 typedef void EVH(void *);
 
-extern void eventAdd(const char *name, EVH * func, void *arg, double when, int, bool cbdata=true);
-SQUIDCEXTERN void eventAddIsh(const char *name, EVH * func, void *arg, double delta_ish, int);
-SQUIDCEXTERN void eventDelete(EVH * func, void *arg);
-SQUIDCEXTERN void eventInit(void);
-SQUIDCEXTERN void eventFreeMemory(void);
-SQUIDCEXTERN int eventFind(EVH *, void *);
+void eventAdd(const char *name, EVH * func, void *arg, double when, int, bool cbdata=true);
+void eventAddIsh(const char *name, EVH * func, void *arg, double delta_ish, int);
+void eventDelete(EVH * func, void *arg);
+void eventInit(void);
+void eventFreeMemory(void);
+int eventFind(EVH *, void *);
 
 class ev_entry
 {

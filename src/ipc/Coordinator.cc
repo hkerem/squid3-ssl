@@ -1,10 +1,7 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
-
 
 #include "squid.h"
 #include "base/Subscription.h"
@@ -17,15 +14,18 @@
 #include "mgr/Inquirer.h"
 #include "mgr/Request.h"
 #include "mgr/Response.h"
+#include "tools.h"
 #if SQUID_SNMP
 #include "snmp/Inquirer.h"
 #include "snmp/Request.h"
 #include "snmp/Response.h"
 #endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 CBDATA_NAMESPACED_CLASS_INIT(Ipc, Coordinator);
 Ipc::Coordinator* Ipc::Coordinator::TheInstance = NULL;
-
 
 Ipc::Coordinator::Coordinator():
         Port(coordinatorAddr)
@@ -124,7 +124,7 @@ void Ipc::Coordinator::receive(const TypedMsgHdr& message)
 #endif
 
     default:
-        debugs(54, 1, HERE << "Unhandled message type: " << message.type());
+        debugs(54, DBG_IMPORTANT, HERE << "Unhandled message type: " << message.type());
         break;
     }
 }

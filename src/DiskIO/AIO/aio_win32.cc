@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 81    aio_xxx() POSIX emulation on Windows
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  *
@@ -33,9 +31,13 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm.h"
 #include "aio_win32.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 #if _SQUID_WINDOWS_
 VOID CALLBACK IoCompletionRoutine(DWORD dwErrorCode,
@@ -49,7 +51,6 @@ VOID CALLBACK IoCompletionRoutine(DWORD dwErrorCode,
     debugs(81, 7, "AIO operation complete: errorcode=" << dwErrorCode << " nbytes=" << dwNumberOfBytesTransfered);
     xfree(lpOverlapped);
 }
-
 
 int aio_read(struct aiocb *aiocbp)
 {
@@ -100,7 +101,7 @@ int aio_read(struct aiocb *aiocbp)
     /* Test to see if the I/O was queued successfully. */
     if (!IoOperationStatus) {
         errno = GetLastError();
-        debugs(81,1, "aio_read: GetLastError=" << errno  );
+        debugs(81, DBG_IMPORTANT, "aio_read: GetLastError=" << errno  );
         return -1;
     }
 
@@ -109,7 +110,6 @@ int aio_read(struct aiocb *aiocbp)
        more I/O requests. */
     return 0;
 }
-
 
 int aio_read64(struct aiocb64 *aiocbp)
 {
@@ -152,7 +152,7 @@ int aio_read64(struct aiocb64 *aiocbp)
     /* Test to see if the I/O was queued successfully. */
     if (!IoOperationStatus) {
         errno = GetLastError();
-        debugs(81, 1, "aio_read: GetLastError=" << errno  );
+        debugs(81, DBG_IMPORTANT, "aio_read: GetLastError=" << errno  );
         return -1;
     }
 
@@ -161,7 +161,6 @@ int aio_read64(struct aiocb64 *aiocbp)
        more I/O requests. */
     return 0;
 }
-
 
 int aio_write(struct aiocb *aiocbp)
 {
@@ -212,7 +211,7 @@ int aio_write(struct aiocb *aiocbp)
     /* Test to see if the I/O was queued successfully. */
     if (!IoOperationStatus) {
         errno = GetLastError();
-        debugs(81, 1, "aio_write: GetLastError=" << errno  );
+        debugs(81, DBG_IMPORTANT, "aio_write: GetLastError=" << errno  );
         return -1;
     }
 
@@ -221,7 +220,6 @@ int aio_write(struct aiocb *aiocbp)
        more I/O requests. */
     return 0;
 }
-
 
 int aio_write64(struct aiocb64 *aiocbp)
 {
@@ -264,7 +262,7 @@ int aio_write64(struct aiocb64 *aiocbp)
     /* Test to see if the I/O was queued successfully. */
     if (!IoOperationStatus) {
         errno = GetLastError();
-        debugs(81, 1, "aio_write: GetLastError=" << errno  );
+        debugs(81, DBG_IMPORTANT, "aio_write: GetLastError=" << errno  );
         return -1;
     }
 
@@ -274,18 +272,15 @@ int aio_write64(struct aiocb64 *aiocbp)
     return 0;
 }
 
-
 int aio_error(const struct aiocb * aiocbp)
 {
     return aiocbp->aio_sigevent.sigev_notify;
 }
 
-
 int aio_error64(const struct aiocb64 * aiocbp)
 {
     return aiocbp->aio_sigevent.sigev_notify;
 }
-
 
 int aio_open(const char *path, int mode)
 {
@@ -331,7 +326,6 @@ int aio_open(const char *path, int mode)
     return fd;
 }
 
-
 void aio_close(int fd)
 {
     CloseHandle((HANDLE)_get_osfhandle(fd));
@@ -339,12 +333,10 @@ void aio_close(int fd)
     ++ statCounter.syscalls.disk.closes;
 }
 
-
 ssize_t aio_return(struct aiocb * aiocbp)
 {
     return aiocbp->aio_sigevent.sigev_signo;
 }
-
 
 ssize_t aio_return64(struct aiocb64 * aiocbp)
 

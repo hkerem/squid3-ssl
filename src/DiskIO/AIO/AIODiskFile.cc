@@ -1,5 +1,6 @@
 /*
- * $Id$
+ * AUTHOR: Adrian Chadd <adrian@squid-cache.org>
+ * DEBUG: section 79   Disk IO Routines
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -31,7 +32,6 @@
  */
 
 /**
- * Author: Adrian Chadd <adrian@squid-cache.org>
  *
  \par
  * These routines are simple plugin replacements for the file_* routines
@@ -44,12 +44,18 @@
  * per storedir it should work just fine.
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "AIODiskFile.h"
 #include "AIODiskIOStrategy.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "disk.h"
+#include "globals.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 CBDATA_CLASS_INIT(AIODiskFile);
 void *
@@ -127,7 +133,7 @@ AIODiskFile::read(ReadRequest *request)
     if (slot < 0) {
         /* No free slot? Callback error, and return */
         fatal("Aiee! out of aiocb slots! - FIXME and wrap file_read\n");
-        debugs(79, 1, "WARNING: out of aiocb slots!");
+        debugs(79, DBG_IMPORTANT, "WARNING: out of aiocb slots!");
         /* fall back to blocking method */
         //        file_read(fd, request->buf, request->len, request->offset, callback, data);
         return;
@@ -164,7 +170,7 @@ AIODiskFile::read(ReadRequest *request)
     /* Initiate aio */
     if (aio_read(&qe->aq_e_aiocb) < 0) {
         fatalf("Aiee! aio_read() returned error (%d)  FIXME and wrap file_read !\n", errno);
-        debugs(79, 1, "WARNING: aio_read() returned error: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "WARNING: aio_read() returned error: " << xstrerror());
         /* fall back to blocking method */
         //        file_read(fd, request->buf, request->len, request->offset, callback, data);
     }
@@ -185,7 +191,7 @@ AIODiskFile::write(WriteRequest *request)
     if (slot < 0) {
         /* No free slot? Callback error, and return */
         fatal("Aiee! out of aiocb slots FIXME and wrap file_write !\n");
-        debugs(79, 1, "WARNING: out of aiocb slots!");
+        debugs(79, DBG_IMPORTANT, "WARNING: out of aiocb slots!");
         /* fall back to blocking method */
         //        file_write(fd, offset, buf, len, callback, data, freefunc);
         return;
@@ -222,7 +228,7 @@ AIODiskFile::write(WriteRequest *request)
     /* Initiate aio */
     if (aio_write(&qe->aq_e_aiocb) < 0) {
         fatalf("Aiee! aio_write() returned error (%d) FIXME and wrap file_write !\n", errno);
-        debugs(79, 1, "WARNING: aio_write() returned error: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "WARNING: aio_write() returned error: " << xstrerror());
         /* fall back to blocking method */
         //       file_write(fd, offset, buf, len, callback, data, freefunc);
     }

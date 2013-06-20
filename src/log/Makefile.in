@@ -47,6 +47,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -60,7 +62,7 @@ am_liblog_la_OBJECTS = access_log.lo Config.lo File.lo \
 	FormatHttpdCombined.lo FormatHttpdCommon.lo \
 	FormatSquidCustom.lo FormatSquidIcap.lo FormatSquidNative.lo \
 	FormatSquidReferer.lo FormatSquidUseragent.lo ModDaemon.lo \
-	ModStdio.lo ModSyslog.lo ModTcp.lo ModUdp.lo
+	ModStdio.lo ModSyslog.lo ModTcp.lo ModUdp.lo CustomLog.lo
 liblog_la_OBJECTS = $(am_liblog_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -314,6 +316,7 @@ COMPAT_LIB = -L$(top_builddir)/compat -lcompat-squid $(LIBPROFILER)
 subst_perlshell = sed -e 's,[@]PERL[@],$(PERL),g' <$(srcdir)/$@.pl.in >$@ || ($(RM) -f $@ ; exit 1)
 noinst_LTLIBRARIES = liblog.la
 liblog_la_SOURCES = \
+	access_log.h \
 	access_log.cc \
 	Config.cc \
 	Config.h \
@@ -336,7 +339,9 @@ liblog_la_SOURCES = \
 	ModTcp.cc \
 	ModTcp.h \
 	ModUdp.cc \
-	ModUdp.h
+	ModUdp.h \
+	CustomLog.h \
+	CustomLog.cc
 
 all: all-am
 
@@ -400,6 +405,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CustomLog.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/File.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FormatHttpdCombined.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FormatHttpdCommon.Plo@am__quote@

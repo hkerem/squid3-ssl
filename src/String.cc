@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
  *
@@ -33,10 +31,16 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/TextException.h"
+#include "Mem.h"
 #include "mgr/Registration.h"
+#include "profiler/Profiler.h"
 #include "Store.h"
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
 
 int
 String::psize() const
@@ -44,7 +48,6 @@ String::psize() const
     Must(size() < INT_MAX);
     return size();
 }
-
 
 // low-level buffer allocation,
 // does not free old buffer and does not adjust or look at len_
@@ -258,7 +261,6 @@ String::substr(String::size_type from, String::size_type to) const
     return rv;
 }
 
-
 #if DEBUGSTRINGS
 void
 String::stat(StoreEntry *entry) const
@@ -301,7 +303,7 @@ StringRegistry::remove(String const *entry)
 
 StringRegistry StringRegistry::Instance_;
 
-extern String::size_type memStringCount();
+String::size_type memStringCount();
 
 void
 StringRegistry::Stat(StoreEntry *entry)
@@ -490,8 +492,6 @@ String::rfind(char const ch) const
         return npos;
     return c-rawBuf();
 }
-
-
 
 #if !_USE_INLINE_
 #include "String.cci"

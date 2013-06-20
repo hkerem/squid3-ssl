@@ -2,12 +2,19 @@
 #define SQUID_ACLFILLED_CHECKLIST_H
 
 #include "acl/Checklist.h"
+#include "ip/Address.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
+#if USE_SSL
+#include "ssl/support.h"
+#endif
 
-class ExternalACLEntry;
+class CachePeer;
 class ConnStateData;
+class ExternalACLEntry;
+class HttpRequest;
+class HttpReply;
 
 /** \ingroup ACLAPI
     ACLChecklist filled with specific data, representing Squid and transaction
@@ -49,7 +56,7 @@ public:
     Ip::Address src_addr;
     Ip::Address dst_addr;
     Ip::Address my_addr;
-    struct peer *dst_peer;
+    CachePeer *dst_peer;
     char *dst_rdns;
 
     HttpRequest *request;
@@ -64,27 +71,23 @@ public:
 #endif
 
 #if USE_SSL
-    int ssl_error;
+    /// SSL [certificate validation] errors, in undefined order
+    Ssl::Errors *sslErrors;
 #endif
 
     ExternalACLEntry *extacl_entry;
 
 private:
-    virtual void checkCallback(allow_t answer);
-
-private:
-    CBDATA_CLASS(ACLFilledChecklist);
-
     ConnStateData * conn_;          /**< hack for ident and NTLM */
     int fd_;                        /**< may be available when conn_ is not */
     bool destinationDomainChecked_;
     bool sourceDomainChecked_;
-
-private:
     /// not implemented; will cause link failures if used
     ACLFilledChecklist(const ACLFilledChecklist &);
     /// not implemented; will cause link failures if used
     ACLFilledChecklist &operator=(const ACLFilledChecklist &);
+
+    CBDATA_CLASS(ACLFilledChecklist);
 };
 
 /// convenience and safety wrapper for dynamic_cast<ACLFilledChecklist*>

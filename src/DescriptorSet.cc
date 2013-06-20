@@ -1,9 +1,8 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Comm
  */
 #include "squid.h"
+#include "globals.h" /* for Squid_MaxFD */
 #include "DescriptorSet.h"
 
 // pre-allocates descriptor store and index for Squid_MaxFD descriptors

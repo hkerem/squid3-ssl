@@ -52,7 +52,6 @@
 #include <string.h>
 #endif
 
-
 #define NMB_UNICAST		1
 #define NMB_BROADCAST	2
 
@@ -123,7 +122,7 @@ main(int argc, char *argv[])
         return 1;
 
     /* parse command line arguments */
-    for (i = 1; i < argc; i++) {
+    for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-d") == 0) {
             debug_enabled = 1;
             continue;
@@ -183,13 +182,13 @@ main(int argc, char *argv[])
                     return 1;
 
                 /* convert backslashes to forward slashes */
-                for (s = lastdom->authshare; *s != '\0'; s++)
+                for (s = lastdom->authshare; *s != '\0'; ++s)
                     if (*s == '\\')
                         *s = '/';
 
                 /* strip leading forward slash from share name */
                 if (*lastdom->authshare == '/')
-                    lastdom->authshare++;
+                    ++lastdom->authshare;
 
                 if ((s = strchr(lastdom->authshare, '/')) != NULL) {
                     *s = '\0';

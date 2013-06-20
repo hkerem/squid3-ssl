@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -8,7 +6,6 @@
 #include "squid.h"
 #include "Debug.h"
 #include "ipc/FdNotes.h"
-
 
 const char *
 Ipc::FdNote(int fdNoteId)
@@ -28,6 +25,6 @@ Ipc::FdNote(int fdNoteId)
     if (fdnNone < fdNoteId && fdNoteId < fdnEnd)
         return FdNotes[fdNoteId];
 
-    debugs(54, 1, HERE << "salvaged bug: wrong fd_note ID: " << fdNoteId);
+    debugs(54, DBG_IMPORTANT, HERE << "salvaged bug: wrong fd_note ID: " << fdNoteId);
     return FdNotes[fdnNone];
 }

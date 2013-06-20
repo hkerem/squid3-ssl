@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side Disk I/O functions.
  * AUTHOR: Robert Collins
  *
@@ -34,16 +32,15 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 #include "DiskThreadsDiskFile.h"
 #include "DiskThreadsIOStrategy.h"
 #include "fde.h"
 #include "mgr/Registration.h"
+#include "SquidConfig.h"
 #include "StatCounters.h"
-/* for statfs */
 #include "Store.h"
-
 
 void
 DiskThreadsIOStrategy::init(void)

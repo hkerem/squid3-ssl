@@ -32,8 +32,11 @@
 #ifndef SQUID_HTTPHDRCC_H
 #define SQUID_HTTPHDRCC_H
 
+#include "enums.h"
 #include "MemPool.h"
 #include "SquidString.h"
+
+class Packer;
 
 /** Http Cache-Control header representation
  *
@@ -190,6 +193,14 @@ public:
 };
 
 MEMPROXY_CLASS_INLINE(HttpHdrCc);
+
+class StatHist;
+class StoreEntry;
+
+void httpHdrCcInitModule(void);
+void httpHdrCcCleanModule(void);
+void httpHdrCcUpdateStats(const HttpHdrCc * cc, StatHist * hist);
+void httpHdrCcStatDumper(StoreEntry * sentry, int idx, double val, double size, int count);
 
 #if _USE_INLINE_
 #include "HttpHdrCc.cci"

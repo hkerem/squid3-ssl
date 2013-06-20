@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 67    String
  * AUTHOR: Duane Wessels
  *
@@ -35,7 +33,7 @@
 #include <cstring>
 
 #if HAVE_STDINT_H
-#include <stdint.h> //for INT_MAX
+#include <stdint.h>
 #else /* HAVE_STDINT_H */
 #ifndef INT_MAX
 #define INT_MAX 1<<31 //hack but a safe bet
@@ -85,7 +83,6 @@ String::operator [](unsigned int aPos) const
     return buf_[aPos];
 }
 
-
 /// compare NULL and empty strings because str*cmp() may fail on NULL strings
 /// and because we need to return consistent results for strncmp(count == 0).
 bool
@@ -103,7 +100,6 @@ String::nilCmp(const bool thisIsNilOrEmpty, const bool otherIsNilOrEmpty, int &r
 
     return true;
 }
-
 
 int
 String::cmp(char const *aString) const
@@ -160,7 +156,6 @@ String::caseCmp(const String &str) const
 {
     return caseCmp(str.rawBuf(),str.size());
 }
-
 
 void
 String::set(char const *loc, char const ch)

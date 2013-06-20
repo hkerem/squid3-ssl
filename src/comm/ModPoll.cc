@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Socket Functions
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -33,20 +31,25 @@
 #include "squid.h"
 
 #if USE_POLL
-
-#include "squid-old.h"
 #include "anyp/PortCfg.h"
 #include "comm/Connection.h"
 #include "comm/Loops.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
 #include "ICP.h"
 #include "mgr/Registration.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
 
 #if HAVE_POLL_H
 #include <poll.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 /* Needed for poll() on Linux at least */
@@ -139,7 +142,6 @@ static int incoming_tcp_interval = 16 << INCOMING_FACTOR;
 #define commCheckDnsIncoming (++dns_io_events > (incoming_dns_interval>> INCOMING_FACTOR))
 #define commCheckTcpIncoming (++tcp_io_events > (incoming_tcp_interval>> INCOMING_FACTOR))
 
-
 void
 Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time_t timeout)
 {
@@ -231,7 +233,7 @@ comm_check_incoming_poll_handlers(int nfds, int *fds)
             pfds[npfds].fd = fd;
             pfds[npfds].events = events;
             pfds[npfds].revents = 0;
-            npfds++;
+            ++npfds;
         }
     }
 
@@ -248,7 +250,7 @@ comm_check_incoming_poll_handlers(int nfds, int *fds)
         return incoming_sockets_accepted;
     }
 
-    for (i = 0; i < npfds; i++) {
+    for (i = 0; i < npfds; ++i) {
         int revents;
 
         if (((revents = pfds[i].revents) == 0) || ((fd = pfds[i].fd) == -1))
@@ -259,7 +261,7 @@ comm_check_incoming_poll_handlers(int nfds, int *fds)
                 fd_table[fd].read_handler = NULL;
                 hdl(fd, fd_table[fd].read_data);
             } else if (pfds[i].events & POLLRDNORM)
-                debugs(5, 1, "comm_poll_incoming: FD " << fd << " NULL read handler");
+                debugs(5, DBG_IMPORTANT, "comm_poll_incoming: FD " << fd << " NULL read handler");
         }
 
         if (revents & (POLLWRNORM | POLLOUT | POLLHUP | POLLERR)) {
@@ -267,7 +269,7 @@ comm_check_incoming_poll_handlers(int nfds, int *fds)
                 fd_table[fd].write_handler = NULL;
                 hdl(fd, fd_table[fd].write_data);
             } else if (pfds[i].events & POLLWRNORM)
-                debugs(5, 1, "comm_poll_incoming: FD " << fd << " NULL write_handler");
+                debugs(5, DBG_IMPORTANT, "comm_poll_incoming: FD " << fd << " NULL write_handler");
         }
     }
 
@@ -401,10 +403,10 @@ Comm::DoSelect(int msec)
                 pfds[nfds].fd = i;
                 pfds[nfds].events = events;
                 pfds[nfds].revents = 0;
-                nfds++;
+                ++nfds;
 
                 if ((events & POLLRDNORM) && fd_table[i].flags.read_pending)
-                    npending++;
+                    ++npending;
             }
         }
 
@@ -441,7 +443,7 @@ Comm::DoSelect(int msec)
             if (ignoreErrno(errno))
                 continue;
 
-            debugs(5, 0, "comm_poll: poll failure: " << xstrerror());
+            debugs(5, DBG_CRITICAL, "comm_poll: poll failure: " << xstrerror());
 
             assert(errno != EINVAL);
 
@@ -539,19 +541,19 @@ Comm::DoSelect(int msec)
 
             if (revents & POLLNVAL) {
                 AsyncCall::Pointer ch;
-                debugs(5, 0, "WARNING: FD " << fd << " has handlers, but it's invalid.");
-                debugs(5, 0, "FD " << fd << " is a " << fdTypeStr[F->type]);
-                debugs(5, 0, "--> " << F->desc);
-                debugs(5, 0, "tmout:" << F->timeoutHandler << "read:" <<
+                debugs(5, DBG_CRITICAL, "WARNING: FD " << fd << " has handlers, but it's invalid.");
+                debugs(5, DBG_CRITICAL, "FD " << fd << " is a " << fdTypeStr[F->type]);
+                debugs(5, DBG_CRITICAL, "--> " << F->desc);
+                debugs(5, DBG_CRITICAL, "tmout:" << F->timeoutHandler << "read:" <<
                        F->read_handler << " write:" << F->write_handler);
 
                 for (ch = F->closeHandler; ch != NULL; ch = ch->Next())
-                    debugs(5, 0, " close handler: " << ch);
+                    debugs(5, DBG_CRITICAL, " close handler: " << ch);
 
                 if (F->closeHandler != NULL) {
                     commCallCloseHandlers(fd);
                 } else if (F->timeoutHandler != NULL) {
-                    debugs(5, 0, "comm_poll: Calling Timeout Handler");
+                    debugs(5, DBG_CRITICAL, "comm_poll: Calling Timeout Handler");
                     ScheduleCallHere(F->timeoutHandler);
                 }
 
@@ -587,7 +589,6 @@ Comm::DoSelect(int msec)
 
     return COMM_TIMEOUT;
 }
-
 
 static void
 comm_poll_dns_incoming(void)
@@ -628,7 +629,6 @@ comm_poll_dns_incoming(void)
 
     statCounter.comm_dns_incoming.count(nevents);
 }
-
 
 static void
 commPollRegisterWithCacheManager(void)

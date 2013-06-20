@@ -31,12 +31,29 @@
 #define SQUID_FDE_H
 
 #include "comm.h"
+#include "defines.h"
 #include "ip/Address.h"
+
+#if USE_SSL
+#include <openssl/ssl.h>
+#endif
 
 #if USE_DELAY_POOLS
 class ClientInfo;
 #endif
+
 class PconnPool;
+class dwrite_q;
+class _fde_disk
+{
+public:
+    DWCB *wrt_handle;
+    void *wrt_handle_data;
+    dwrite_q *write_q;
+    dwrite_q *write_q_tail;
+    off_t offset;
+    _fde_disk() { memset(this, 0, sizeof(_fde_disk)); }
+};
 
 class fde
 {
@@ -56,6 +73,10 @@ public:
     void noteUse(PconnPool *);
 
 public:
+
+    /// global table of FD and their state.
+    static fde* Table;
+
     unsigned int type;
     unsigned short remote_port;
 
@@ -97,7 +118,7 @@ public:
 #endif
     unsigned epoll_state;
 
-    struct _fde_disk disk;
+    _fde_disk disk;
     PF *read_handler;
     void *read_data;
     PF *write_handler;
@@ -151,7 +172,6 @@ private:
         clientInfo = NULL;
 #endif
         epoll_state = 0;
-        memset(&disk, 0, sizeof(_fde_disk));
         read_handler = NULL;
         read_data = NULL;
         write_handler = NULL;
@@ -177,7 +197,9 @@ private:
     }
 };
 
-SQUIDCEXTERN int fdNFree(void);
+#define fd_table fde::Table
+
+int fdNFree(void);
 
 #define FD_READ_METHOD(fd, buf, len) (*fd_table[fd].read_method)(fd, buf, len)
 #define FD_WRITE_METHOD(fd, buf, len) (*fd_table[fd].write_method)(fd, buf, len)

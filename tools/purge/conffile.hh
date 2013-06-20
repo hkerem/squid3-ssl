@@ -1,6 +1,3 @@
-//
-// $Id$
-//
 // Author:  Jens-S. V?ckler <voeckler@rvs.uni-hannover.de>
 //
 // File:    conffile.hh
@@ -59,8 +56,8 @@ typedef int bool;
 #define DEFAULT_SQUID_CONF "/usr/local/squid/etc/squid.conf"
 #endif
 
-#include <stdio.h>      // FILE*
-#include <vector>	// minimum STL container
+#include <stdio.h>
+#include <vector>
 
 struct CacheDir {
   enum CacheDirType { CDT_NONE, CDT_UFS, CDT_AUFS, CDT_DISKD, CDT_OTHER };

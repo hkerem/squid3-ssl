@@ -12,10 +12,7 @@
  * to prevent squid knowing the users password (idea suggested in RFC 2617).
  */
 
-
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: RFC 2617 & Robert Collins
  *

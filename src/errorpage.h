@@ -34,14 +34,15 @@
 #ifndef   SQUID_ERRORPAGE_H
 #define   SQUID_ERRORPAGE_H
 
-#include "squid-old.h"
-#if USE_AUTH
-#include "auth/UserRequest.h"
-#endif
 #include "cbdata.h"
 #include "comm/forward.h"
+#include "err_detail_type.h"
+#include "err_type.h"
+#include "HttpStatusCode.h"
 #include "ip/Address.h"
-#include "MemBuf.h"
+#include "SquidString.h"
+/* auth/UserRequest.h is empty unless USE_AUTH is defined */
+#include "auth/UserRequest.h"
 #if USE_SSL
 #include "ssl/ErrorDetail.h"
 #endif
@@ -89,6 +90,7 @@
  */
 
 class HttpReply;
+class HttpRequest;
 class MemBuf;
 
 /// \ingroup ErrorPageAPI
@@ -103,6 +105,9 @@ public:
      * Allocates and initializes an error response
      */
     HttpReply *BuildHttpReply(void);
+
+    /// set error type-specific detail code
+    void detailError(int dCode) {detailCode = dCode;}
 
 private:
     /**
@@ -182,6 +187,9 @@ public:
 #if USE_SSL
     Ssl::ErrorDetail *detail;
 #endif
+    /// type-specific detail about the transaction error;
+    /// overwrites xerrno; overwritten by detail, if any.
+    int detailCode;
 private:
     CBDATA_CLASS2(ErrorState);
 };
@@ -195,10 +203,10 @@ private:
  \par Global effects:
  *            error_text[] - is modified
  */
-SQUIDCEXTERN void errorInitialize(void);
+void errorInitialize(void);
 
 /// \ingroup ErrorPageAPI
-SQUIDCEXTERN void errorClean(void);
+void errorClean(void);
 
 /**
  * \ingroup ErrorPageAPI
@@ -220,7 +228,7 @@ SQUIDCEXTERN void errorClean(void);
  \param clientConn  socket where page object is to be written
  \param err         This object is destroyed after use in this function.
  */
-SQUIDCEXTERN void errorSend(const Comm::ConnectionPointer &conn, ErrorState *err);
+void errorSend(const Comm::ConnectionPointer &conn, ErrorState *err);
 
 /**
  \ingroup ErrorPageAPI
@@ -238,12 +246,12 @@ SQUIDCEXTERN void errorSend(const Comm::ConnectionPointer &conn, ErrorState *err
  \param entry   ??
  \param err     This object is destroyed after use in this function.
  */
-SQUIDCEXTERN void errorAppendEntry(StoreEntry *entry, ErrorState *err);
+void errorAppendEntry(StoreEntry *entry, ErrorState *err);
 
 /// \ingroup ErrorPageAPI
-SQUIDCEXTERN err_type errorReservePageId(const char *page_name);
+err_type errorReservePageId(const char *page_name);
 
-SQUIDCEXTERN const char *errorPageName(int pageId); ///< error ID to string
+const char *errorPageName(int pageId); ///< error ID to string
 
 /**
  \ingroup ErrorPageAPI

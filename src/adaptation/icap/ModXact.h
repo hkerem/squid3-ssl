@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -48,7 +46,6 @@
  * interface. The initiator (or its associate) is expected to send and/or
  * receive the HTTP body.
  */
-
 
 class ChunkedCodingParser;
 
@@ -105,7 +102,6 @@ private:
     typedef enum { stUndecided, stActive, stDisabled } State;
     State theState;
 };
-
 
 // maintains preview-related sizes
 
@@ -168,6 +164,8 @@ public:
 
     /// record error detail in the virgin request if possible
     virtual void detailError(int errDetail);
+    // Icap::Xaction API
+    virtual void clearError();
 
 private:
     virtual void start();
@@ -362,7 +360,6 @@ protected:
 private:
     CBDATA_CLASS2(ModXactLauncher);
 };
-
 
 } // namespace Icap
 } // namespace Adaptation

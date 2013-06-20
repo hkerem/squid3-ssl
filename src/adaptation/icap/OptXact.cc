@@ -2,21 +2,20 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
-#include "comm.h"
-#include "HttpReply.h"
-
+#include "squid.h"
 #include "adaptation/Answer.h"
-#include "adaptation/icap/OptXact.h"
-#include "adaptation/icap/Options.h"
 #include "adaptation/icap/Config.h"
+#include "adaptation/icap/Options.h"
+#include "adaptation/icap/OptXact.h"
 #include "base/TextException.h"
-#include "SquidTime.h"
+#include "comm.h"
+#include "HttpHeaderTools.h"
+#include "HttpReply.h"
 #include "HttpRequest.h"
+#include "SquidTime.h"
 
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, OptXact);
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, OptXactLauncher);
-
 
 Adaptation::Icap::OptXact::OptXact(Adaptation::Icap::ServiceRep::Pointer &aService):
         AsyncJob("Adaptation::Icap::OptXact"),

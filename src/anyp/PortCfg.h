@@ -11,10 +11,16 @@
 namespace AnyP
 {
 
-struct PortCfg {
+class PortCfg
+{
+public:
     PortCfg(const char *aProtocol);
     ~PortCfg();
     AnyP::PortCfg *clone() const;
+#if USE_SSL
+    /// creates, configures, and validates SSL context and related port options
+    void configureSslServerContext();
+#endif
 
     PortCfg *next;
 
@@ -70,6 +76,15 @@ struct PortCfg {
     Ssl::X509_Pointer signingCert; ///< x509 certificate for signing generated certificates
     Ssl::EVP_PKEY_Pointer signPkey; ///< private key for sighing generated certificates
     Ssl::X509_STACK_Pointer certsToChain; ///<  x509 certificates to send with the generated cert
+    Ssl::X509_Pointer untrustedSigningCert; ///< x509 certificate for signing untrusted generated certificates
+    Ssl::EVP_PKEY_Pointer untrustedSignPkey; ///< private key for signing untrusted generated certificates
+
+    Ssl::X509_CRL_STACK_Pointer clientVerifyCrls; ///< additional CRL lists to use when verifying the client certificate
+    Ssl::X509_NAME_STACK_Pointer clientCA; ///< CA certificates to use when verifying client certificates
+    Ssl::DH_Pointer dhParams; ///< DH parameters for temporary/ephemeral DH key exchanges
+    Ssl::ContextMethod contextMethod; ///< The context method (SSL_METHOD) to use when creating certificates
+    long sslContextFlags; ///< flags modifying the use of SSL
+    long sslOptions; ///< SSL engine options
 #endif
 
     CBDATA_CLASS2(PortCfg); // namespaced

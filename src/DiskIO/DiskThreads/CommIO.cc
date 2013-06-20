@@ -33,9 +33,10 @@
  */
 
 #include "squid.h"
-#include "squid-old.h"
 #include "comm/Loops.h"
 #include "DiskIO/DiskThreads/CommIO.h"
+#include "fd.h"
+#include "globals.h"
 
 void
 CommIO::Initialize()

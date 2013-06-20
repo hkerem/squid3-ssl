@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Duane Wessels
  *
@@ -33,15 +31,21 @@
  *
  */
 
-#include "squid-old.h"
-#include "Store.h"
+#include "squid.h"
+#include "globals.h"
+#include "mem_node.h"
 #include "MemObject.h"
 #include "MemStore.h"
-#include "mem_node.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
+#include "Store.h"
+#include "store_key_md5.h"
+#include "StoreHashIndex.h"
 #include "SwapDir.h"
 #include "swap_log_op.h"
+#include "tools.h"
 
 #if HAVE_STATVFS
 #if HAVE_SYS_STATVFS_H
@@ -62,8 +66,12 @@
 #if HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
-
-#include "StoreHashIndex.h"
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static STDIRSELECT storeDirSelectSwapDirRoundRobin;
 static STDIRSELECT storeDirSelectSwapDirLeastLoad;
@@ -104,10 +112,10 @@ StoreController::init()
 
     if (0 == strcasecmp(Config.store_dir_select_algorithm, "round-robin")) {
         storeDirSelectSwapDir = storeDirSelectSwapDirRoundRobin;
-        debugs(47, 1, "Using Round Robin store dir selection");
+        debugs(47, DBG_IMPORTANT, "Using Round Robin store dir selection");
     } else {
         storeDirSelectSwapDir = storeDirSelectSwapDirLeastLoad;
-        debugs(47, 1, "Using Least Load store dir selection");
+        debugs(47, DBG_IMPORTANT, "Using Least Load store dir selection");
     }
 }
 
@@ -188,7 +196,6 @@ SwapDir::objectSizeIsAcceptable(int64_t objsize) const
         return min_objsize <= objsize && max_objsize > objsize;
 }
 
-
 /*
  * This new selection scheme simply does round-robin on all SwapDirs.
  * A SwapDir is skipped if it is over the max_size (100%) limit, or
@@ -233,7 +240,7 @@ storeDirSelectSwapDirRoundRobin(const StoreEntry * e)
  * in the *tightest fit* swapdir to conserve space, along with the
  * actual swapdir usage. But for now, this hack will do while
  * testing, so you should order your swapdirs in the config file
- * from smallest maxobjsize to unlimited (-1) maxobjsize.
+ * from smallest max-size= to largest max-size=.
  *
  * We also have to choose nleast == nconf since we need to consider
  * ALL swapdirs, regardless of state. Again, this is a hack while
@@ -411,7 +418,7 @@ SwapDir::diskFull()
 
     max_size = currentSize();
 
-    debugs(20, 1, "WARNING: Shrinking cache_dir #" << index << " to " << currentSize() / 1024.0 << " KB");
+    debugs(20, DBG_IMPORTANT, "WARNING: Shrinking cache_dir #" << index << " to " << currentSize() / 1024.0 << " KB");
 }
 
 void
@@ -450,12 +457,12 @@ storeDirWriteCleanLogs(int reopen)
     int notdone = 1;
 
     if (StoreController::store_dirs_rebuilding) {
-        debugs(20, 1, "Not currently OK to rewrite swap log.");
-        debugs(20, 1, "storeDirWriteCleanLogs: Operation aborted.");
+        debugs(20, DBG_IMPORTANT, "Not currently OK to rewrite swap log.");
+        debugs(20, DBG_IMPORTANT, "storeDirWriteCleanLogs: Operation aborted.");
         return 0;
     }
 
-    debugs(20, 1, "storeDirWriteCleanLogs: Starting...");
+    debugs(20, DBG_IMPORTANT, "storeDirWriteCleanLogs: Starting...");
     getCurrentTime();
     start = current_time;
 
@@ -463,7 +470,7 @@ storeDirWriteCleanLogs(int reopen)
         sd = dynamic_cast<SwapDir *>(INDEXSD(dirn));
 
         if (sd->writeCleanStart() < 0) {
-            debugs(20, 1, "log.clean.start() failed for dir #" << sd->index);
+            debugs(20, DBG_IMPORTANT, "log.clean.start() failed for dir #" << sd->index);
             continue;
         }
     }
@@ -496,7 +503,7 @@ storeDirWriteCleanLogs(int reopen)
 
             if ((++n & 0xFFFF) == 0) {
                 getCurrentTime();
-                debugs(20, 1, "  " << std::setw(7) << n  <<
+                debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << n  <<
                        " entries written so far.");
             }
         }
@@ -513,10 +520,9 @@ storeDirWriteCleanLogs(int reopen)
 
     dt = tvSubDsec(start, current_time);
 
-    debugs(20, 1, "  Finished.  Wrote " << n << " entries.");
-    debugs(20, 1, "  Took "<< std::setw(3)<< std::setprecision(2) << dt <<
+    debugs(20, DBG_IMPORTANT, "  Finished.  Wrote " << n << " entries.");
+    debugs(20, DBG_IMPORTANT, "  Took "<< std::setw(3)<< std::setprecision(2) << dt <<
            " seconds ("<< std::setw(6) << ((double) n / (dt > 0.0 ? dt : 1.0)) << " entries/sec).");
-
 
     return n;
 }
@@ -575,7 +581,7 @@ storeDirGetBlkSize(const char *path, int *blksize)
     struct statvfs sfs;
 
     if (statvfs(path, &sfs)) {
-        debugs(50, 1, "" << path << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "" << path << ": " << xstrerror());
         *blksize = 2048;
         return 1;
     }
@@ -586,7 +592,7 @@ storeDirGetBlkSize(const char *path, int *blksize)
     struct statfs sfs;
 
     if (statfs(path, &sfs)) {
-        debugs(50, 1, "" << path << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "" << path << ": " << xstrerror());
         *blksize = 2048;
         return 1;
     }
@@ -614,7 +620,7 @@ storeDirGetUFSStats(const char *path, int *totl_kb, int *free_kb, int *totl_in, 
     struct statvfs sfs;
 
     if (statvfs(path, &sfs)) {
-        debugs(50, 1, "" << path << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "" << path << ": " << xstrerror());
         return 1;
     }
 
@@ -627,7 +633,7 @@ storeDirGetUFSStats(const char *path, int *totl_kb, int *free_kb, int *totl_in, 
     struct statfs sfs;
 
     if (statfs(path, &sfs)) {
-        debugs(50, 1, "" << path << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "" << path << ": " << xstrerror());
         return 1;
     }
 
@@ -951,17 +957,17 @@ StoreHashIndex::init()
     /* this is very bogus, its specific to the any Store maintaining an
      * in-core index, not global */
     size_t buckets = (Store::Root().maxSize() + Config.memMaxSize) / Config.Store.avgObjectSize;
-    debugs(20, 1, "Swap maxSize " << (Store::Root().maxSize() >> 10) <<
+    debugs(20, DBG_IMPORTANT, "Swap maxSize " << (Store::Root().maxSize() >> 10) <<
            " + " << ( Config.memMaxSize >> 10) << " KB, estimated " << buckets << " objects");
     buckets /= Config.Store.objectsPerBucket;
-    debugs(20, 1, "Target number of buckets: " << buckets);
+    debugs(20, DBG_IMPORTANT, "Target number of buckets: " << buckets);
     /* ideally the full scan period should be configurable, for the
      * moment it remains at approximately 24 hours.  */
     store_hash_buckets = storeKeyHashBuckets(buckets);
-    debugs(20, 1, "Using " << store_hash_buckets << " Store buckets");
-    debugs(20, 1, "Max Mem  size: " << ( Config.memMaxSize >> 10) << " KB" <<
+    debugs(20, DBG_IMPORTANT, "Using " << store_hash_buckets << " Store buckets");
+    debugs(20, DBG_IMPORTANT, "Max Mem  size: " << ( Config.memMaxSize >> 10) << " KB" <<
            (Config.memShared ? " [shared]" : ""));
-    debugs(20, 1, "Max Swap size: " << (Store::Root().maxSize() >> 10) << " KB");
+    debugs(20, DBG_IMPORTANT, "Max Swap size: " << (Store::Root().maxSize() >> 10) << " KB");
 
     store_table = hash_create(storeKeyHashCmp,
                               store_hash_buckets, storeKeyHashHash);

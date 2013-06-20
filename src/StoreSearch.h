@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,7 +31,6 @@
 #ifndef SQUID_STORESEARCH_H
 #define SQUID_STORESEARCH_H
 
-#include "squid-old.h"
 #include "RefCount.h"
 #include "Store.h"
 

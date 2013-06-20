@@ -1,16 +1,9 @@
-/*
- * $Id$
- */
 #ifndef SQUID_CACHE_SNMP_H
 #define SQUID_CACHE_SNMP_H
 
 #if SQUID_SNMP
 
-#if SIZEOF_LONG == 8
-#define snint int
-#else
-#define snint long
-#endif
+typedef int64_t snint;
 
 #ifndef MIN
 #define MIN(a,b) (a<b?a:b)
@@ -85,7 +78,6 @@ enum {
 #define LEN_CONF LEN_SQ_CONF + 1
 #define LEN_CONF_INST LEN_SQ_CONF + 2
 
-
 /**
  * cacheStorageConfig group { cacheConfig 5 }
  */
@@ -111,7 +103,6 @@ enum {
     PERF_PROTO  = 2,  /* cacheProtoStats */
     PERF_END
 };
-
 
 /* cacheSysPerf */
 enum {

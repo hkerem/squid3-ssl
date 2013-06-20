@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 04    Error Generation
  * AUTHOR: Duane Wessels
  *
@@ -32,9 +30,28 @@
  *
  */
 #include "squid.h"
+#include "cache_cf.h"
 #include "comm/Connection.h"
 #include "comm/Write.h"
+#include "disk.h"
+#include "err_detail_type.h"
 #include "errorpage.h"
+#include "ftp.h"
+#include "Store.h"
+#include "html_quote.h"
+#include "HttpHeaderTools.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "MemObject.h"
+#include "fde.h"
+#include "MemBuf.h"
+#include "rfc1738.h"
+#include "SquidConfig.h"
+#include "URL.h"
+#include "URLScheme.h"
+#include "URL.h"
+#include "tools.h"
+#include "wordlist.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
@@ -42,17 +59,6 @@
 #if USE_SSL
 #include "ssl/ErrorDetailManager.h"
 #endif
-#include "Store.h"
-#include "html_quote.h"
-#include "HttpReply.h"
-#include "HttpRequest.h"
-#include "MemObject.h"
-#include "fde.h"
-#include "MemBuf.h"
-#include "rfc1738.h"
-#include "URLScheme.h"
-#include "wordlist.h"
-#include "err_detail_type.h"
 
 /**
  \defgroup ErrorPageInternal Error Page Internals
@@ -64,7 +70,6 @@
  *   the various message formats. (formats are stored in the
  *   Config.errorDirectory)
  */
-
 
 #if !defined(DEFAULT_SQUID_ERROR_DIR)
 /** Where to look for errors if config path fails.
@@ -582,10 +587,11 @@ ErrorState::ErrorState(err_type t, http_status status, HttpRequest * req) :
         callback(NULL),
         callback_data(NULL),
         request_hdrs(NULL),
-        err_msg(NULL)
+        err_msg(NULL),
 #if USE_SSL
-        , detail(NULL)
+        detail(NULL),
 #endif
+        detailCode(ERR_DETAIL_NONE)
 {
     memset(&flags, 0, sizeof(flags));
     memset(&ftp, 0, sizeof(ftp));
@@ -596,7 +602,6 @@ ErrorState::ErrorState(err_type t, http_status status, HttpRequest * req) :
     if (req != NULL) {
         request = HTTPMSGLOCK(req);
         src_addr = req->client_addr;
-        request->detailError(type, ERR_DETAIL_NONE);
     }
 }
 
@@ -625,7 +630,7 @@ errorAppendEntry(StoreEntry * entry, ErrorState * err)
     if (err->page_id == TCP_RESET) {
         if (err->request) {
             debugs(4, 2, "RSTing this reply");
-            err->request->flags.setResetTCP();
+            err->request->flags.resetTcp=true;
         }
     }
 
@@ -647,13 +652,6 @@ errorSend(const Comm::ConnectionPointer &conn, ErrorState * err)
     HttpReply *rep;
     debugs(4, 3, HERE << conn << ", err=" << err);
     assert(Comm::IsConnOpen(conn));
-    /*
-     * ugh, this is how we make sure error codes get back to
-     * the client side for logging and error tracking.
-     */
-
-    if (err->request)
-        err->request->detailError(err->type, err->xerrno);
 
     /* moved in front of errorBuildBuf @?@ */
     err->flags.flag_cbdata = 1;
@@ -1008,7 +1006,7 @@ ErrorState::Convert(char token, bool building_deny_info_url, bool allowRecursion
         /* for backward compat we make %s show the full URL. Drop this in some future release. */
         if (building_deny_info_url) {
             p = request ? urlCanonical(request) : url;
-            debugs(0,0, "WARNING: deny_info now accepts coded tags. Use %u to get the full URL instead of %s");
+            debugs(0, DBG_CRITICAL, "WARNING: deny_info now accepts coded tags. Use %u to get the full URL instead of %s");
         } else
             p = visible_appname_string;
         break;
@@ -1222,6 +1220,22 @@ ErrorState::BuildHttpReply()
 
         rep->body.setMb(content);
         /* do not memBufClean() or delete the content, it was absorbed by httpBody */
+    }
+
+    // Make sure error codes get back to the client side for logging and
+    // error tracking.
+    if (request) {
+        int edc = ERR_DETAIL_NONE; // error detail code
+#if USE_SSL
+        if (detail)
+            edc = detail->errorNo();
+        else
+#endif
+            if (detailCode)
+                edc = detailCode;
+            else
+                edc = xerrno;
+        request->detailError(type, edc);
     }
 
     return rep;

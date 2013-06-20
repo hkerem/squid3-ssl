@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,12 +32,14 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "acl/MaxConnection.h"
+#include "cache_cf.h"
+#include "client_db.h"
+#include "Debug.h"
+#include "SquidConfig.h"
 #include "wordlist.h"
-
-
 
 ACL *
 ACLMaxConnection::clone() const
@@ -85,8 +85,15 @@ ACLMaxConnection::parse()
     limit = (atoi (t));
 
     /* suck out file contents */
-
+    // ignore comments
+    bool ignore = false;
     while ((t = strtokFile())) {
+        ignore |= (*t != '#');
+
+        if (ignore)
+            continue;
+
+        debugs(89, DBG_CRITICAL, "WARNING: max_conn only accepts a single limit value.");
         limit = 0;
     }
 }
@@ -120,5 +127,5 @@ ACLMaxConnection::prepareForUse()
     if (0 != Config.onoff.client_db)
         return;
 
-    debugs(22, 0, "WARNING: 'maxconn' ACL (" << name << ") won't work with client_db disabled");
+    debugs(22, DBG_CRITICAL, "WARNING: 'maxconn' ACL (" << name << ") won't work with client_db disabled");
 }

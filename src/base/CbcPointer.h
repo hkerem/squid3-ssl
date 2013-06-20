@@ -1,7 +1,3 @@
-/*
- * $Id$
- */
-
 #ifndef SQUID_CBC_POINTER_H
 #define SQUID_CBC_POINTER_H
 
@@ -157,6 +153,5 @@ std::ostream &CbcPointer<Cbc>::print(std::ostream &os) const
 {
     return os << cbc << '/' << lock;
 }
-
 
 #endif /* SQUID_CBC_POINTER_H */

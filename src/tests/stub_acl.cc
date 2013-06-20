@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Robert Collins
  *
@@ -32,9 +30,4 @@
  *
  */
 
-#include "squid-old.h"
-
-/*
- * DO NOT MODIFY:
- * arch-tag: 09fd4b9f-d9f5-4566-9ec2-c72a57e116dd
- */
+#include "squid.h"

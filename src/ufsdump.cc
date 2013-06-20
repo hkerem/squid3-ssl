@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    UFS Store Dump Tool
  * AUTHOR: Robert Collins
  *
@@ -36,6 +34,7 @@
 #include "StoreMeta.h"
 #include "StoreMetaUnpacker.h"
 #include "Store.h"
+#include "store_key_md5.h"
 #include "Generic.h"
 #include "mgr/Registration.h"
 
@@ -188,7 +187,6 @@ main(int argc, char *argv[])
         DumpStoreMeta dumper;
 
         for_each(*metadata, dumper);
-
 
         return 0;
     } catch (std::runtime_error error) {

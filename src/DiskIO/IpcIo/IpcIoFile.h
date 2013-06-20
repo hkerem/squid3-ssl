@@ -5,6 +5,7 @@
 #include "cbdata.h"
 #include "DiskIO/DiskFile.h"
 #include "DiskIO/IORequestor.h"
+#include "SquidString.h"
 #include "ipc/forward.h"
 #include "ipc/mem/Page.h"
 #include <list>
@@ -24,7 +25,6 @@ namespace IpcIo
 typedef enum { cmdNone, cmdOpen, cmdRead, cmdWrite } Command;
 
 } // namespace IpcIo
-
 
 /// converts DiskIO requests to IPC queue messages
 class IpcIoMsg
@@ -139,7 +139,6 @@ private:
     CBDATA_CLASS2(IpcIoFile);
 };
 
-
 /// keeps original I/O request parameters while disker is handling the request
 class IpcIoPendingRequest
 {
@@ -158,6 +157,5 @@ private:
     IpcIoPendingRequest(const IpcIoPendingRequest &d); // not implemented
     IpcIoPendingRequest &operator =(const IpcIoPendingRequest &d); // ditto
 };
-
 
 #endif /* SQUID_IPC_IOFILE_H */

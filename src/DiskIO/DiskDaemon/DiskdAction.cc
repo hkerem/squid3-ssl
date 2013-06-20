@@ -1,19 +1,17 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  *
  */
 
 #include "squid.h"
 #include "base/TextException.h"
-#include "Store.h"
+#include "DiskIO/DiskDaemon/DiskdAction.h"
+#include "DiskIO/DiskDaemon/DiskdIOStrategy.h"
 #include "ipc/Messages.h"
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/ActionWriter.h"
-#include "DiskIO/DiskDaemon/DiskdAction.h"
-#include "DiskIO/DiskDaemon/DiskdIOStrategy.h"
-
+#include "Store.h"
+#include "tools.h"
 
 DiskdActionData::DiskdActionData()
 {
@@ -52,7 +50,6 @@ DiskdActionData::operator += (const DiskdActionData& stats)
 
     return *this;
 }
-
 
 DiskdAction::Pointer
 DiskdAction::Create(const Mgr::CommandPointer &aCmd)

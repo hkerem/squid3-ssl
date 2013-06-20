@@ -30,13 +30,16 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/StringArea.h"
 #include "HttpHeader.h"
+#include "HttpHeaderFieldStat.h"
 #include "HttpHeaderStat.h"
+#include "HttpHeaderTools.h"
 #include "HttpHdrCc.h"
 #include "StatHist.h"
 #include "Store.h"
+#include "StrList.h"
 
 #if HAVE_MAP
 #include <map>
@@ -78,7 +81,6 @@ http_hdr_cc_type &operator++ (http_hdr_cc_type &aHeader)
     aHeader = (http_hdr_cc_type)(++tmp);
     return aHeader;
 }
-
 
 /// Module initialization hook
 void

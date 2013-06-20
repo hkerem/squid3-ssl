@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -10,7 +8,6 @@
 
 #include "mgr/Action.h"
 #include <sys/time.h>
-
 
 namespace Mgr
 {

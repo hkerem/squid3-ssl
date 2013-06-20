@@ -4,9 +4,10 @@
 #include <cppunit/TestAssert.h>
 
 #include "testHttpRequest.h"
+#include "HttpHeader.h"
 #include "HttpRequest.h"
 #include "Mem.h"
-
+#include "mime_header.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testHttpRequest );
 
@@ -56,6 +57,7 @@ testHttpRequest::testCreateFromUrlAndMethod()
     CPPUNIT_ASSERT_EQUAL(String("/bar"), aRequest->urlpath);
     CPPUNIT_ASSERT_EQUAL(AnyP::PROTO_HTTP, aRequest->protocol);
     CPPUNIT_ASSERT_EQUAL(String("http://foo/bar"), String(url));
+    xfree(url);
 
     /* a connect url with non-CONNECT data */
     url = xstrdup(":foo/bar");

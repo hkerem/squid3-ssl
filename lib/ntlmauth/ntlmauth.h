@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * * * * * * * * Legal stuff * * * * * * *
  *
  * (C) 2000 Francesco Chemolli <kinkie@kame.usr.dsi.unimi.it>,
@@ -108,7 +106,6 @@ extern "C" {
     /** Debug dump the given flags field to stderr */
     void ntlm_dump_ntlmssp_flags(const uint32_t flags);
 
-
     /* ************************************************************************* */
     /* Packet and Payload structures and handling functions */
     /* ************************************************************************* */
@@ -144,7 +141,6 @@ extern "C" {
                              const char *toadd,
                              const int toadd_length);
 
-
     /* ************************************************************************* */
     /* Negotiate Packet structures and functions */
     /* ************************************************************************* */
@@ -172,7 +168,6 @@ extern "C" {
         strhdr workstation;	/**< Client workstation name */
         char payload[256];	/**< String data */
     } ntlm_negotiate;
-
 
     /* ************************************************************************* */
     /* Challenge Packet structures and functions */
@@ -210,7 +205,6 @@ extern "C" {
                              const int challenge_nonce_len,
                              const uint32_t flags);
 
-
     /* ************************************************************************* */
     /* Authenticate Packet structures and functions */
     /* ************************************************************************* */
@@ -233,7 +227,6 @@ extern "C" {
                          char *user,
                          char *domain,
                          const int32_t size);
-
 
 #if __cplusplus
 }

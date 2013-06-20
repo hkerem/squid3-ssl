@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 07    Multicast
  * AUTHOR: Martin Hamilton
  *
@@ -33,11 +30,13 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm/Connection.h"
+#include "Debug.h"
 // XXX: for icpIncomingConn - need to pass it as a generic parameter.
 #include "ICP.h"
 #include "ipcache.h"
+#include "multicast.h"
 
 int
 mcastSetTtl(int fd, int mcast_ttl)
@@ -46,7 +45,7 @@ mcastSetTtl(int fd, int mcast_ttl)
     char ttl = (char) mcast_ttl;
 
     if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, 1) < 0)
-        debugs(50, 1, "comm_set_mcast_ttl: FD " << fd << ", TTL: " << mcast_ttl << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "comm_set_mcast_ttl: FD " << fd << ", TTL: " << mcast_ttl << ": " << xstrerror());
 
 #endif
 
@@ -61,7 +60,7 @@ mcastJoinGroups(const ipcache_addrs *ia, const DnsLookupDetails &, void *datanot
     int i;
 
     if (ia == NULL) {
-        debugs(7, 0, "comm_join_mcast_groups: Unknown host");
+        debugs(7, DBG_CRITICAL, "comm_join_mcast_groups: Unknown host");
         return;
     }
 

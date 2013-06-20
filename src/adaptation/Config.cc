@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -30,21 +28,20 @@
  *
  */
 
-#include "squid-old.h"
-#include "structs.h"
-
-#include "ConfigParser.h"
-#include "acl/Gadgets.h"
-#include "Store.h"
-#include "Array.h"    // really Vector
+#include "squid.h"
 #include "acl/FilledChecklist.h"
-#include "adaptation/Config.h"
-#include "adaptation/Service.h"
+#include "acl/Gadgets.h"
 #include "adaptation/AccessRule.h"
-#include "adaptation/ServiceGroups.h"
+#include "adaptation/Config.h"
 #include "adaptation/History.h"
+#include "adaptation/Service.h"
+#include "adaptation/ServiceGroups.h"
+#include "Array.h"
+#include "ConfigParser.h"
+#include "globals.h"
+#include "HttpReply.h"
 #include "HttpRequest.h"
-
+#include "Store.h"
 
 bool Adaptation::Config::Enabled = false;
 char *Adaptation::Config::masterx_shared_name = NULL;
@@ -53,7 +50,6 @@ int Adaptation::Config::send_client_ip = false;
 int Adaptation::Config::send_username = false;
 int Adaptation::Config::use_indirect_client = true;
 Adaptation::Config::MetaHeaders Adaptation::Config::metaHeaders;
-
 
 Adaptation::Config::MetaHeader::Value::~Value()
 {
@@ -100,7 +96,6 @@ Adaptation::Config::addMetaHeader(const String &headerName)
     metaHeaders.push_back(meta);
     return meta;
 }
-
 
 Adaptation::ServiceConfig*
 Adaptation::Config::newServiceConfig() const
@@ -219,14 +214,14 @@ Adaptation::Config::finalize()
     for (VISCI i = configs.begin(); i != configs.end(); ++i) {
         const ServiceConfigPointer cfg = *i;
         if (FindService(cfg->key) != NULL) {
-            debugs(93,0, "ERROR: Duplicate adaptation service name: " <<
+            debugs(93, DBG_CRITICAL, "ERROR: Duplicate adaptation service name: " <<
                    cfg->key);
             continue; // TODO: make fatal
         }
         ServicePointer s = createService(cfg);
         if (s != NULL) {
             AllServices().push_back(s);
-            created++;
+            ++created;
         }
     }
 
@@ -253,7 +248,7 @@ void
 Adaptation::Config::Finalize(bool enabled)
 {
     Enabled = enabled;
-    debugs(93,1, "Adaptation support is " << (Enabled ? "on" : "off."));
+    debugs(93, DBG_IMPORTANT, "Adaptation support is " << (Enabled ? "on" : "off."));
 
     FinalizeEach(AllServices(), "message adaptation services");
     FinalizeEach(AllGroups(), "message adaptation service groups");
@@ -285,7 +280,7 @@ Adaptation::Config::ParseMetaHeader(ConfigParser &parser)
     ConfigParser::ParseQuotedString(&value);
 
     // TODO: Find a way to move this check to ICAP
-    for (int i = 0; warnFor[i] != NULL; i++) {
+    for (int i = 0; warnFor[i] != NULL; ++i) {
         if (name.caseCmp(warnFor[i]) == 0) {
             fatalf("%s:%d: meta name \"%s\" is a reserved ICAP header name",
                    cfg_filename, config_lineno, name.termedBuf());
@@ -389,10 +384,10 @@ Adaptation::Config::DumpAccess(StoreEntry *entry, const char *name)
     }
 }
 
-Adaptation::Config::Config()
-{
-    // XXX: should we init members?
-}
+Adaptation::Config::Config() :
+        onoff(0), service_failure_limit(0), oldest_service_failure(0),
+        service_revival_delay(0)
+{}
 
 // XXX: this is called for ICAP and eCAP configs, but deals mostly
 // with global arrays shared by those individual configs

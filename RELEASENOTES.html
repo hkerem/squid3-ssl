@@ -1,15 +1,15 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <HTML>
 <HEAD>
- <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.66">
- <TITLE>Squid 3.2.11 release notes</TITLE>
+ <META NAME="GENERATOR" CONTENT="LinuxDoc-Tools 0.9.69">
+ <TITLE>Squid 3.3.5 release notes</TITLE>
 </HEAD>
 <BODY>
-<H1>Squid 3.2.11 release notes</H1>
+<H1>Squid 3.3.5 release notes</H1>
 
 <H2>Squid Developers</H2>
 <HR>
-<EM>This document contains the release notes for version 3.2 of Squid.
+<EM>This document contains the release notes for version 3.3 of Squid.
 Squid is a WWW Cache application developed by the National Laboratory
 for Applied Network Research and members of the Web Caching community.</EM>
 <HR>
@@ -18,28 +18,20 @@ for Applied Network Research and members of the Web Caching community.</EM>
 
 <UL>
 <LI><A NAME="toc1.1">1.1</A> <A HREF="#ss1.1">Known issues</A>
-<LI><A NAME="toc1.2">1.2</A> <A HREF="#ss1.2">Changes since earlier releases of Squid-3.2</A>
+<LI><A NAME="toc1.2">1.2</A> <A HREF="#ss1.2">Changes since earlier releases of Squid-3.3</A>
 </UL>
 <P>
-<H2><A NAME="toc2">2.</A> <A HREF="#s2">Major new features since Squid-3.1</A></H2>
+<H2><A NAME="toc2">2.</A> <A HREF="#s2">Major new features since Squid-3.2</A></H2>
 
 <UL>
-<LI><A NAME="toc2.1">2.1</A> <A HREF="#ss2.1">CVE-2009-0801 : NAT interception vulnerability to malicious clients.</A>
-<LI><A NAME="toc2.2">2.2</A> <A HREF="#ss2.2">NCSA helper DES algorithm password limits</A>
-<LI><A NAME="toc2.3">2.3</A> <A HREF="#ss2.3">SMP scalability</A>
-<LI><A NAME="toc2.4">2.4</A> <A HREF="#ss2.4">Helper Multiplexer</A>
-<LI><A NAME="toc2.5">2.5</A> <A HREF="#ss2.5">Helpers On-Demand</A>
-<LI><A NAME="toc2.6">2.6</A> <A HREF="#ss2.6">Helper Name Changes</A>
-<LI><A NAME="toc2.7">2.7</A> <A HREF="#ss2.7">Multi-Lingual manuals</A>
-<LI><A NAME="toc2.8">2.8</A> <A HREF="#ss2.8">Solaris 10 pthreads Support (Experimental)</A>
-<LI><A NAME="toc2.9">2.9</A> <A HREF="#ss2.9">Surrogate/1.0 protocol extensions to HTTP</A>
-<LI><A NAME="toc2.10">2.10</A> <A HREF="#ss2.10">Logging Infrastructure Updated</A>
-<LI><A NAME="toc2.11">2.11</A> <A HREF="#ss2.11">Client Bandwidth Limits</A>
-<LI><A NAME="toc2.12">2.12</A> <A HREF="#ss2.12">Better eCAP Suport</A>
-<LI><A NAME="toc2.13">2.13</A> <A HREF="#ss2.13">Cache Manager access changes</A>
+<LI><A NAME="toc2.1">2.1</A> <A HREF="#ss2.1">SQL Database logging helper</A>
+<LI><A NAME="toc2.2">2.2</A> <A HREF="#ss2.2">Time-Quota session helper</A>
+<LI><A NAME="toc2.3">2.3</A> <A HREF="#ss2.3">SSL-Bump Server First</A>
+<LI><A NAME="toc2.4">2.4</A> <A HREF="#ss2.4">Server Certificate Mimic</A>
+<LI><A NAME="toc2.5">2.5</A> <A HREF="#ss2.5">Custom HTTP request headers</A>
 </UL>
 <P>
-<H2><A NAME="toc3">3.</A> <A HREF="#s3">Changes to squid.conf since Squid-3.1</A></H2>
+<H2><A NAME="toc3">3.</A> <A HREF="#s3">Changes to squid.conf since Squid-3.2</A></H2>
 
 <UL>
 <LI><A NAME="toc3.1">3.1</A> <A HREF="#ss3.1">New tags</A>
@@ -47,7 +39,7 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <LI><A NAME="toc3.3">3.3</A> <A HREF="#ss3.3">Removed tags</A>
 </UL>
 <P>
-<H2><A NAME="toc4">4.</A> <A HREF="#s4">Changes to ./configure options since Squid-3.1</A></H2>
+<H2><A NAME="toc4">4.</A> <A HREF="#s4">Changes to ./configure options since Squid-3.2</A></H2>
 
 <UL>
 <LI><A NAME="toc4.1">4.1</A> <A HREF="#ss4.1">New options</A>
@@ -55,518 +47,187 @@ for Applied Network Research and members of the Web Caching community.</EM>
 <LI><A NAME="toc4.3">4.3</A> <A HREF="#ss4.3">Removed options</A>
 </UL>
 <P>
-<H2><A NAME="toc5">5.</A> <A HREF="#s5">Options Removed since Squid-2</A></H2>
+<H2><A NAME="toc5">5.</A> <A HREF="#s5">Regressions since Squid-2.7</A></H2>
 
 <UL>
-<LI><A NAME="toc5.1">5.1</A> <A HREF="#ss5.1">Removed squid.conf options since Squid-2.7</A>
-<LI><A NAME="toc5.2">5.2</A> <A HREF="#ss5.2">Removed squid.conf options since Squid-2.6</A>
-<LI><A NAME="toc5.3">5.3</A> <A HREF="#ss5.3">Removed ./configure options since Squid-2.7</A>
-</UL>
-<P>
-<H2><A NAME="toc6">6.</A> <A HREF="#s6">Regressions since Squid-2.7</A></H2>
-
-<UL>
-<LI><A NAME="toc6.1">6.1</A> <A HREF="#ss6.1">Missing squid.conf options available in Squid-2.7</A>
+<LI><A NAME="toc5.1">5.1</A> <A HREF="#ss5.1">Missing squid.conf options available in Squid-2.7</A>
 </UL>
 
 <HR>
 <H2><A NAME="s1">1.</A> <A HREF="#toc1">Notice</A></H2>
 
-<P>The Squid Team are pleased to announce the release of Squid-3.2.11.</P>
+<P>The Squid Team are pleased to announce the release of Squid-3.3.5.</P>
 <P>This new release is available for download from 
-<A HREF="http://www.squid-cache.org/Versions/v3/3.2/">http://www.squid-cache.org/Versions/v3/3.2/</A> or the
+<A HREF="http://www.squid-cache.org/Versions/v3/3.3/">http://www.squid-cache.org/Versions/v3/3.3/</A> or the 
 <A HREF="http://www.squid-cache.org/Mirrors/http-mirrors.html">mirrors</A>.</P>
 
-<P>A large number of the show-stopper bugs have been fixed along with general improvements to the IPv6 support.
+<P>A large number of the design flaws in SSL-Bump feature have been fixed along with general improvements all around.
 While this release is not fully bug-free we believe it is ready for use in production on many systems.</P>
 
 <P>We welcome feedback and bug reports. If you find a bug, please see 
-<A HREF="http://wiki.squid-cache.org/SquidFaq/BugReporting">http://wiki.squid-cache.org/SquidFaq/BugReporting</A> for how to submit a 
-report with a stack trace.</P>
+<A HREF="http://wiki.squid-cache.org/SquidFaq/BugReporting">http://wiki.squid-cache.org/SquidFaq/BugReporting</A>
+for how to submit a report with a stack trace.</P>
 
 <H2><A NAME="ss1.1">1.1</A> <A HREF="#toc1.1">Known issues</A>
 </H2>
 
 <P>Although this release is deemed good enough for use in many setups, please note the existence of 
-<A HREF="http://bugs.squid-cache.org/buglist.cgi?query_format=advanced&amp;product=Squid&amp;bug_status=UNCONFIRMED&amp;bug_status=NEW&amp;bug_status=ASSIGNED&amp;bug_status=REOPENED&amp;version=3.2">open bugs against Squid-3.2</A>.</P>
-
-<P>Some issues to note as currently known in this release which are not able to be fixed in the 3.2 series are:</P>
-<P>
-<UL>
-<LI>TCP logging of access.log does not recover from broken connections well.</LI>
-<LI>SSL-Bump not re-wrapping decrypted traffic in CONNECT for peers.</LI>
-<LI>Cache Manager reports in txt/plain format even when requested directly via browser.</LI>
-</UL>
-</P>
-
-<P>Currently known issues which only depends on available developer time and may still be resolved in a future 3.2 release are:</P>
-<P>
-<UL>
-<LI>SMP Support still has a number of important bugs needing to be resolved. see the bugs list above for details.</LI>
-<LI>Windows support is still incomplete.</LI>
-<LI>The lack of some features available in Squid-2.x series. See the regression sections below for full details.</LI>
-</UL>
-</P>
+<A HREF="http://bugs.squid-cache.org/buglist.cgi?query_format=advanced&amp;product=Squid&amp;bug_status=UNCONFIRMED&amp;bug_status=NEW&amp;bug_status=ASSIGNED&amp;bug_status=REOPENED&amp;version=3.3">open bugs against Squid-3.3</A>.</P>
 
 
-<H2><A NAME="ss1.2">1.2</A> <A HREF="#toc1.2">Changes since earlier releases of Squid-3.2</A>
+<H2><A NAME="ss1.2">1.2</A> <A HREF="#toc1.2">Changes since earlier releases of Squid-3.3</A>
 </H2>
 
-<P>The 3.2 change history can be 
-<A HREF="http://www.squid-cache.org/Versions/v3/3.2/changesets/">viewed here</A>.</P>
+<P>The 3.3 change history can be 
+<A HREF="http://www.squid-cache.org/Versions/v3/3.3/changesets/">viewed here</A>.</P>
 
-<H2><A NAME="s2">2.</A> <A HREF="#toc2">Major new features since Squid-3.1</A></H2>
+<H2><A NAME="s2">2.</A> <A HREF="#toc2">Major new features since Squid-3.2</A></H2>
 
-<P>Squid 3.2 represents a new feature release above 3.1.</P>
+<P>Squid 3.3 represents a new feature release above 3.2.</P>
 
 <P>The most important of these new features are:
 <UL>
-<LI>CVE-2009-0801 : NAT interception vulnerability to malicious clients.</LI>
-<LI>NCSA helper DES algorithm password limits</LI>
-<LI>SMP scalability</LI>
-<LI>Helper Multiplexer and On-Demand</LI>
-<LI>Helper Name Changes</LI>
-<LI>Multi-Lingual manuals</LI>
-<LI>Solaris 10 pthreads Support</LI>
-<LI>Surrogate/1.0 protocol extensions to HTTP</LI>
-<LI>Logging Infrastructure Updated</LI>
-<LI>Client Bandwidth Limits</LI>
-<LI>Better eCAP support</LI>
-<LI>Cache Manager access changes</LI>
+<LI>SQL Database logging helper</LI>
+<LI>Time-Quota session helper</LI>
+<LI>SSL-Bump Server First</LI>
+<LI>Server Certificate Mimic</LI>
+<LI>Custom HTTP request headers</LI>
 </UL>
 </P>
 <P>Most user-facing changes are reflected in squid.conf (see below).</P>
 
-
-<H2><A NAME="ss2.1">2.1</A> <A HREF="#toc2.1">CVE-2009-0801 : NAT interception vulnerability to malicious clients.</A>
+<H2><A NAME="ss2.1">2.1</A> <A HREF="#toc2.1">SQL Database logging helper</A>
 </H2>
 
-<P>Details in Advisory 
-<A HREF="http://www.squid-cache.org/Advisories/SQUID-2011_1.txt">SQUID-2011:1</A></P>
+<P><EM>log_db_daemon</EM> - Database logging daemon for Squid</P>
 
-<P>Squid locates the authority-URL details available in an HTTP request as
-defined by RFC 2616 and validates that all found representations are
-<EM>textually</EM> equivalent. In the case of intercepted traffic the
-client destination IP is also compared to the Host: authority domains
-DNS entries.</P>
+<P>This program writes Squid access.log entries to an SQL database.
+Written in Perl it can utilize any database supported by the Perl
+database abstraction layer.</P>
 
-<P>When the Host: authority contradicts another authority source Squid will log
-"SECURITY ALERT: Host: header forgery detected". The response will then be determined
-by the 
-<A HREF="http://www.squid-cache.org/Doc/config/host_verify_strict/">host_verify_strict</A>
-directive. Squid will respond with 409 Conflict error response when strict validation
-fails and handles the request normally when strict validation succeeds or is OFF (default).</P>
-
-<P>Relaying of messages which FAIL non-strict Host: validation are permitted through Squid but
-only to the original destination IP the client was requesting or to explicit peers. This means
-DNS lookups to locate alternative DIRECT destinations will not be done.</P>
-
-<P>Known Issue: When non-strict validation fails Squid will relay the request, but can only do
-so safely to the original destination IP the client was contacting. The client original
-destination IP is lost when relaying to peers in a hierarchy. This means the upstream peers
-are still at risk of causing same-origin bypass CVE-2009-0801 vulnerability.
-Developer time is required to implement safe transit of these requests.
-Please contact squid-dev if you are able to assist or sponsor the development.</P>
+<P>NOTE: Presently it only accepts the Squid native log format.</P>
 
 
-<H2><A NAME="ss2.2">2.2</A> <A HREF="#toc2.2">NCSA helper DES algorithm password limits</A>
+<H2><A NAME="ss2.2">2.2</A> <A HREF="#toc2.2">Time-Quota session helper</A>
 </H2>
 
-<P>Details in Advisory 
-<A HREF="http://www.squid-cache.org/Advisories/SQUID-2011_2.txt">SQUID-2011:2</A></P>
+<P><EM>ext_time_quota_acl</EM> - Time quota external ACL helper.</P>
 
-<P>The DES algorithm used by the NCSA Basic authentication helper has an
-limit of 8 bytes but some implementations do not error when truncating
-longer passwords down to this unsafe level.</P>
+<P>Allows an administrator to define time budgets (quota) for the
+users of Squid to limit the time using Squid.</P>
 
-<P>This both significantly lowers the threshold of difficulty decrypting
-captured password files and hides from users the fact that the extra bits
-of their chosen long password is not being utilized.</P>
+<P>This is useful for corporate lunch time allocations, wifi portal
+pay-per-minute installations or for parental control of children.</P>
 
-<P>The NCSA helper bundled with Squid will prevent passwords longer than 8
-characters being sent to the DES algorithm. The MD5 hash algorithm which
-supports longer than 8 character passwords is also supported by this helper
-and should be used instead.</P>
+<P>The administrator can define a time budget (e.g. 1 hour per day)
+which is enforced through this helper using session estimations
+of their browsing time. A 'pause' threshold is given in seconds
+and defines the period between two requests to be treated as part
+of the same session. Pauses shorter than this value will be
+counted against the quota, longer ones ignored.</P>
 
 
-<H2><A NAME="ss2.3">2.3</A> <A HREF="#toc2.3">SMP scalability</A>
+<H2><A NAME="ss2.3">2.3</A> <A HREF="#toc2.3">SSL-Bump Server First</A>
 </H2>
 
-<P>The new "workers" squid.conf option can be used to launch multiple worker
-processes and utilize multiple CPU cores. The overall intent is to make
-multiple workers look like one to an outside observer, while providing
-knobs to customize each worker behavior if needed.</P>
+<P>Details at 
+<A HREF="http://wiki.squid-cache.org/Features/BumpSslServerFirst">http://wiki.squid-cache.org/Features/BumpSslServerFirst</A>.</P>
 
-<P>By default, all worker processes are configured identically and do what a
-single Squid instance would have done. Squid.conf macro substitutions and
-conditionals (see below) can be used to customize individual worker
-configurations. In the paragraphs below, "can share" implies "will share by
-default".</P>
+<P>When an intercepted connection is received, Squid first connects
+to the server using SSL and receives the server certificate.
+Squid then uses the host name inside the true server certificate
+to generate a fake one and impersonates the server while still
+using the already established secure connection to the server.</P>
 
-<P>Workers can share HTTP, HTTPS, SNMP, ICP, and HTCP listening addresses.
-Configuration related to ICP and HTCP clients must be adjusted to avoid
-source address conflicts: Modify the IP address and/or the port used for
-the protocol. Workers do not share DNS addresses by default because the OS
-assigns each worker a unique DNS port.</P>
-
-<P>Workers can share logs.</P>
-
-<P>Workers can share caches. Memory cache is automatically shared when multiple
-workers are used. Cache_dir are shared when configured with the <EM>rock</EM>
-storage type. Cache_dir of other types must be adjusted to point each
-disk-caching worker to its own disk area. ICP and HTCP responses are based
-on the responding worker cache state.</P>
-
-<P>Cache manager statistics are reported from a worker point of view, for now.
-Though some reports are combined. SNMP statistics are combined across all
-workers.</P>
-
-<P>Startup, reconfiguration, shutdown, and log rotation are handled as for a
-monolithic Squid. Abnormally terminated workers are restarted while
-other workers continue serving traffic.</P>
-
-<H3>Squid.conf macros and conditionals</H3>
-
-<P>Added support for process_name and process_number macros as well as simple
-if-statement conditionals in squid.conf. These features allow individual
-worker customization in SMP mode. For details, search for "Conditional
-configuration" and "SMP-Related Macros" sections in squid.conf.documented.</P>
-
-
-<H2><A NAME="ss2.4">2.4</A> <A HREF="#toc2.4">Helper Multiplexer</A>
-</H2>
-
-<P>The helper multiplexer's purpose is to relieve some of the burden
-Squid has when dealing with slow helpers. It does so by acting as a
-middleman between squid and the actual helpers, talking to Squid via
-the multiplexed concurrent variant of the helper protocol and to the
-helpers via the non-concurrent variant.</P>
-
-<P>Helpers are started on demand, and in theory the muxer can handle up to
-1k helpers per instance. It's up to squid to decide how many helpers
-to start.</P>
-
-<P>The muxer knows nothing about the actual messages being passed around,
-and as such can't really (yet?) compensate for broken helpers.
-It is not yet able to manage dying helpers, but it will.</P>
-
-<P>To configure the multiplexer add its binary name (usually /usr/share/libexec/helper-mux.pl)
-in front of the name of whichever helper is being multiplexed. It takes the helper binary
-path and parameters as its own command parameters. The <EM>concurrency</EM> setting already
-existing in Squid is used to configure how many child helpers it may run.</P>
-
-<P>For example, a traditional configuration is
-<PRE>
-        url_rewrite_program /your/redirector.sh
-        url_rewrite_children 5
-   
-</PRE>
-
-the alternative multiplexer configuration is:
-<PRE>
-        url_rewrite_program /usr/share/libexec/helper-mux.pl /your/redirector.sh
-        url_rewrite_children 1 concurrency=5
-   
-</PRE>
-</P>
-
-<P>Helpers which are already concurrent protocol enabled gain little benefit from the multiplexer
-on most systems. However on some systems where Squid spawning helpers causes excess memory usage
-the reduction in direct helper spawned by Squid can result in a great reduction in resource use.</P>
-
-<P>The helper can be controlled using various signals:
-<UL>
-<LI>SIGHUP: dump the state of all helpers to STDERR</LI>
-</UL>
-</P>
-
-
-<H2><A NAME="ss2.5">2.5</A> <A HREF="#toc2.5">Helpers On-Demand</A>
-</H2>
-
-<P>Traditionally Squid has been configured with a fixed number of helpers and started them during
-it's start and reconfigure phases. This forces the hard configuration problem of how many helpers
-will be needed to be solved before starting Squid in production use.</P>
-
-<P>The on-demand helpers feature allows greater flexibility and resolves this problem by allowing
-maximum, initial and idle thresholds to be configured. Squid will start the initial set during
-start and reconfigure phases. However over the operational use new helpers up to the maxium will
-be started as load demands. The idle threshold determines how many more helpers to start if the
-currently running set is not enough to handle current request loads.</P>
-
-<P>For example, a traditional configuration is
-<PRE>
-        auth_param ntlm /usr/libexec/squid/ntlm_auth
-        auth_param ntlm children 200
-   
-</PRE>
-
-the alternative on-demand configuration could be:
-<PRE>
-        auth_param ntlm /usr/libexec/squid/ntlm_auth
-        auth_param ntlm children 200 startup=10 idle=2
-   
-</PRE>
-</P>
-
-<P>The example still permits up to 200 helpers to be running at once under peak traffic loads.
-But only starts 10 when Squid is initialized resulting in a faster boot up.
-When client requests threaten to overload the running helpers an additional 2 will be started.</P>
-
-<P>NOTE: if no <EM>startup</EM> and <EM>idle</EM> values are specified the traditional behaviour
-of starting the maximum number of helpers will occur.</P>
-
-
-<H2><A NAME="ss2.6">2.6</A> <A HREF="#toc2.6">Helper Name Changes</A>
-</H2>
-
-<P>To improve the understanding of what each helper does and where it should be used the helper binaries
-which are bundled with Squid have undergone a naming change in this release.</P>
-
-<P>Below is a list of the old helper names and what their names have changed to.
-For several helpers the directory name used in --enable-X-helpers configure option has also changed.</P>
-
-<H3>Basic Authentication protocol helpers</H3>
-
+<P>Bumping server first is essentially required for handling
+intercepted HTTPS connections but the same scheme should be used
+for most HTTP CONNECT requests because it offers a few advantages
+compared to the old bump-client-first approach:</P>
 <P>
 <UL>
-<LI>squid_db_auth - basic_db_auth - Retrieve authentication details from a simple SQL database table.</LI>
-<LI>getpwnam_auth - basic_getpwname_auth - Authenticate with local system user accounts.</LI>
-<LI>squid_ldap_auth - basic_ldap_auth - Authenticate with LDAP user accounts.</LI>
-<LI>MSNT-multi-domain - basic_msnt_multi_domain_auth - Authenticate with any one of multiple Windows Domain Controllers.</LI>
-<LI>msnt_auth - basic_msnt_auth - Authenticate with Windows Domain Controllers selected by username.</LI>
-<LI>ncsa_auth - basic_ncsa_auth - Authenticate with NCSA httpd-style password file.</LI>
-<LI>yp_auth - basic_nis_auth - Authenticate with NIS security system.</LI>
-<LI>pam_auth - basic_pam_auth - Authenticate with the system PAM infrastructure.</LI>
-<LI>pop3.pl - basic_pop3_auth - Authenticate with a mail server POP3/SMTP credentials.</LI>
-<LI>squid_radius_auth - basic_radius_auth - Authenticate with RADIUS.</LI>
-<LI>squid_sasl_auth - basic_sasl_auth - Authenticate with SASL.</LI>
-<LI>smb_auth - basic_smb_auth - Authenticate with Samba SMB.</LI>
-<LI>mswin_sspi - basic_sspi_auth - Authenticate with a Windows Domain Controller using SSPI.</LI>
+<LI>When Squid knows valid server certificate details, it can
+generate its fake server certificate with those details.
+With the bump-client-first scheme, all those details are lost.
+In general, browsers do not care about those details but there
+may be HTTP clients (or even human users) that require or could
+benefit from knowing them.
+</LI>
+<LI>When a server sends a bad certificate, Squid may be able to
+replicate that brokenness in its own fake certificate, giving
+the HTTP client control whether to ignore the problem or
+terminate the transaction. With bump-client-furst, it is
+difficult to support similar dynamic, user-directed opt out; 
+Squid itself has to decide what to do when the server
+certificate cannot be validated.
+</LI>
+<LI>When a server asks for a client certificate, Squid may be
+able to ask the client and then forward the client certificate
+to the server. Such client certificate handling may not be
+possible with the bump-client-first scheme because it would
+have to be done after the SSL handshake.
+</LI>
+<LI>Some clients (e.g., Rekonq browser v0.7.x) do not send host
+names in CONNECT requests. Such clients require bump-server-first
+even in forward proxying mode. Unfortunately, there are other
+problems with fully supporting such clients (i.e., Squid does
+not know whether the IP address in the CONNECT request is what
+the user have typed into the address bar) so not all features
+will work well for them until more specialized detection code
+is added.</LI>
 </UL>
 </P>
 
-<H3>Digest Authentication protocol helpers</H3>
-
-<P>
-<UL>
-<LI>digest_pw_auth - digest_file_auth - Authenticate against credentials stored in a simple text file.</LI>
-</UL>
-</P>
-
-<H3>External ACL helpers</H3>
-
-<P>
-<UL>
-<LI>mswin_check_ad_group - ext_ad_group_acl - Check logged in users Group membership using Active Directory.</LI>
-<LI>ip_user_check - ext_file_userip_acl - Restrict users to certain IP addresses, using a text file backend.</LI>
-<LI>squid_kerb_ldap - ext_kerberos_ldap_group_acl - Check logged in Kerberos or NTLM users Group membership using LDAP.</LI>
-<LI>squid_ldap_group - ext_ldap_group_acl - Check logged in users Group membership using LDAP.</LI>
-<LI>mswin_check_lm_group - ext_lm_group_acl - Check logged in users Group membership using LanManager.</LI>
-<LI>squid_session - ext_session_acl - Maintain a session cache of client identifiers (usually IP address).
-This helper has also gone through a version update and now uses more current BerkeleyDB 4.1+ APIs.</LI>
-<LI>squid_unix_group - ext_unix_group_acl - Check logged in users Group membership using local UNIX groups.</LI>
-<LI>wbinfo_group.pl - ext_wbinfo_group_acl - Check logged in users Group membership using wbinfo.</LI>
-</UL>
-</P>
-
-<H3>Negotiate Authentication protocol helpers</H3>
-
-<P>
-<UL>
-<LI>squid_kerb_auth - negotiate_kerberos_auth - Authenticate with Kerberos servers.</LI>
-<LI>mswin_sspi - negotiate_sspi_auth - Authenticate with a Windows Domain Controller using SSPI.</LI>
-<LI>negotiate_wrapper - negotiate_wrapper_auth - Split Negotiate traffic between Kerberos and NTLM helpers.</LI>
-</UL>
-</P>
-
-<H3>NTLM Authentication protocol helpers</H3>
-
-<P>
-<UL>
-<LI>no_check.pl - Deprecated. - Use the faster and less easily decrypted ntlm_fake_auth instead.</LI>
-<LI>fakeauth_auth - ntlm_fake_auth - Perform NTLMSSP to recover the username but don't verify the password.</LI>
-<LI>ntlm_auth - ntlm_smb_lm_auth - Perform SMB LanManager domain-less authentication over NTLM protocol.</LI>
-<LI>mswin_ntlm_auth - ntlm_sspi_auth - Perform NTLMSSP authentication using Windows native Security Support Provider Interface API.</LI>
-</UL>
-</P>
-
-<H3>URL re-write helpers</H3>
-
-<P>This group of helpers have been bundled to demonstrate how to code URL re-writers:
-<UL>
-<LI>url_fake_rewrite - Accept various url_rewrite details and log the input.</LI>
-</UL>
-</P>
-
-
-<H2><A NAME="ss2.7">2.7</A> <A HREF="#toc2.7">Multi-Lingual manuals</A>
+<H2><A NAME="ss2.4">2.4</A> <A HREF="#toc2.4">Server Certificate Mimic</A>
 </H2>
 
-<P>The man(8) and man(1) pages bundled with Squid are now provided online for all
-versions and beginning with 3.2 they are available in languages other than English (where translated).</P>
+<P>Details at 
+<A HREF="http://wiki.squid-cache.org/Features/MimicSslServerCert">http://wiki.squid-cache.org/Features/MimicSslServerCert</A>.</P>
 
-<P>Details in 
-<A HREF="http://wiki.squid-cache.org/Translations">The Squid wiki</A></P>
+<P>One of the SslBump features serious drawbacks is the loss of
+information embedded in SSL server certificate.
+This certificate mimic feature passes original SSL server
+certificate information to the user. Allowing the user to
+make an informed decision on whether to trust the server
+certificate.</P>
 
-<P>3.1 began the Internationalization of Squid with the public facing error pages.
-This move begins the Localization of the internal administrator facing manuals.</P>
 
-
-<H2><A NAME="ss2.8">2.8</A> <A HREF="#toc2.8">Solaris 10 pthreads Support (Experimental)</A>
+<H2><A NAME="ss2.5">2.5</A> <A HREF="#toc2.5">Custom HTTP request headers</A>
 </H2>
 
-<P>Automatic detection and use of the pthreads library available from Solaris 10</P>
+<P>The <EM>request_header_add</EM> option is added to insert
+HTTP header fields to outgoing HTTP requests (i.e.,
+request headers sent by Squid to the next HTTP hop such as a
+cache peer or an origin server). The option has no effect on
+cache hit traffic or requests serviced by Squid and ICAP.</P>
 
-<P>The result of this addition means that faster more efficient AUFS cache storage mechanism
-is now available in Solaris 10.</P>
+<P>WARNING: If a standard HTTP header name is used, Squid does not check whether
+the new header conflicts with any existing headers or violates
+HTTP rules. If the request to be modified already contains a
+field with the same name, the old field is preserved but the
+header field values are not merged.</P>
 
-<P>Support is experimental at this stage due to lack of feedback on the results of enabling it.
-We recommend giving AUFS a try for faster disk storage and encourage feedback.</P>
+<P>Field-value set can be either a token or a quoted string. If quoted
+string format is used, then the surrounding quotes are removed
+while escape sequences and %macros are processed.</P>
 
+<P>In theory, all of the <EM>logformat</EM> codes can be used as %macros.
+However, unlike logging (which happens at the very end of
+transaction lifetime), the transaction may not yet have enough
+information to expand a macro when the new header value is needed.
+And some information may already be available to Squid but not yet
+committed where the macro expansion code can access it (please report
+such instances!). The macro will be expanded into a single dash
+('-') in such cases. Not all macros have been tested.</P>
 
-<H2><A NAME="ss2.9">2.9</A> <A HREF="#toc2.9">Surrogate/1.0 protocol extensions to HTTP</A>
-</H2>
-
-<P>The <EM>Surrogate</EM> extensions to HTTP protocol enable an origin web server to specify separate
-cache controls for a reverse proxy acting on its behalf. Previously this was closely tied with the ESI
-feature support in Squid. This release opens Surrogate support to all reverse proxies.</P>
-
-<P>Reverse proxy requests sent on to the web server include the HTTP header <EM>Surrogate-Capabilities:</EM>
-specifying the capabilities of the reverse proxy along with an ID which can be used to target responses with
-a <EM>Surrogate-Control:</EM> HTTP header used instead of the <EM>Cache-Control:</EM> header.</P>
-
-<P>The default surrogate ID is generated automatically from the Squid site-unique hostname as found by the
-automatic detection or manual configuration of <EM>visible_hostname</EM> although can be configured
-separately with the <EM>httpd_accel_surrogate_id</EM> option.</P>
-
-<P><EM>Security Considerations:</EM> Websites should be careful of accepting any surrogate ID.
-Older releases of Squid leak the Surrogate-Control headers to external servers.
-This 3.2 series of Squid will now prevent this leakage of its own ID destined responses, however it is possible
-and for some uses desirable to receive external reverse-proxies <EM>Surrogate-Capabilities:</EM> headers.</P>
-
-<P><EM>NOTE:</EM> Several operating system distributions historically package Squid with a forced value of
-<EM>visible_hostname localhost</EM>. If this is done on a Surrogate enabled install a manual re-configuration
-is required to prevent an unacceptable surrogate ID of 'localhost' being generated.</P>
+<P>One or more Squid ACLs may be specified to restrict header
+injection to matching requests. As always in squid.conf, all
+ACLs in an option ACL list must be satisfied for the insertion
+to happen. The <EM>request_header_add</EM> option supports fast ACLs only.</P>
 
 
-<H2><A NAME="ss2.10">2.10</A> <A HREF="#toc2.10">Logging Infrastructure Updated</A>
-</H2>
+<H2><A NAME="s3">3.</A> <A HREF="#toc3">Changes to squid.conf since Squid-3.2</A></H2>
 
-<P>The advanced logging modules introduced in Squid-2.7 are now available from Squid-3.2.</P>
-
-<P>This feature is documented at http://wiki.squid-cache.org/Features/LogModules</P>
-
-<P>The new infrastructure currently supports several different channels types (modules) ranging from
-direct filesystem logging (stdio, daemon) to network logging (syslog, UDP and TCP). The daemon logging
-interface allows for a custom helper to be written to process logs in real-time.</P>
-
-<P>Upgrading: the <EM>access_log</EM> and <EM>cache_store_log</EM> were previously logged via what is
-now called the <EM>stdio</EM> module.
-This is still supported and used by default if no module is named. For best performance particularly in SMP
-environments we recommend the <EM>daemon</EM> be used. The provided <EM>log_file_daemon</EM> helper
-performs the traditional logging to local filesystem.</P>
-
-<P>Additional to this the cache.log can now be limited to a smaller number of files stored.
-Traditionally cache.log.N has been fixed at the same number of rotated files as access.log.N through the
-<EM>logfile_rotate</EM> setting. The <EM>debug_options</EM> setting can now be used to configure the number
-of debug cache.log files to rotate through with a <EM>rotate=N</EM> option. This is particularly useful for
-logging a single cache.log at relatively high debug levels on a high-traffic system. Or one which is
-required to store a long period of access.log and needs to conserve disk space.</P>
-
-<P>The <EM>referer_log</EM> and <EM>useragent_log</EM> directives have been converted to built-in log formats.
-These logs are now created using an <EM>access_log</EM> line with the format "referrer" or "useragent".
-They also now log all client requests, if there was no Referer or User-Agent header a dash (-) is logged.</P>
-
-<P>Known Issue: The TCP logging module does not recover from broken connections well.
-At present it will restart the affected Squid instance if the TCP connection is broken.</P>
-
-
-<H2><A NAME="ss2.11">2.11</A> <A HREF="#toc2.11">Client Bandwidth Limits</A>
-</H2>
-
-<P>In mobile environments, Squid may need to limit Squid-to-client bandwidth
-available to individual users, identified by their IP addresses. The IP
-address pool can be as large as a /10 IPv4 network (4 million unique IP
-addresses) and even larger in IPv6 environments. On the other hand, the code
-should support thousands of connections coming from a single IP (e.g.,
-a child proxy).</P>
-
-<P>The implementation is based on storing bandwidth-related "bucket" information
-in the existing "client database" hash (client_db.cc). The old code already
-assigned each client IP a single ClientInfo object, which satisfies the
-client-side IP-based bandwidth pooling requirements. The old hash size is
-increased to support up to 32K concurrent clients if needed.</P>
-
-<P>Client-side pools are configured similarly to server-side ones, but there is
-only one pool class. See client_delay_pools,
-client_delay_initial_bucket_level, client_delay_parameters, and
-client_delay_access in squid.conf. The client_delay_access matches the client
-with delay parameters. It does not pool clients from different IP addresses
-together.</P>
-
-<P>Special care is taken to provide fair distribution of bandwidth among clients
-sharing the same bucket (i.e., clients coming from the same IP address).
-Multiple same-IP clients competing for bandwidth are queued using FIFO
-algorithm. If a bucket becomes empty, the first client among those sharing 
-the bucket is delayed by 1 second before it can attempt to receive more
-response data from Squid.  This delay may need to be lowered in 
-high-bandwidth environments.</P>
-
-
-<H2><A NAME="ss2.12">2.12</A> <A HREF="#toc2.12">Better eCAP Suport</A>
-</H2>
-
-<P>Support for libecap version 0.2.0 has been added with this series of Squid. Bringing
-better support for body handling, and logging.</P>
-
-<P>Known Issue: Due to API changes in libecap this release of Squid will not build
-against any older libecap releases.</P>
-
-
-<H2><A NAME="ss2.13">2.13</A> <A HREF="#toc2.13">Cache Manager access changes</A>
-</H2>
-
-<P>The Squid Cache Manager has previously only been accessible under the cache_object://
-URL scheme. Which has restricted its reporting to tools which can send arbitrary
-URI to the proxy.</P>
-
-<P>This version of Squid now provides access through the http:// and https:// URL schemes
-allowing web browsers access without having to use the cachemgr.cgi gateway and enabling
-the use of HTTPS security were desired.</P>
-
-<P>The cache manager is available under the path prefix /squid-internal-mgr/. For example
-the URL http://example/com/squid-internal-mgr/menu will bring up the manager menu. This
-means there are some configuration changes required to lock down manager access.
-The <EM>manager</EM> ACL needs changing. A built-in definition is now used, equivalent
-to the following regex pattern:
-<PRE>
-        ^(cache_object://|https?://[^/]+/squid-internal-mgr/)
-</PRE>
-</P>
-
-<P>The manager prefix /squid-internal-mgr/ with no action attempts to load an optional
-template MGR_INDEX which may be installed amongst in the Squid error templates.
-This template is not supplied with Squid but intended to be supplied by separate
-cache manager applications as their front page embedding all scripts, accessors or
-redirects required for their initial GUI display.</P>
-
-<P>MGR_INDEX file
-<UL>
-<LI>should contain a complete HTML page, with optional client-side scripting.</LI>
-<LI>must not contain server-side scripting. </LI>
-<LI>will have macro substitution performed on it using the same macros as used by the error page templates.</LI>
-</UL>
-</P>
-
-<P>Version 3.2 of the CGI cache manager tool now presents XHR scripted probes to detect
-proxies presenting these manager index pagess and provides direct HTTP/HTTPS web links
-to those managers.</P>
-
-
-<H2><A NAME="s3">3.</A> <A HREF="#toc3">Changes to squid.conf since Squid-3.1</A></H2>
-
-<P>There have been changes to Squid's configuration file since Squid-3.1.</P>
+<P>There have been changes to Squid's configuration file since Squid-3.2.</P>
 <P>This section gives a thorough account of those changes in three categories:</P>
 <P>
 <UL>
@@ -585,133 +246,15 @@ to those managers.</P>
 
 <P>
 <DL>
-<DT><B>adaptation_meta</B><DD>
-<P>This option allows Squid administrator to add custom ICAP request
-headers or eCAP options to Squid ICAP requests or eCAP transactions.</P>
+<DT><B>request_header_add</B><DD>
+<P>New directive to add custom headers on HTTP traffic sent to upstream servers.</P>
 
-<DT><B>adaptation_send_client_ip</B><DD>
-<P>Same as deprecated icap_send_client_ip
-but applies to both ICAP and eCAP.</P>
+<DT><B>sslproxy_cert_sign</B><DD>
+<P>New option to determine how the client certificate sent to upstream servers is signed.</P>
 
-<DT><B>adaptation_send_username</B><DD>
-<P>Same as deprecated icap_send_client_username
-but applies to both ICAP and eCAP.</P>
+<DT><B>sslproxy_cert_adapt</B><DD>
+<P>New option to adapt certain properties of outgoing SSL certificates generated for use when bumping SSL to an upstream server.</P>
 
-<DT><B>adaptation_uses_indirect_client</B><DD>
-<P>Same as deprecated icap_uses_indirect_client
-but applies to both ICAP and eCAP.</P>
-
-<DT><B>client_delay_pools</B><DD>
-<P>New setting for client bandwidth limits to specifies the number 
-of client delay pools used.</P>
-
-<DT><B>client_delay_initial_bucket_level</B><DD>
-<P>New setting for client bandwidth limits to determine the initial 
-bucket size as a percentage of  max_bucket_size from 
-client_delay_parameters.</P>
-
-<DT><B>client_delay_parameters</B><DD>
-<P>New setting for client bandwidth limits to configures client-side 
-bandwidth limits.</P>
-
-<DT><B>client_delay_access</B><DD>
-<P>New setting for client bandwidth limits to determines the 
-client-side delay pool for the request.</P>
-
-<DT><B>client_dst_passthru</B><DD>
-<P>New setting to disable extra Host: header security on interception proxies.
-Impacts cache integrity/reliability and client browser security.</P>
-<P><EM>IMPORTANT:</EM> disabling this directive only allows Squid to change the
-destination IP to another source indicated by Host: domain DNS or
-cache_peer configuration. It <EM>does not</EM> affect Host: validation.</P>
-
-<DT><B>client_idle_pconn_timeout</B><DD>
-<P>Renamed from <EM>persistent_request_timeout</EM>.</P>
-
-<DT><B>cpu_affinity_map</B><DD>
-<P>New setting for SMP support to map Squid processes onto specific CPU cores.</P>
-
-<DT><B>connect_retries</B><DD>
-<P>Replacement for <EM>maximum_single_addr_tries</EM>, but instead of only applying to hosts with single addresses.
-This directive applies to all hosts, extending the number of connection attempts to each IP address.</P>
-
-<DT><B>dns_packet_max</B><DD>
-<P>New setting to configure maximum number of bytes packet size to advertise via EDNS.
-Set to "none" (the initial default) to disable EDNS large packet support.</P>
-
-<DT><B>else</B><DD>
-<P>Part of conditional SMP support syntax. see <EM>if</EM></P>
-
-<DT><B>endif</B><DD>
-<P>Part of conditional SMP support syntax. see <EM>if</EM></P>
-
-<DT><B>eui_lookup</B><DD>
-<P>Whether to lookup the EUI or MAC address of a connected client.</P>
-
-<DT><B>host_verify_strict</B><DD>
-<P>New option to enable super-strict HTTP and DNS information match.
-Ensuring the HTTP URI details, DNS records, and TCP connection layers all match in a
-three-legged security verification. Preventing domain hijacking or malicious poisoning
-attacks by malicious scripts.</P>
-<P>The default is to verify only intercepted traffic, to log all issues and let failed
-traffic through when doing so can be done safely.</P>
-
-<DT><B>icap_206_enable</B><DD>
-<P>New option to toggle whether the ICAP 206 (Partial Content) responses extension.
-Default is on.</P>
-
-<DT><B>if</B><DD>
-<P>New conditional syntax for SMP multiple-worker. 
-If-statements can be used to make configuration directives depend on conditions.</P>
-<P>The else part is optional. The keywords <EM>if</EM>, <EM>else</EM> and <EM>endif</EM> 
-must be typed on their own lines, as if they were regular configuration directives.</P>
-
-<DT><B>logfile_daemon</B><DD>
-<P>Ported from 2.7. Specify the file I/O daemon helper to run for logging.</P>
-
-<DT><B>max_stale</B><DD>
-<P>Places an upper limit on how stale content Squid will serve from the cache if cache validation fails</P>
-
-<DT><B>memory_cache_mode</B><DD>
-<P>Controls which objects to keep in the memory cache (cache_mem)
-<PRE>
-        'always'  Keep most recently fetched objects in memory (default)
-        
-        'disk'    Only disk cache hits are kept in memory, which means
-                  an object must first be cached on disk and then hit
-                  a second time before cached in memory.
-        
-        network   Only objects fetched from network is kept in memory
-        
-</PRE>
-</P>
-
-<DT><B>memory_cache_shared</B><DD>
-<P>Controls whether the memory cache is shared among SMP workers.</P>
-<P>Currently, entities exceeding 32KB in size cannot be shared.</P>
-
-<DT><B>server_idle_pconn_timeout</B><DD>
-<P>Renamed from <EM>pconn_timeout</EM>.</P>
-
-<DT><B>tproxy_uses_indirect_client</B><DD>
-<P>Controls whether the indirect client address found in the X-Forwarded-For
-header is used for spoofing instead of the directly connected client address.
-Requires both <EM>--enable-follow-x-forwarded-for</EM> and <EM>--enable-linux-netfilter</EM></P>
-
-<DT><B>workers</B><DD>
-<P>Number of main Squid processes or "workers" to fork and maintain.
-In SMP mode, each worker does nearly all what a single Squid daemon
-does (e.g., listen on http_port and forward HTTP requests).
-<PRE>
-        0: "no daemon" mode, like running "squid -N ..."
-        1: "no SMP" mode, start one main Squid process daemon (default)
-        N: start N main Squid process daemons (i.e., SMP mode)
-        
-</PRE>
-</P>
-
-<DT><B>write_timeout</B><DD>
-<P>New setting to limit time spent waiting for data writes to be confirmed.</P>
 </DL>
 </P>
 
@@ -720,219 +263,55 @@ does (e.g., listen on http_port and forward HTTP requests).
 
 <P>
 <DL>
-<DT><B>access_log</B><DD>
-<P>New <EM>stdio</EM> module to send log data directly from Squid to a disk file.
-This is the historic behaviour of Squid before logging modules were introduced, and
-remains the default used when no module is selected.
-It is recommended to upgrade logging to the faster <EM>daemon:</EM> module.</P>
-<P>New <EM>daemon</EM> module to send each log line as text data to a file I/O daemon handling the slow disk I/O.
-New installs, or installs with no logs configured explicitly will use this module by default.</P>
-<P>New <EM>tcp</EM> module to send each log line as text data to a TCP receiver.</P>
-<P>New <EM>udp</EM> module to send each log line as text data to a UDP receiver.</P>
-<P>New format <EM>referrer</EM> to log with the format previously used by referer_log directive.</P>
-<P>New format <EM>useragent</EM> to log with the format previously used by useragent_log directive.</P>
-
-<DT><B>acl : random, urllogin</B><DD>
-<P>New type <EM>random</EM>. Pseudo-randomly match requests based on a configured probability.</P>
-<P>Ported <EM>urllogin</EM> option from Squid 2.7, to match a regex pattern on the URL login field (if any).</P>
-<P>The <EM>manager</EM> ACL requires adjustment to cover new cache manager access. So it has now been
-built-in as a predefined ACL name matching URLs equivalent to the following regular expression:
-<PRE>
-                ^(cache_object://|https?://[^/]+/squid-internal-mgr/)
-        
-</PRE>
-
-squid.conf containing the old manager definition can expect to see ACL type collisions.</P>
-
-<DT><B>auth_param</B><DD>
-<P>New options for Basic, Digest, NTLM, Negotiate <EM>children</EM> settings.
-<EM>startup=N</EM> determines minimum number of helper processes used.
-<EM>idle=N</EM> determines how many helper to retain as buffer against sudden traffic loads.
-<EM>concurrency=N</EM> previously called <EM>auth_param ... concurrency</EM> as a separate option.</P>
-<P>Removed Basic, Digest, NTLM, Negotiate <EM>auth_param ... concurrency</EM> setting option.</P>
-<P>Known Issue: NTLM and Negotiate protocols do not support concurrency. When set this option is ignored.</P>
-
-<DT><B>cache_dir</B><DD>
-<P><EM>min-size</EM> option ported from Squid-2</P>
-
-<DT><B>cache_peer</B><DD>
-<P><EM>htcp-*</EM> options collapsed into <EM>htcp=</EM> taking an optional comma-separated list of flags.
-The old form is deprecated but still accepted.</P>
-
-<DT><B>cache_store_log</B><DD>
-<P>Now uses logging modules. Example: stdio:/file/path
-see <EM>access_log</EM> for a list of supported modules and their parameters.</P>
-
-<DT><B>clientside_mark</B><DD>
-<P>New configuration parameter <EM>clientside_mark</EM></P>
-<P>Allows packets leaving Squid on the client side to be marked with a Netfilter mark value in the same way as the existing clientside_tos feature.</P>
-<P>This feature is only available for Netfilter environments.</P>
-
-<DT><B>deny_info</B><DD>
-<P>Support URL format tags. For dynamically generated URL in denial redirect.</P>
-<P>Support the full range of 200-599 HTTP status codes.
-3xx status only available when redirecting to a URI.
-Other status only available when supplying an error template body.</P>
+<DT><B>acl</B><DD>
+<P><EM>myport</EM> and <EM>myip</EM>ACL types replaced with <EM>localport</EM> and <EM>localip</EM> respectively.
+To reflect that it matches the TCP connection details and not the squid.conf port.
+This matters when dealing with intercepted traffic, where the Squid receiving port differs from the TCP connection IP:port.
+Always use <EM>myportname</EM> type to match the squid.conf port details.</P>
+<P>New default built-in ACLs for testing SSL certificate properties.</P>
+<P><EM>ssl::certHasExpired</EM>,
+<EM>ssl::certNotYetValid</EM>,
+<EM>ssl::certDomainMismatch</EM>,
+<EM>ssl::certUntrusted</EM>,
+<EM>ssl::certSelfSigned</EM>.</P>
 
 <DT><B>external_acl_type</B><DD>
-<P>New format tags and option parameters:</P>
-<P><EM>%SRCEUI48</EM> EUI-48 / MAC address of client from ARP lookup.</P>
-<P><EM>%SRCEUI64</EM> EUI-64 of clients with SLAAC address.</P>
-<P><EM>%EXT_LOG</EM> log= message returned by previous external ACL calls. An updated version may be returned.</P>
-<P><EM>%EXT_TAG</EM> tag= value returned by previous external ACL calls. Tag may not be altered once set.</P>
-<P><EM>children-max=N</EM> determines maximum number of helper processes used.</P>
-<P><EM>children-startup=N</EM> determines minimum number of helper processes used.</P>
-<P><EM>children-idle=N</EM> determines how many helper to retain as buffer against sudden traffic loads.</P>
-<P>Deprecated <EM>children=N</EM> in favor of <EM>children-max=N</EM>.</P>
-
-<DT><B>http_port act-as-origin vhost no-vhost</B><DD>
-<P><EM>act-as-origin</EM> ported from 2.7.
-This option corrects several HTTP header issues when operating as a reverse proxy and cache.
-Notably the externally visible aging of objects stored in the server-side cache.</P>
-<P><EM>vhost</EM> is deprecated. <EM>accel</EM> mode, reverse proxy, now defaults to always enable HTTP/1.1 virtual domain support.</P>
-<P><EM>no-vhost</EM> option is added to disable the new reverse proxy behaviour.</P>
-
-<DT><B>icap_send_client_ip</B><DD>
-<P>Deprecated in favor of adaptation_send_client_ip
-which applies to both ICAP and eCAP.</P>
-
-<DT><B>icap_send_client_username</B><DD>
-<P>Deprecated in favor of adaptation_send_username
-which applies to both ICAP and eCAP.</P>
-
-<DT><B>icap_uses_indirect_client</B><DD>
-<P>Deprecated in favor of adaptation_uses_indirect_client 
-which applies to both ICAP and eCAP.</P>
+<P><EM>%ACL</EM> format tag ported from 2.6.
+Sends the name of ACL being tested to the external helper.</P>
+<P><EM>%DATA</EM> format tag ported from 2.6.
+Inserts the ACL arguments into a particular location of the helper input instead of at the end of the line.</P>
 
 <DT><B>logformat</B><DD>
-<P><EM>%&lt;a</EM> Server or Peer IP address from the last server connection (next hop).</P>
-<P><EM>%&gt;bs</EM> Number of HTTP-equivalent message body bytes received from the next hop.</P>
-<P><EM>icap::%&gt;bs</EM> Number of message body bytes received from the ICAP server.</P>
-<P><EM>%sn</EM> Unique sequence number per log line. Ported from 2.7</P>
-<P><EM>%&gt;eui</EM> EUI logging (EUI-48 / MAC address for IPv4, EUI-64 for IPv6).
-Both EUI forms are logged in the same field. Type can be identified by length or byte delimiter.</P>
-<P><EM>%err_code</EM> The ID of an error response served by Squid or a similar internal error identifier</P>
-<P><EM>%err_detail</EM> Additional err_code-dependent error information.</P>
-<P><EM>%&gt;la</EM> Rename of %la to indicate being a client connection detail.</P>
-<P><EM>%&gt;lp</EM> Rename of %lp to indicate being a client connection detail.</P>
-<P><EM>%&lt;p</EM> Server or Peer port number from the last server connection (next hop).</P>
+<P>New token <EM>%ssl::bump_mode</EM> to log the SSL-bump mode type performed on a request.
+Logs values of: <EM>-</EM>, <EM>none</EM>, <EM>client-first</EM>, or <EM>server-first</EM>.</P>
+<P>New token of <EM>%ssl::&gt;cert_subject</EM> to log the Subject field of a SSL certificate received from the client.</P>
+<P>New token of <EM>%ssl::&gt;cert_issuer</EM> to log the Issuer field of a SSL certificate received from the client.</P>
 
-<DT><B>memory_pools_limit</B><DD>
-<P>Memory limits have been revised and corrected from 3.1.4 onwards.</P>
-<P>Please check and update your squid.conf to use the text <EM>none</EM> for no limit instead of the old 0 (zero).</P>
-<P>All users upgrading need to be aware that from Squid-3.3 setting this option to 0 (zero) will mean zero bytes of memory get pooled.</P>
-
-<DT><B>qos_flows</B><DD>
-<P>New options <EM>mark</EM> and <EM>tos</EM> and <EM>miss</EM></P>
-<P><EM>tos</EM> retains the original QOS functionality of the IP header TOS field.</P>
-<P><EM>mark</EM> offers the same functionality, but with a netfilter mark value.</P>
-<P>These options should be placed immediately after qos_flows.</P>
-<P>The <EM>tos</EM> value is optional in order to maintain backwards compatability.</P>
-<P>The preserve-miss functionality is available with the <EM>mark</EM> option and requires no kernel patching.
-It does, however, require libnetfilter_conntrack.
-This will be included by default if available (see the --without-netfilter-conntrack configure option for more details).</P>
-<P><EM>miss</EM> sets a value for a cache miss. It is available for both the tos and mark options and takes precedence over the preserve-miss feature.</P>
-
-<DT><B>range_offset_limit</B><DD>
-<P>Added ACL support for control over when the limit applies and when it is avoided.</P>
-
-<DT><B>refresh_pattern</B><DD>
-<P>New option <EM>max-stale=</EM> to provide a maximum staleness factor. Squid won't
-serve objects more stale than this even if it failed to validate the object.</P>
-<P>Removed option <EM>ignore-no-cache</EM>. Its commonly desired behaviour is obsoleted
-by correct HTTP/1.1 Cache-Control:no-cache handling.</P>
-
-<DT><B>reply_header_access</B><DD>
-<P>Added support for custom response header names.</P>
-
-<DT><B>request_header_access</B><DD>
-<P>Added support for custom request header names.</P>
-
-<DT><B>reply_header_replace</B><DD>
-<P>Added support for custom response header names.</P>
-
-<DT><B>request_header_replace</B><DD>
-<P>Added support for custom request header names.</P>
-
-<DT><B>tcp_outgoing_address</B><DD>
-<P>This parameter is now compatible with persistent server connections.
-The IPv6 magic 'to_ipv6' hacks needed in 3.1 are now no longer necessary.</P>
-
-<DT><B>tcp_outgoing_mark</B><DD>
-<P>New configuration parameter <EM>tcp_outgoing_mark</EM></P>
-<P>Allows packets leaving Squid on the server side to be marked with a Netfilter mark value in the same way as the existing tcp_outgoing_tos feature.</P>
-<P>This feature is only available for Netfilter environments.</P>
-
-<DT><B>tcp_outgoing_tos</B><DD>
-<P>This parameter is now compatible with persistent server connections.</P>
-
-<DT><B>url_rewrite_children</B><DD>
-<P>New options <EM>startup=N</EM>, <EM>idle=N</EM>, <EM>concurrency=N</EM>
-<UL>
-<LI>startup=N allow finer tuning of how many helpers are started initially.</LI>
-<LI>idle=N allow fine tuning of how many helper to retain as buffer against sudden traffic loads.</LI>
-<LI>concurrency=N was previously called url_rewrite_concurrency as a distinct directive.</LI>
-</UL>
-</P>
-
-<DT><B>windows_ipaddrchangemonitor</B><DD>
-<P>Now only available to be set in Windows builds.</P>
+<DT><B>ssl_bump</B><DD>
+<P>New action types <EM>none</EM>, <EM>client-first</EM>, <EM>server-first</EM>. The default is <EM>none</EM>.</P>
+<P>Use of <EM>allow</EM>/<EM>deny</EM> is now deprecated and they should be removed as soon as possible.
+To retain the exact same behaviour between 3.3 and older releases replace <EM>deny</EM> with <EM>none</EM>,
+and <EM>allow</EM> with <EM>client-first</EM>. However an upgrade to <EM>server-first</EM> is the recommended.</P>
+<P><EM>NOTE</EM>: Mixing of allow/deny with the new action types is prohibited and will cause Squid to exit with a FATAL error.</P>
 
 </DL>
 </P>
-
 
 <H2><A NAME="removedtags"></A> <A NAME="ss3.3">3.3</A> <A HREF="#toc3.3">Removed tags</A>
 </H2>
 
 <P>
 <DL>
-<DT><B>dns_v4_fallback</B><DD>
-<P>Obsolete. Replaced by DNS parallel lookups.</P>
 
-<DT><B>emulate_httpd_log</B><DD>
-<P>Replaced by <EM>common</EM> format option on an <EM>access_log</EM> directive.</P>
+<P><EM>There are no removed squid.conf options in Squid-3.3.</EM></P>
 
-<DT><B>forward_log</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>ftp_list_width</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>ignore_expect_100</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>log_fqdn</B><DD>
-<P>Obsolete. Replaced by automatic detection of the %>A logformat tag.</P>
-
-<DT><B>log_ip_on_direct</B><DD>
-<P>Obsolete. Use a custom log with <EM>%&lt;A</EM> format tag to receive server FQDN or peer name.</P>
-
-<DT><B>maximum_single_addr_tries</B><DD>
-<P>The behaviour controlled by this directive is no longer possible.
-It has been replaced by <EM>connect_retries</EM> option which operates a little differently.</P>
-
-<DT><B>pconn_timeout</B><DD>
-<P>Renamed to <EM>server_idle_pconn_timeout</EM></P>
-
-<DT><B>persistent_request_timeout</B><DD>
-<P>Renamed to <EM>client_idle_pconn_timeout</EM></P>
-
-<DT><B>referer_log</B><DD>
-<P>Replaced by the <EM>referrer</EM> format option on an <EM>access_log</EM> directive.</P>
-
-<DT><B>url_rewrite_concurrency</B><DD>
-<P>Replaced by url_rewrite_children ... concurrency=N option.</P>
-
-<DT><B>useragent_log</B><DD>
-<P>Replaced by the <EM>useragent</EM> format option on an <EM>access_log</EM> directive.</P>
 </DL>
 </P>
 
 
-<H2><A NAME="s4">4.</A> <A HREF="#toc4">Changes to ./configure options since Squid-3.1</A></H2>
+<H2><A NAME="s4">4.</A> <A HREF="#toc4">Changes to ./configure options since Squid-3.2</A></H2>
 
-<P>There have been some changes to Squid's build configuration since Squid-3.1.</P>
+<P>There have been some changes to Squid's build configuration since Squid-3.2.</P>
 <P>This section gives an account of those changes in three categories:</P>
 <P>
 <UL>
@@ -951,53 +330,8 @@ It has been replaced by <EM>connect_retries</EM> option which operates a little 
 
 <P>
 <DL>
-<DT><B>--enable-auth-basic[=HELPERS]</B><DD>
-<P>Specified without any parameters all helpers will be auto-built.</P>
-<P>With an explicit empty list <EM>=""</EM> protocol support will be built but no helpers.</P>
-<P>With an explicit list protocol support and just those helpers will be built.</P>
+<P><EM>There are no new ./configure options in Squid-3.3.</EM></P>
 
-<DT><B>--enable-auth-digest[=HELPERS]</B><DD>
-<P>Specified without any parameters all helpers will be auto-built.</P>
-<P>With an explicit empty list <EM>=""</EM> protocol support will be built but no helpers.</P>
-<P>With an explicit list protocol support and just those helpers will be built.</P>
-
-<DT><B>--enable-auth-negotiate</B><DD>
-<P>Specified without any parameters all helpers will be auto-built.</P>
-<P>With an explicit empty list <EM>=""</EM> protocol support will be built but no helpers.</P>
-<P>With an explicit list protocol support and just those helpers will be built.</P>
-
-<DT><B>--enable-auth-ntlm</B><DD>
-<P>Specified without any parameters all helpers will be auto-built.</P>
-<P>With an explicit empty list <EM>=""</EM> protocol support will be built but no helpers.</P>
-<P>With an explicit list protocol support and just those helpers will be built.</P>
-
-<DT><B>--enable-build-info</B><DD>
-<P>Add an additional string in the output of "squid -v".</P>
-
-<DT><B>--enable-eui</B><DD>
-<P>Enable Support for handling EUI operations.
-This includes ARP lookups for MAC (EUI-48) addresses and the ACL arp type tests.</P>
-
-<DT><B>--enable-log-daemon-helpers</B><DD>
-<P>Build helpers for logging I/O.</P>
-
-<DT><B>--enable-url-rewrite-helpers</B><DD>
-<P>Build helpers for some basic URL-rewrite actions. For use by url_rewrite_program.
-If omitted or set to =all then all bundled helpers that are able to build will be built.
-If set to a specific list of helpers then only those helpers will build.
-Currently one demo helper <EM>fake</EM> is provided in shell and C++ forms to demonstrate
-the helper protocol usage and provide exemplar code.</P>
-
-<DT><B>--with-swapdir=PATH</B><DD>
-<P>Location to display in documentation for the default cache.
-Updated to indicate /var/cache/squid in accordance with the filesystem layout standards.
-Squid-3 no longer builds an implicit disk cache at this location, so the change is not expected
-to have any effect on existing builds other than fixing some mysterious lack of core dumps.
-The old /var/cache location was often non-writable which blocked core dumps creation.</P>
-
-<DT><B>--without-netfiler-conntrack</B><DD>
-<P>Disables the libnetfilter_conntrack library being used for the new qos_flows option <EM>mark</EM>.
-default is to auto-detect the library and use where available.</P>
 </DL>
 </P>
 
@@ -1006,9 +340,14 @@ default is to auto-detect the library and use where available.</P>
 
 <P>
 <DL>
-<DT><B>--enable-auth</B><DD>
-<P>No longer takes a list of arguments. This option now is restricted to building Squid with or without authentication support.</P>
-<P>The new <EM>--enable-auth-X</EM>/<EM>--disable-auth-X</EM> parameters determine which authentication protocols and helpers are built.</P>
+<DT><B>--enable-kqueue</B><DD>
+<P>kqueue network I/O module is now built by default when it is available.
+This option is no longer required to enable kqueue support,
+but if used will abort build when kqueue dependencies are missing or broken.</P>
+
+<DT><B>--disable-kqueue</B><DD>
+<P>kqueue network I/O module is now built by default when it is available.
+This configure option is now needed to disable it. Previously it did nothing.</P>
 
 </DL>
 </P>
@@ -1017,195 +356,20 @@ default is to auto-detect the library and use where available.</P>
 
 <P>
 <DL>
-<DT><B>--enable-arp-acl</B><DD>
-<P>Replaced by --enable-eui</P>
-
-<DT><B>--enable-auth-basic-helpers</B><DD>
-<P>Replaced by <EM>--enable-auth-basic</EM>.</P>
-
-<DT><B>--enable-auth-digest-helpers</B><DD>
-<P>Replaced by <EM>--enable-auth-digest</EM>.</P>
-
-<DT><B>--enable-auth-negotiate-helpers</B><DD>
-<P>Replaced by <EM>--enable-auth-negotiate</EM>.</P>
-
-<DT><B>--enable-auth-ntlm-helpers</B><DD>
-<P>Replaced by <EM>--enable-auth-ntlm</EM>.</P>
-
-<DT><B>--enable-referer-log</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-useragent-log</B><DD>
-<P>Obsolete.</P>
+<DT><B>--enable-ntlm-fail-open</B><DD>
+<P>This has not been supported by Squid for several versions.</P>
 
 </DL>
 </P>
 
 
-<H2><A NAME="s5">5.</A> <A HREF="#toc5">Options Removed since Squid-2</A></H2>
+<H2><A NAME="s5">5.</A> <A HREF="#toc5">Regressions since Squid-2.7</A></H2>
 
-<P>Some squid.conf and ./configure options which were available in Squid-2.6 and Squid-2.7 are made obsolete in Squid-3.2.</P>
-
-<H2><A NAME="ss5.1">5.1</A> <A HREF="#toc5.1">Removed squid.conf options since Squid-2.7</A>
-</H2>
-
-<P>
-<DL>
-<DT><B>auth_param</B><DD>
-<P><EM>blankpassword</EM> option for basic scheme removed.</P>
-
-<DT><B>authenticate_ip_shortcircuit_access</B><DD>
-<P>Not safe for general use.
-An external_acl_type helper may be used to bypass authentication if that is suitable.</P>
-
-<DT><B>authenticate_ip_shortcircuit_ttl</B><DD>
-<P>Not safe for general use.
-An external_acl_type helper may be used to bypass authentication if that is suitable.</P>
-
-<DT><B>cache_peer</B><DD>
-<P>Option <EM>http11</EM> obsolete.</P>
-
-<DT><B>external_acl_type</B><DD>
-<P>Format tag <EM>%{Header}</EM> replaced by <EM>%>{Header}</EM></P>
-<P>Format tag <EM>%{Header:member}</EM> replaced by <EM>%>{Header:member}</EM></P>
-
-<DT><B>header_access</B><DD>
-<P>Replaced by <EM>request_header_access</EM> and <EM>reply_header_access</EM></P>
-
-<DT><B>http_port</B><DD>
-<P>Option <EM>no-connection-auth</EM> replaced by <EM>connection-auth=[on|off]</EM>. Default is ON.</P>
-<P>Option <EM>transparent</EM> option replaced by <EM>intercept</EM></P>
-<P>Option <EM>http11</EM> obsolete.</P>
-
-<DT><B>http_access2</B><DD>
-<P>Replaced by <EM>adapted_http_access</EM></P>
-
-<DT><B>httpd_accel_no_pmtu_disc</B><DD>
-<P>Replaced by <EM>http_port disable-pmtu-discovery=</EM> option</P>
-
-<DT><B>incoming_rate</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>redirector_bypass</B><DD>
-<P>Replaced by <EM>url_rewrite_bypass</EM></P>
-
-<DT><B>server_http11</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>update_headers</B><DD>
-<P>Obsolete. The experimental actions enabled in 2.7 by this option have been integrated as default
-actions for the <EM>rock</EM> storage type and memory caches.
-The configuration option is no longer necessary and has been dropped.
-NOTE: It is not yet supported by <EM>ufs</EM>, <EM>aufs</EM>, or <EM>diskd</EM> storage.</P>
-
-<DT><B>upgrade_http0.9</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>zph_local</B><DD>
-<P>Replaced by <EM>qos_flows local-hit=</EM></P>
-
-<DT><B>zph_mode</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>zph_option</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>zph_parent</B><DD>
-<P>Replaced by <EM>qos_flows parent-hit=</EM></P>
-
-<DT><B>zph_sibling</B><DD>
-<P>Replaced by <EM>qos_flows sibling-hit=</EM></P>
-
-</DL>
-</P>
-
-<H2><A NAME="ss5.2">5.2</A> <A HREF="#toc5.2">Removed squid.conf options since Squid-2.6</A>
-</H2>
-
-<P>
-<DL>
-<DT><B>acl</B><DD>
-<P><EM>urlgroup</EM> type removed. Use <EM>myportname</EM> type instead.</P>
-
-<DT><B>cache_dir</B><DD>
-<P><EM>read-only</EM> option replaced by <EM>no-store</EM>.</P>
-
-<DT><B>http_port</B><DD>
-<P><EM>urlgroup=</EM> removed. Use <EM>name=</EM> feature instead.</P>
-
-<DT><B>zero_buffers</B><DD>
-<P>Replaced by native support.</P>
-
-</DL>
-</P>
-
-<H2><A NAME="ss5.3">5.3</A> <A HREF="#toc5.3">Removed ./configure options since Squid-2.7</A>
-</H2>
-
-<P>
-<DL>
-<DT><B>--enable-coss-aio-ops</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-devpoll</B><DD>
-<P>Replaced by automatic detection.</P>
-
-<DT><B>--enable-dlmalloc=LIB</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-epoll</B><DD>
-<P>Replaced by automatic detection.</P>
-
-<DT><B>--enable-forward-log</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-heap-replacement</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-htcp</B><DD>
-<P>Obsolete. Enabled by default.</P>
-
-<DT><B>--enable-large-cache-files</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-mempool-debug</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-multicast-miss</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--enable-poll</B><DD>
-<P>Replaced by automatic detection.</P>
-
-<DT><B>--enable-select</B><DD>
-<P>Replaced by automatic detection.</P>
-
-<DT><B>--enable-select-simple</B><DD>
-<P>Replaced by automatic detection.</P>
-
-<DT><B>--enable-snmp</B><DD>
-<P>Obsolete. Enabled by default.</P>
-
-<DT><B>--enable-truncate</B><DD>
-<P>Obsolete.</P>
-
-<DT><B>--disable-kqueue</B><DD>
-<P>Obsolete. Disabled by default.</P>
-
-<DT><B>--without-system-md5</B><DD>
-<P>Obsolete. Disabled by default.</P>
-
-</DL>
-</P>
-
-
-<H2><A NAME="s6">6.</A> <A HREF="#toc6">Regressions since Squid-2.7</A></H2>
-
-<P>Some squid.conf and ./configure options which were available in Squid-2.7 are not yet available in Squid-3.2</P>
+<P>Some squid.conf and ./configure options which were available in Squid-2.7 are not yet available in Squid-3.3</P>
 
 <P>If you need something to do then porting one of these from Squid-2 to Squid-3 is most welcome.</P>
 
-<H2><A NAME="ss6.1">6.1</A> <A HREF="#toc6.1">Missing squid.conf options available in Squid-2.7</A>
+<H2><A NAME="ss5.1">5.1</A> <A HREF="#toc5.1">Missing squid.conf options available in Squid-2.7</A>
 </H2>
 
 <P>
@@ -1235,10 +399,6 @@ NOTE: It is not yet supported by <EM>ufs</EM>, <EM>aufs</EM>, or <EM>diskd</EM> 
 
 <DT><B>error_map</B><DD>
 <P>Not yet ported from 2.6</P>
-
-<DT><B>external_acl_type</B><DD>
-<P><EM>%ACL</EM> format tag not yet ported from 2.6</P>
-<P><EM>%DATA</EM> format tag not yet ported from 2.6</P>
 
 <DT><B>external_refresh_check</B><DD>
 <P>Not yet ported from 2.7</P>
@@ -1280,5 +440,6 @@ NOTE: It is not yet supported by <EM>ufs</EM>, <EM>aufs</EM>, or <EM>diskd</EM> 
 
 </DL>
 </P>
+
 </BODY>
 </HTML>

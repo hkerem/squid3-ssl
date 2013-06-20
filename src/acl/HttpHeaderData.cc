@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,13 +32,16 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/HttpHeaderData.h"
 #include "acl/Checklist.h"
 #include "acl/Acl.h"
 #include "acl/RegexData.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "wordlist.h"
 #include "ConfigParser.h"
+#include "HttpHeaderTools.h"
 
 /* Construct an ACLHTTPHeaderData that uses an ACLRegex rule with the value of the
  * selected header from a given request.
@@ -64,9 +65,23 @@ ACLHTTPHeaderData::match(HttpHeader* hdr)
 
     debugs(28, 3, "aclHeaderData::match: checking '" << hdrName << "'");
 
-    String value = hdrId != HDR_BAD_HDR ? hdr->getStrOrList(hdrId) : hdr->getByName(hdrName.termedBuf());
+    String value;
+    if (hdrId != HDR_BAD_HDR) {
+        if (!hdr->has(hdrId))
+            return false;
+        value = hdr->getStrOrList(hdrId);
+    } else {
+        if (!hdr->getByNameIfPresent(hdrName.termedBuf(), value))
+            return false;
+    }
 
-    return regex_rule->match(value.termedBuf());
+    // By now, we know the header is present, but:
+    // HttpHeader::get*() return an undefined String for empty header values;
+    // String::termedBuf() returns NULL for undefined Strings; and
+    // ACLRegexData::match() always fails on NULL strings.
+    // This makes it possible to detect an empty header value using regex:
+    const char *cvalue = value.defined() ? value.termedBuf() : "";
+    return regex_rule->match(cvalue);
 }
 
 wordlist *

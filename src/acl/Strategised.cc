@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,8 +32,9 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/Strategised.h"
+#include "HttpHeader.h"
 
 /*
  *  moved template instantiation into ACLStrategized.cc
@@ -51,5 +50,5 @@ template class ACLStrategised<HttpHeader*>;
 /* ACLMyPortName + ACLMyPeerName + ACLBrowser */
 template class ACLStrategised<const char *>;
 
-/* ACLMyPort + ACLSslError */
+/* ACLLocalPort + ACLSslError */
 template class ACLStrategised<int>;

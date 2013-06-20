@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Socket Functions
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -33,8 +31,6 @@
 #include "squid.h"
 
 #if USE_SELECT_WIN32
-
-#include "squid-old.h"
 #include "anyp/PortCfg.h"
 #include "comm/Connection.h"
 #include "comm/Loops.h"
@@ -45,6 +41,10 @@
 #include "StatCounters.h"
 #include "StatHist.h"
 #include "Store.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static int MAX_POLL_TIME = 1000;	/* see also Comm::QuickPollRequired() */
 
@@ -67,7 +67,6 @@ static int comm_check_incoming_select_handlers(int nfds, int *fds);
 static void comm_select_dns_incoming(void);
 static void commUpdateReadBits(int fd, PF * handler);
 static void commUpdateWriteBits(int fd, PF * handler);
-
 
 static struct timeval zero_tv;
 static fd_set global_readfds;
@@ -255,7 +254,7 @@ comm_check_incoming_select_handlers(int nfds, int *fds)
                 commUpdateReadBits(fd, NULL);
                 hdl(fd, fd_table[fd].read_data);
             } else {
-                debugs(5, 1, "comm_select_incoming: FD " << fd << " NULL read handler");
+                debugs(5, DBG_IMPORTANT, "comm_select_incoming: FD " << fd << " NULL read handler");
             }
         }
 
@@ -265,7 +264,7 @@ comm_check_incoming_select_handlers(int nfds, int *fds)
                 commUpdateWriteBits(fd, NULL);
                 hdl(fd, fd_table[fd].write_data);
             } else {
-                debugs(5, 1, "comm_select_incoming: FD " << fd << " NULL write handler");
+                debugs(5, DBG_IMPORTANT, "comm_select_incoming: FD " << fd << " NULL write handler");
             }
         }
     }
@@ -459,7 +458,7 @@ Comm::DoSelect(int msec)
             if (ignoreErrno(errno))
                 break;
 
-            debugs(5, 0, "comm_select: select failure: " << xstrerror());
+            debugs(5, DBG_CRITICAL, "comm_select: select failure: " << xstrerror());
 
             examine_select(&readfds, &writefds);
 
@@ -728,7 +727,7 @@ examine_select(fd_set * readfds, fd_set * writefds)
     fde *F = NULL;
 
     struct stat sb;
-    debugs(5, 0, "examine_select: Examining open file descriptors...");
+    debugs(5, DBG_CRITICAL, "examine_select: Examining open file descriptors...");
 
     for (fd = 0; fd < Squid_MaxFD; ++fd) {
         FD_ZERO(&read_x);
@@ -751,18 +750,18 @@ examine_select(fd_set * readfds, fd_set * writefds)
         }
 
         F = &fd_table[fd];
-        debugs(5, 0, "FD " << fd << ": " << xstrerror());
-        debugs(5, 0, "WARNING: FD " << fd << " has handlers, but it's invalid.");
-        debugs(5, 0, "FD " << fd << " is a " << fdTypeStr[F->type] << " called '" << F->desc << "'");
-        debugs(5, 0, "tmout:" << F->timeoutHandler << " read:" << F->read_handler << " write:" << F->write_handler);
+        debugs(5, DBG_CRITICAL, "FD " << fd << ": " << xstrerror());
+        debugs(5, DBG_CRITICAL, "WARNING: FD " << fd << " has handlers, but it's invalid.");
+        debugs(5, DBG_CRITICAL, "FD " << fd << " is a " << fdTypeStr[F->type] << " called '" << F->desc << "'");
+        debugs(5, DBG_CRITICAL, "tmout:" << F->timeoutHandler << " read:" << F->read_handler << " write:" << F->write_handler);
 
         for (ch = F->closeHandler; ch != NULL; ch = ch->Next())
-            debugs(5, 0, " close handler: " << ch);
+            debugs(5, DBG_CRITICAL, " close handler: " << ch);
 
         if (F->closeHandler != NULL) {
             commCallCloseHandlers(fd);
         } else if (F->timeoutHandler != NULL) {
-            debugs(5, 0, "examine_select: Calling Timeout Handler");
+            debugs(5, DBG_CRITICAL, "examine_select: Calling Timeout Handler");
             ScheduleCallHere(F->timeoutHandler);
         }
 
@@ -776,7 +775,6 @@ examine_select(fd_set * readfds, fd_set * writefds)
 
     return 0;
 }
-
 
 static void
 commIncomingStats(StoreEntry * sentry)

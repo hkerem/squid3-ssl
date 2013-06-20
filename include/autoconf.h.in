@@ -27,6 +27,9 @@
 /* Default FD_SETSIZE value */
 #undef DEFAULT_FD_SETSIZE
 
+/* The install prefix */
+#undef DEFAULT_PREFIX
+
 /* Enable following X-Forwarded-For headers */
 #undef FOLLOW_X_FORWARDED_FOR
 
@@ -138,6 +141,10 @@
 
 /* Define to 1 if CMSG_SPACE is constant */
 #undef HAVE_CONSTANT_CMSG_SPACE
+
+/* Define to 1 if you have the <cppunit/extensions/HelperMacros.h> header
+   file. */
+#undef HAVE_CPPUNIT_EXTENSIONS_HELPERMACROS_H
 
 /* Support setting CPU affinity for workers */
 #undef HAVE_CPU_AFFINITY
@@ -627,6 +634,12 @@
 /* Define to 1 if you have the <net/route.h> header file. */
 #undef HAVE_NET_ROUTE_H
 
+/* Define to 1 if nullptr is supported */
+#undef HAVE_NULLPTR
+
+/* Define to 1 if nullptr_t is supported */
+#undef HAVE_NULLPTR_T
+
 /* Define to 1 if you have the `opendir' function. */
 #undef HAVE_OPENDIR
 
@@ -839,6 +852,9 @@
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H
 
+/* Define if g++ supports C++0x features. */
+#undef HAVE_STDCXX_0X
+
 /* Define to 1 if you have the <stddef.h> header file. */
 #undef HAVE_STDDEF_H
 
@@ -1018,6 +1034,9 @@
 /* Define to 1 if you have the <time.h> header file. */
 #undef HAVE_TIME_H
 
+/* Define to 1 if std::unique_ptr<T> is supported */
+#undef HAVE_UNIQUE_PTR
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -1122,9 +1141,6 @@
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 #undef NO_MINUS_C_MINUS_O
 
-/* Define if NTLM is allowed to fail gracefully when a helper has problems. */
-#undef NTLM_FAIL_OPEN
-
 /* Name of package */
 #undef PACKAGE
 
@@ -1192,11 +1208,24 @@
 /* Define to enable SNMP monitoring of Squid */
 #undef SQUID_SNMP
 
+/* "Define to 1 if the SSL_get_certificate crashes squid" */
+#undef SQUID_SSLGETCERTIFICATE_BUGGY
+
+/* "Define to 1 if the TXT_DB uses OPENSSL_PSTRING data member" */
+#undef SQUID_SSLTXTDB_PSTRINGDATA
+
 /* TCP receive buffer size */
 #undef SQUID_TCP_SO_RCVBUF
 
 /* TCP send buffer size */
 #undef SQUID_TCP_SO_SNDBUF
+
+/* "Define to 1 to use squid workaround for SSL_get_certificate" */
+#undef SQUID_USE_SSLGETCERTIFICATE_HACK
+
+/* "Define to 1 to use squid workaround for openssl IMPLEMENT_LHASH_* type
+   conversion errors" */
+#undef SQUID_USE_SSLLHASH_HACK
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be

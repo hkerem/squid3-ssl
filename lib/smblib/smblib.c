@@ -55,7 +55,6 @@ const char *SMB_Prots[] = {"PC NETWORK PROGRAM 1.0",
                            NULL
                           };
 
-
 /* Initialize the SMBlib package     */
 
 int SMB_Init()
@@ -107,7 +106,6 @@ SMB_Handle_Type SMB_Connect_Server(SMB_Handle_Type Con_Handle,
     if (Con_Handle == NULL) {
 
         if ((con = (struct SMB_Connect_Def *)malloc(sizeof(struct SMB_Connect_Def))) == NULL) {
-
 
             SMBlib_errno = SMBlibE_NoSpace;
             return NULL;
@@ -189,7 +187,6 @@ const char *SMB_Prots_Restrict[] = {"PC NETWORK PROGRAM 1.0",
                                     NULL
                                    };
 
-
 SMB_Handle_Type SMB_Connect(SMB_Handle_Type Con_Handle,
                             SMB_Tree_Handle *tree,
                             char *service,
@@ -255,7 +252,8 @@ SMB_Handle_Type SMB_Connect(SMB_Handle_Type Con_Handle,
         SMBlib_errno = -SMBlibE_CallFailed;
         return NULL;
     }
-    strcpy(con -> desthost, host);
+    strncpy(con->desthost, host, sizeof(con->desthost));
+    con->desthost[sizeof(con->desthost)-1]='\0';
 
     /* Now connect to the remote end, but first upper case the name of the
        service we are going to call, sine some servers want it in uppercase */
@@ -566,7 +564,6 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
     return(0);
 
 }
-
 
 /* Disconnect from the server, and disconnect all tree connects */
 

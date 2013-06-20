@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov
  *
@@ -49,30 +47,30 @@
 #include "acl/Checklist.h"
 #endif
 
-SQUIDCEXTERN void httpHeaderPutStr(HttpHeader * hdr, http_hdr_type type, const char *str)
+void httpHeaderPutStr(HttpHeader * hdr, http_hdr_type type, const char *str)
 {
     fatal ("dummy function\n");
 }
 
-SQUIDCEXTERN HttpHeaderEntry *httpHeaderGetEntry(const HttpHeader * hdr, HttpHeaderPos * pos)
+HttpHeaderEntry *httpHeaderGetEntry(const HttpHeader * hdr, HttpHeaderPos * pos)
 {
     fatal ("dummy function\n");
     return NULL;
 }
 
-extern String httpHeaderGetList(const HttpHeader * hdr, http_hdr_type id)
+String httpHeaderGetList(const HttpHeader * hdr, http_hdr_type id)
 {
     fatal ("dummy function\n");
     return String();
 }
 
-SQUIDCEXTERN int httpHeaderHas(const HttpHeader * hdr, http_hdr_type type)
+int httpHeaderHas(const HttpHeader * hdr, http_hdr_type type)
 {
     fatal ("dummy function\n");
     return 0;
 }
 
-SQUIDCEXTERN void httpHeaderPutContRange(HttpHeader * hdr, const HttpHdrContRange * cr)
+void httpHeaderPutContRange(HttpHeader * hdr, const HttpHdrContRange * cr)
 {
     fatal ("dummy function\n");
 }
@@ -189,17 +187,25 @@ testRangeCanonization()
 }
 
 int
-main (int argc, char **argv)
+main(int argc, char **argv)
 {
-    Mem::Init();
-    /* enable for debugging to console */
-    //    _db_init (NULL, NULL);
-    //    Debug::Levels[64] = 9;
-    testRangeParser ("bytes=0-3");
-    testRangeParser ("bytes=-3");
-    testRangeParser ("bytes=1-");
-    testRangeParser ("bytes=0-3, 1-, -2");
-    testRangeIter ();
-    testRangeCanonization();
+    try {
+        Mem::Init();
+        /* enable for debugging to console */
+        //    _db_init (NULL, NULL);
+        //    Debug::Levels[64] = 9;
+        testRangeParser("bytes=0-3");
+        testRangeParser("bytes=-3");
+        testRangeParser("bytes=1-");
+        testRangeParser("bytes=0-3, 1-, -2");
+        testRangeIter();
+        testRangeCanonization();
+    } catch (const std::exception &e) {
+        printf("Error: dying from an unhandled exception: %s\n", e.what());
+        return 1;
+    } catch (...) {
+        printf("Error: dying from an unhandled exception.\n");
+        return 1;
+    }
     return 0;
 }

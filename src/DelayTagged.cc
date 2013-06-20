@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -38,7 +36,6 @@
 #include "squid.h"
 
 #if USE_DELAY_POOLS
-#include "squid-old.h"
 #include "comm/Connection.h"
 #include "DelayTagged.h"
 #include "NullDelayId.h"
@@ -193,10 +190,10 @@ DelayTaggedBucket::~DelayTaggedBucket()
 }
 
 void
-DelayTaggedBucket::stats (StoreEntry *entry) const
+DelayTaggedBucket::stats(StoreEntry *entry) const
 {
-    storeAppendPrintf(entry, " :" SQUIDSTRINGPH , SQUIDSTRINGPRINT(tag));
-    theBucket.stats (entry);
+    storeAppendPrintf(entry, " " SQUIDSTRINGPH ":", SQUIDSTRINGPRINT(tag));
+    theBucket.stats(entry);
 }
 
 DelayTagged::Id::Id(DelayTagged::Pointer aDelayTagged, String &aTag) : theTagged(aDelayTagged)

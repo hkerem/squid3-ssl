@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 79    Storage Manager COSS Interface
  * AUTHOR: Eric Stern
  *
@@ -33,15 +31,16 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "CossSwapDir.h"
-#include "Store.h"
-#include "store_coss.h"
-#include "MemObject.h"
-#include "fde.h"
-#include "SwapDir.h"
-#include "StoreFScoss.h"
 #include "DiskIO/DiskIOStrategy.h"
+#include "fde.h"
+#include "MemObject.h"
+#include "SquidConfig.h"
+#include "store_coss.h"
+#include "Store.h"
+#include "StoreFScoss.h"
+#include "SwapDir.h"
 
 CBDATA_TYPE(CossMemBuf);
 
@@ -49,7 +48,6 @@ CBDATA_TYPE(CossMemBuf);
 
 CossState::CossState(CossSwapDir *aCSD):SD (aCSD)
 {}
-
 
 /*
  * This routine sucks. I want to rewrite it when possible, and I also think
@@ -510,7 +508,7 @@ CossSwapDir::sync()
         t = (CossMemBuf *)m->data;
 
         if (t->flags.writing) {
-            debugs(79, 1, "WARNING: sleeping for 5 seconds in storeCossSync()");
+            debugs(79, DBG_IMPORTANT, "WARNING: sleeping for 5 seconds in storeCossSync()");
             sleep(5);		/* XXX EEEWWW! */
         }
 

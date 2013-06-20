@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -13,7 +11,6 @@
 #include "ipc/Request.h"
 #include "snmp/Pdu.h"
 #include "snmp/Session.h"
-
 
 namespace Snmp
 {
@@ -39,7 +36,6 @@ public:
     int fd; ///< client connection descriptor
     Ip::Address address; ///< client address
 };
-
 
 } // namespace Snmp
 

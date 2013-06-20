@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Duane Wessels
  *
@@ -32,31 +30,34 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/Gadgets.h"
 #include "base/TextException.h"
 #include "comm/Connection.h"
 #include "comm/forward.h"
 #include "comm/Write.h"
-#include "Server.h"
-#include "Store.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
-#include "errorpage.h"
+#include "fd.h"
 #include "err_detail_type.h"
-#include "StatCounters.h"
+#include "errorpage.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "Server.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
+#include "Store.h"
+#include "tools.h"
+#include "URL.h"
 
 #if USE_ADAPTATION
 #include "adaptation/AccessCheck.h"
 #include "adaptation/Answer.h"
 #include "adaptation/Iterator.h"
 #include "base/AsyncCall.h"
+#include "SquidConfig.h"
 #endif
 
 // implemented in client_side_reply.cc until sides have a common parent
-extern void purgeEntriesByUrl(HttpRequest * req, const char *url);
-
+void purgeEntriesByUrl(HttpRequest * req, const char *url);
 
 ServerStateData::ServerStateData(FwdState *theFwdState): AsyncJob("ServerStateData"),
         requestSender(NULL),
@@ -125,7 +126,6 @@ ServerStateData::swanSong()
     assert(!adaptedBodySource);
 #endif
 }
-
 
 HttpReply *
 ServerStateData::virginReply()
@@ -309,7 +309,6 @@ ServerStateData::noteBodyProducerAborted(BodyPipe::Pointer bp)
         handleRequestBodyProducerAborted();
 }
 
-
 // more origin request body data is available
 void
 ServerStateData::handleMoreRequestBodyAvailable()
@@ -379,7 +378,7 @@ ServerStateData::sentRequestBody(const CommIoCbParams &io)
     }
 
     if (io.flag) {
-        debugs(11, 1, "sentRequestBody error: FD " << io.fd << ": " << xstrerr(io.xerrno));
+        debugs(11, DBG_IMPORTANT, "sentRequestBody error: FD " << io.fd << ": " << xstrerr(io.xerrno));
         ErrorState *err;
         err = new ErrorState(ERR_WRITE_ERROR, HTTP_BAD_GATEWAY, fwd->request);
         err->xerrno = io.xerrno;
@@ -812,7 +811,6 @@ ServerStateData::handleAdaptationCompleted()
     completeForwarding();
 }
 
-
 // common part of noteAdaptation*Aborted and noteBodyConsumerAborted methods
 void
 ServerStateData::handleAdaptationAborted(bool bypassable)
@@ -828,7 +826,7 @@ ServerStateData::handleAdaptationAborted(bool bypassable)
     if (entry->isEmpty()) {
         debugs(11,9, HERE << "creating ICAP error entry after ICAP failure");
         ErrorState *err = new ErrorState(ERR_ICAP_FAILURE, HTTP_INTERNAL_SERVER_ERROR, request);
-        err->xerrno = ERR_DETAIL_ICAP_RESPMOD_EARLY;
+        err->detailError(ERR_DETAIL_ICAP_RESPMOD_EARLY);
         fwd->fail(err);
         fwd->dontRetry(true);
     } else if (request) { // update logged info directly
@@ -862,7 +860,7 @@ ServerStateData::handleAdaptationBlocked(const Adaptation::Answer &answer)
         page_id = ERR_ACCESS_DENIED;
 
     ErrorState *err = new ErrorState(page_id, HTTP_FORBIDDEN, request);
-    err->xerrno = ERR_DETAIL_RESPMOD_BLOCK_EARLY;
+    err->detailError(ERR_DETAIL_RESPMOD_BLOCK_EARLY);
     fwd->fail(err);
     fwd->dontRetry(true);
 
@@ -901,7 +899,6 @@ void
 ServerStateData::sendBodyIsTooLargeError()
 {
     ErrorState *err = new ErrorState(ERR_TOO_BIG, HTTP_FORBIDDEN, request);
-    err->xerrno = errno;
     fwd->fail(err);
     fwd->dontRetry(true);
     abortTransaction("Virgin body too large.");

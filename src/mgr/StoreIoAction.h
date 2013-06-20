@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -9,7 +7,6 @@
 #define SQUID_MGR_STORE_IO_ACTION_H
 
 #include "mgr/Action.h"
-
 
 namespace Mgr
 {

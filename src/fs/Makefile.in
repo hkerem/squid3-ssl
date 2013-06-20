@@ -47,6 +47,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -73,8 +75,9 @@ am_librock_la_OBJECTS = RockIoState.lo RockIoRequests.lo \
 	RockRebuild.lo RockStoreFileSystem.lo RockSwapDir.lo
 librock_la_OBJECTS = $(am_librock_la_OBJECTS)
 libufs_la_LIBADD =
-am_libufs_la_OBJECTS = StoreFSufs.lo store_dir_ufs.lo store_io_ufs.lo \
-	ufscommon.lo
+am_libufs_la_OBJECTS = StoreFSufs.lo UFSStoreState.lo UFSSwapDir.lo \
+	UFSStrategy.lo StoreSearchUFS.lo UFSSwapLogParser.lo \
+	RebuildState.lo
 libufs_la_OBJECTS = $(am_libufs_la_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/cfgaux/depcomp
@@ -353,11 +356,18 @@ libcoss_la_SOURCES = \
 libufs_la_SOURCES = \
 	ufs/StoreFSufs.h \
 	ufs/StoreFSufs.cc \
-	ufs/store_dir_ufs.cc \
-	ufs/store_io_ufs.cc \
-	ufs/ufscommon.cci \
-	ufs/ufscommon.cc \
-	ufs/ufscommon.h 
+	ufs/UFSStoreState.cc \
+	ufs/UFSSwapDir.cc \
+	ufs/UFSSwapDir.h \
+	ufs/UFSStrategy.cc \
+	ufs/UFSStrategy.h \
+	ufs/UFSStoreState.h \
+	ufs/StoreSearchUFS.h \
+	ufs/StoreSearchUFS.cc \
+	ufs/UFSSwapLogParser.h \
+	ufs/UFSSwapLogParser.cc \
+	ufs/RebuildState.h \
+	ufs/RebuildState.cc
 
 librock_la_SOURCES = \
 	rock/RockDbCell.h \
@@ -450,6 +460,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Module.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RebuildState.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockIoRequests.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockIoState.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RockRebuild.Plo@am__quote@
@@ -459,11 +470,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFScoss.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSdiskd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreFSufs.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StoreSearchUFS.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSStoreState.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSStrategy.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSSwapDir.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UFSSwapLogParser.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_dir_ufs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_coss.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/store_io_ufs.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ufscommon.Plo@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -563,26 +576,47 @@ StoreFSufs.lo: ufs/StoreFSufs.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreFSufs.lo `test -f 'ufs/StoreFSufs.cc' || echo '$(srcdir)/'`ufs/StoreFSufs.cc
 
-store_dir_ufs.lo: ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_dir_ufs.lo -MD -MP -MF $(DEPDIR)/store_dir_ufs.Tpo -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/store_dir_ufs.Tpo $(DEPDIR)/store_dir_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_dir_ufs.cc' object='store_dir_ufs.lo' libtool=yes @AMDEPBACKSLASH@
+UFSStoreState.lo: ufs/UFSStoreState.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSStoreState.lo -MD -MP -MF $(DEPDIR)/UFSStoreState.Tpo -c -o UFSStoreState.lo `test -f 'ufs/UFSStoreState.cc' || echo '$(srcdir)/'`ufs/UFSStoreState.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSStoreState.Tpo $(DEPDIR)/UFSStoreState.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSStoreState.cc' object='UFSStoreState.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_dir_ufs.lo `test -f 'ufs/store_dir_ufs.cc' || echo '$(srcdir)/'`ufs/store_dir_ufs.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSStoreState.lo `test -f 'ufs/UFSStoreState.cc' || echo '$(srcdir)/'`ufs/UFSStoreState.cc
 
-store_io_ufs.lo: ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT store_io_ufs.lo -MD -MP -MF $(DEPDIR)/store_io_ufs.Tpo -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/store_io_ufs.Tpo $(DEPDIR)/store_io_ufs.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/store_io_ufs.cc' object='store_io_ufs.lo' libtool=yes @AMDEPBACKSLASH@
+UFSSwapDir.lo: ufs/UFSSwapDir.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSSwapDir.lo -MD -MP -MF $(DEPDIR)/UFSSwapDir.Tpo -c -o UFSSwapDir.lo `test -f 'ufs/UFSSwapDir.cc' || echo '$(srcdir)/'`ufs/UFSSwapDir.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSSwapDir.Tpo $(DEPDIR)/UFSSwapDir.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSSwapDir.cc' object='UFSSwapDir.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o store_io_ufs.lo `test -f 'ufs/store_io_ufs.cc' || echo '$(srcdir)/'`ufs/store_io_ufs.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSSwapDir.lo `test -f 'ufs/UFSSwapDir.cc' || echo '$(srcdir)/'`ufs/UFSSwapDir.cc
 
-ufscommon.lo: ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ufscommon.lo -MD -MP -MF $(DEPDIR)/ufscommon.Tpo -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/ufscommon.Tpo $(DEPDIR)/ufscommon.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/ufscommon.cc' object='ufscommon.lo' libtool=yes @AMDEPBACKSLASH@
+UFSStrategy.lo: ufs/UFSStrategy.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSStrategy.lo -MD -MP -MF $(DEPDIR)/UFSStrategy.Tpo -c -o UFSStrategy.lo `test -f 'ufs/UFSStrategy.cc' || echo '$(srcdir)/'`ufs/UFSStrategy.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSStrategy.Tpo $(DEPDIR)/UFSStrategy.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSStrategy.cc' object='UFSStrategy.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ufscommon.lo `test -f 'ufs/ufscommon.cc' || echo '$(srcdir)/'`ufs/ufscommon.cc
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSStrategy.lo `test -f 'ufs/UFSStrategy.cc' || echo '$(srcdir)/'`ufs/UFSStrategy.cc
+
+StoreSearchUFS.lo: ufs/StoreSearchUFS.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT StoreSearchUFS.lo -MD -MP -MF $(DEPDIR)/StoreSearchUFS.Tpo -c -o StoreSearchUFS.lo `test -f 'ufs/StoreSearchUFS.cc' || echo '$(srcdir)/'`ufs/StoreSearchUFS.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/StoreSearchUFS.Tpo $(DEPDIR)/StoreSearchUFS.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/StoreSearchUFS.cc' object='StoreSearchUFS.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o StoreSearchUFS.lo `test -f 'ufs/StoreSearchUFS.cc' || echo '$(srcdir)/'`ufs/StoreSearchUFS.cc
+
+UFSSwapLogParser.lo: ufs/UFSSwapLogParser.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UFSSwapLogParser.lo -MD -MP -MF $(DEPDIR)/UFSSwapLogParser.Tpo -c -o UFSSwapLogParser.lo `test -f 'ufs/UFSSwapLogParser.cc' || echo '$(srcdir)/'`ufs/UFSSwapLogParser.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/UFSSwapLogParser.Tpo $(DEPDIR)/UFSSwapLogParser.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/UFSSwapLogParser.cc' object='UFSSwapLogParser.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UFSSwapLogParser.lo `test -f 'ufs/UFSSwapLogParser.cc' || echo '$(srcdir)/'`ufs/UFSSwapLogParser.cc
+
+RebuildState.lo: ufs/RebuildState.cc
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RebuildState.lo -MD -MP -MF $(DEPDIR)/RebuildState.Tpo -c -o RebuildState.lo `test -f 'ufs/RebuildState.cc' || echo '$(srcdir)/'`ufs/RebuildState.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/RebuildState.Tpo $(DEPDIR)/RebuildState.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ufs/RebuildState.cc' object='RebuildState.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RebuildState.lo `test -f 'ufs/RebuildState.cc' || echo '$(srcdir)/'`ufs/RebuildState.cc
 
 mostlyclean-libtool:
 	-rm -f *.lo

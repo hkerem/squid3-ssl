@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 70    Cache Digest
  * AUTHOR: Alex Rousskov
  *
@@ -33,11 +31,16 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "md5.h"
+#include "Mem.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "store_key_md5.h"
 
 #if USE_CACHE_DIGESTS
+
+#include "CacheDigest.h"
 
 /* local types */
 

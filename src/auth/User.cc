@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR:  Robert Collins
  *
@@ -33,7 +31,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "auth/User.h"
 #include "auth/UserRequest.h"
 #include "auth/Config.h"
@@ -41,6 +39,8 @@
 #include "acl/Acl.h"
 #include "acl/Gadgets.h"
 #include "event.h"
+#include "globals.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "Store.h"
 
@@ -78,7 +78,6 @@ Auth::User::credentials(CredentialState newCreds)
 {
     credentials_state = newCreds;
 }
-
 
 /**
  * Combine two user structs. ONLY to be called from within a scheme
@@ -140,10 +139,10 @@ Auth::User::absorb(Auth::User::Pointer from)
             if (!found) {
                 /* This ip is not in the seen list. Add it. */
                 dlinkAddTail(&new_ipdata->node, &ipdata->node, &ip_list);
-                ipcount++;
+                ++ipcount;
                 /* remove from the source list */
                 dlinkDelete(&new_ipdata->node, &(from->ip_list));
-                from->ipcount--;
+                ++from->ipcount;
             }
         }
     }
@@ -334,7 +333,7 @@ Auth::User::addIp(Ip::Address ipaddr)
 
     dlinkAddTail(ipdata, &ipdata->node, &ip_list);
 
-    ipcount++;
+    ++ipcount;
 
     debugs(29, 2, HERE << "user '" << username() << "' has been seen at a new IP address (" << ipaddr << ")");
 }

@@ -64,6 +64,7 @@ _FILE_OFFSET_BITS==64
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <stack>
 
 #include "cf_gen_defines.cci"
 
@@ -98,6 +99,9 @@ public:
     /// This is mutually exclusive with preset values.
     /// An error will be printed during build if they clash.
     LineList if_none;
+
+    /// Default config lines to parse and add to any prior settings.
+    LineList postscriptum;
 
     /// Text description to use in documentation for the default.
     /// If unset the preset or if-none values will be displayed.
@@ -151,6 +155,8 @@ static void gen_dump(const EntryList &, std::ostream&);
 static void gen_free(const EntryList &, std::ostream&);
 static void gen_conf(const EntryList &, std::ostream&, bool verbose_output);
 static void gen_default_if_none(const EntryList &, std::ostream&);
+static void gen_default_postscriptum(const EntryList &, std::ostream&);
+static bool isDefined(const std::string &name);
 static const char *available_if(const std::string &name);
 
 static void
@@ -183,6 +189,13 @@ usage(const char *program_name)
     exit(1);
 }
 
+static void
+errorMsg(const char *filename, int line, const char *detail)
+{
+    std::cerr << "Error in '" << filename << "' on line " << line <<
+              "--> " << detail << std::endl;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -199,6 +212,7 @@ main(int argc, char *argv[])
     char *ptr = NULL;
     char buff[MAX_LINE];
     std::ifstream fp;
+    std::stack<std::string> IFDEFS;
 
     if (argc != 3)
         usage(argv[0]);
@@ -211,7 +225,7 @@ main(int argc, char *argv[])
      *-------------------------------------------------------------------*/
     fp.open(type_depend, std::ifstream::in);
     if (fp.fail()) {
-        std::cerr << "error while opening type dependencies file '" <<
+        std::cerr << "Error while opening type dependencies file '" <<
                   type_depend << "': " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -238,7 +252,7 @@ main(int argc, char *argv[])
     /* Open input file */
     fp.open(input_filename, std::ifstream::in);
     if (fp.fail()) {
-        std::cerr << "error while opening input file '" <<
+        std::cerr << "Error while opening input file '" <<
                   input_filename << "': " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -253,142 +267,163 @@ main(int argc, char *argv[])
         if ((t = strchr(buff, '\n')))
             *t = '\0';
 
-        switch (state) {
-
-        case sSTART:
-
-            if ((strlen(buff) == 0) || (!strncmp(buff, "#", 1))) {
-                /* ignore empty and comment lines */
-                (void) 0;
-            } else if (!strncmp(buff, "NAME:", 5)) {
-                char *name, *aliasname;
-
-                if ((name = strtok(buff + 5, WS)) == NULL) {
-                    std::cerr << "Error in input file\n";
-                    exit(1);
-                }
-
-                entries.push_back(name);
-
-                while ((aliasname = strtok(NULL, WS)) != NULL)
-                    entries.back().alias.push_front(aliasname);
-
-                state = s1;
-            } else if (!strcmp(buff, "EOF")) {
-                state = sEXIT;
-            } else if (!strcmp(buff, "COMMENT_START")) {
-                entries.push_back("comment");
-                entries.back().loc = "none";
-                state = sDOC;
-            } else {
-                std::cerr << "Error on line " << linenum << std::endl <<
-                          "--> " << buff << std::endl;
+        if (strncmp(buff, "IF ", 3) == 0) {
+            if ((ptr = strtok(buff + 3, WS)) == NULL) {
+                errorMsg(input_filename, linenum, "Missing IF parameter");
                 exit(1);
             }
-
-            break;
-
-        case s1: {
-            Entry &curr = entries.back();
-
-            if ((strlen(buff) == 0) || (!strncmp(buff, "#", 1))) {
-                /* ignore empty and comment lines */
-                (void) 0;
-            } else if (!strncmp(buff, "COMMENT:", 8)) {
-                ptr = buff + 8;
-
-                while (isspace((unsigned char)*ptr))
-                    ++ptr;
-
-                curr.comment = ptr;
-            } else if (!strncmp(buff, "DEFAULT:", 8)) {
-                ptr = buff + 8;
-
-                while (isspace((unsigned char)*ptr))
-                    ++ptr;
-
-                curr.defaults.preset.push_back(ptr);
-            } else if (!strncmp(buff, "DEFAULT_IF_NONE:", 16)) {
-                ptr = buff + 16;
-
-                while (isspace((unsigned char)*ptr))
-                    ++ptr;
-
-                curr.defaults.if_none.push_back(ptr);
-            } else if (!strncmp(buff, "DEFAULT_DOC:", 12)) {
-                ptr = buff + 12;
-
-                while (isspace((unsigned char)*ptr))
-                    ++ptr;
-
-                curr.defaults.docs.push_back(ptr);
-            } else if (!strncmp(buff, "LOC:", 4)) {
-                if ((ptr = strtok(buff + 4, WS)) == NULL) {
-                    std::cerr << "Error on line " << linenum << std::endl;
-                    exit(1);
-                }
-
-                curr.loc = ptr;
-            } else if (!strncmp(buff, "TYPE:", 5)) {
-                if ((ptr = strtok(buff + 5, WS)) == NULL) {
-                    std::cerr << "Error on line " << linenum << std::endl;
-                    exit(1);
-                }
-
-                /* hack to support arrays, rather than pointers */
-                if (0 == strcmp(ptr + strlen(ptr) - 2, "[]")) {
-                    curr.array_flag = 1;
-                    *(ptr + strlen(ptr) - 2) = '\0';
-                }
-
-                checkDepend(curr.name, ptr, types, entries);
-                curr.type = ptr;
-            } else if (!strncmp(buff, "IFDEF:", 6)) {
-                if ((ptr = strtok(buff + 6, WS)) == NULL) {
-                    std::cerr << "Error on line " << linenum << std::endl;
-                    exit(1);
-                }
-
-                curr.ifdef = ptr;
-            } else if (!strcmp(buff, "DOC_START")) {
-                state = sDOC;
-            } else if (!strcmp(buff, "DOC_NONE")) {
-                state = sSTART;
-            } else {
-                std::cerr << "Error on line " << linenum << std::endl;
+            IFDEFS.push(ptr);
+            continue;
+        } else if (strcmp(buff, "ENDIF") == 0) {
+            if (IFDEFS.size() == 0) {
+                errorMsg(input_filename, linenum, "ENDIF without IF first");
                 exit(1);
             }
-        }
-        break;
+            IFDEFS.pop();
+        } else if (!IFDEFS.size() || isDefined(IFDEFS.top()))
+            switch (state) {
 
-        case sDOC:
-            if (!strcmp(buff, "DOC_END") || !strcmp(buff, "COMMENT_END")) {
-                state = sSTART;
-            } else if (!strcmp(buff, "NOCOMMENT_START")) {
-                state = sNOCOMMENT;
-            } else { // if (buff != NULL) {
-                assert(buff != NULL);
-                entries.back().doc.push_back(buff);
+            case sSTART:
+
+                if ((strlen(buff) == 0) || (!strncmp(buff, "#", 1))) {
+                    /* ignore empty and comment lines */
+                    (void) 0;
+                } else if (!strncmp(buff, "NAME:", 5)) {
+                    char *name, *aliasname;
+
+                    if ((name = strtok(buff + 5, WS)) == NULL) {
+                        errorMsg(input_filename, linenum, buff);
+                        exit(1);
+                    }
+
+                    entries.push_back(name);
+
+                    while ((aliasname = strtok(NULL, WS)) != NULL)
+                        entries.back().alias.push_front(aliasname);
+
+                    state = s1;
+                } else if (!strcmp(buff, "EOF")) {
+                    state = sEXIT;
+                } else if (!strcmp(buff, "COMMENT_START")) {
+                    entries.push_back("comment");
+                    entries.back().loc = "none";
+                    state = sDOC;
+                } else {
+                    errorMsg(input_filename, linenum, buff);
+                    exit(1);
+                }
+
+                break;
+
+            case s1: {
+                Entry &curr = entries.back();
+
+                if ((strlen(buff) == 0) || (!strncmp(buff, "#", 1))) {
+                    /* ignore empty and comment lines */
+                    (void) 0;
+                } else if (!strncmp(buff, "COMMENT:", 8)) {
+                    ptr = buff + 8;
+
+                    while (isspace((unsigned char)*ptr))
+                        ++ptr;
+
+                    curr.comment = ptr;
+                } else if (!strncmp(buff, "DEFAULT:", 8)) {
+                    ptr = buff + 8;
+
+                    while (isspace((unsigned char)*ptr))
+                        ++ptr;
+
+                    curr.defaults.preset.push_back(ptr);
+                } else if (!strncmp(buff, "DEFAULT_IF_NONE:", 16)) {
+                    ptr = buff + 16;
+
+                    while (isspace((unsigned char)*ptr))
+                        ++ptr;
+
+                    curr.defaults.if_none.push_back(ptr);
+                } else if (!strncmp(buff, "POSTSCRIPTUM:", 13)) {
+                    ptr = buff + 13;
+
+                    while (isspace((unsigned char)*ptr))
+                        ++ptr;
+
+                    curr.defaults.postscriptum.push_back(ptr);
+                } else if (!strncmp(buff, "DEFAULT_DOC:", 12)) {
+                    ptr = buff + 12;
+
+                    while (isspace((unsigned char)*ptr))
+                        ++ptr;
+
+                    curr.defaults.docs.push_back(ptr);
+                } else if (!strncmp(buff, "LOC:", 4)) {
+                    if ((ptr = strtok(buff + 4, WS)) == NULL) {
+                        errorMsg(input_filename, linenum, buff);
+                        exit(1);
+                    }
+
+                    curr.loc = ptr;
+                } else if (!strncmp(buff, "TYPE:", 5)) {
+                    if ((ptr = strtok(buff + 5, WS)) == NULL) {
+                        errorMsg(input_filename, linenum, buff);
+                        exit(1);
+                    }
+
+                    /* hack to support arrays, rather than pointers */
+                    if (0 == strcmp(ptr + strlen(ptr) - 2, "[]")) {
+                        curr.array_flag = 1;
+                        *(ptr + strlen(ptr) - 2) = '\0';
+                    }
+
+                    checkDepend(curr.name, ptr, types, entries);
+                    curr.type = ptr;
+                } else if (!strncmp(buff, "IFDEF:", 6)) {
+                    if ((ptr = strtok(buff + 6, WS)) == NULL) {
+                        errorMsg(input_filename, linenum, buff);
+                        exit(1);
+                    }
+
+                    curr.ifdef = ptr;
+                } else if (!strcmp(buff, "DOC_START")) {
+                    state = sDOC;
+                } else if (!strcmp(buff, "DOC_NONE")) {
+                    state = sSTART;
+                } else {
+                    errorMsg(input_filename, linenum, buff);
+                    exit(1);
+                }
             }
             break;
 
-        case sNOCOMMENT:
-            if (!strcmp(buff, "NOCOMMENT_END")) {
-                state = sDOC;
-            } else { // if (buff != NULL) {
-                assert(buff != NULL);
-                entries.back().nocomment.push_back(buff);
-            }
-            break;
+            case sDOC:
+                if (!strcmp(buff, "DOC_END") || !strcmp(buff, "COMMENT_END")) {
+                    state = sSTART;
+                } else if (!strcmp(buff, "NOCOMMENT_START")) {
+                    state = sNOCOMMENT;
+                } else { // if (buff != NULL) {
+                    assert(buff != NULL);
+                    entries.back().doc.push_back(buff);
+                }
+                break;
 
-        case sEXIT:
-            assert(0);		/* should never get here */
-            break;
-        }
+            case sNOCOMMENT:
+                if (!strcmp(buff, "NOCOMMENT_END")) {
+                    state = sDOC;
+                } else { // if (buff != NULL) {
+                    assert(buff != NULL);
+                    entries.back().nocomment.push_back(buff);
+                }
+                break;
+
+            case sEXIT:
+                assert(0);		/* should never get here */
+                break;
+            }
+
     }
 
     if (state != sEXIT) {
-        std::cerr << "Error: unexpected EOF\n";
+        errorMsg(input_filename, linenum, "Error: unexpected EOF");
         exit(1);
     }
 
@@ -406,7 +441,7 @@ main(int argc, char *argv[])
 
     std::ofstream fout(output_filename,std::ostream::out);
     if (!fout.good()) {
-        std::cerr << "error while opening output .c file '" <<
+        std::cerr << "Error while opening output .c file '" <<
                   output_filename << "': " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -424,6 +459,8 @@ main(int argc, char *argv[])
 
     gen_default_if_none(entries, fout);
 
+    gen_default_postscriptum(entries, fout);
+
     gen_parse(entries, fout);
 
     gen_dump(entries, fout);
@@ -435,7 +472,7 @@ main(int argc, char *argv[])
     /* Open output x.conf file */
     fout.open(conf_filename,std::ostream::out);
     if (!fout.good()) {
-        std::cerr << "error while opening output conf file '" <<
+        std::cerr << "Error while opening output conf file '" <<
                   output_filename << "': " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -446,7 +483,7 @@ main(int argc, char *argv[])
 
     fout.open(conf_filename_short,std::ostream::out);
     if (!fout.good()) {
-        std::cerr << "error while opening output short conf file '" <<
+        std::cerr << "Error while opening output short conf file '" <<
                   output_filename << "': " << strerror(errno) << std::endl;
         exit(1);
     }
@@ -555,6 +592,39 @@ gen_default_if_none(const EntryList &head, std::ostream &fout)
     "}" << std::endl << std::endl;
 }
 
+/// append configuration options specified by POSTSCRIPTUM lines
+static void
+gen_default_postscriptum(const EntryList &head, std::ostream &fout)
+{
+    fout << "static void" << std::endl <<
+    "defaults_postscriptum(void)" << std::endl <<
+    "{" << std::endl <<
+    "    cfg_filename = \"Default Configuration (postscriptum)\";" << std::endl <<
+    "    config_lineno = 0;" << std::endl;
+
+    for (EntryList::const_iterator entry = head.begin(); entry != head.end(); ++entry) {
+        assert(entry->name.size());
+
+        if (!entry->loc.size())
+            continue;
+
+        if (entry->defaults.postscriptum.empty())
+            continue;
+
+        if (entry->ifdef.size())
+            fout << "#if " << entry->ifdef << std::endl;
+
+        for (LineList::const_iterator l = entry->defaults.postscriptum.begin(); l != entry->defaults.postscriptum.end(); ++l)
+            fout << "    default_line(\"" << entry->name << " " << *l <<"\");" << std::endl;
+
+        if (entry->ifdef.size())
+            fout << "#endif" << std::endl;
+    }
+
+    fout << "    cfg_filename = NULL;" << std::endl <<
+    "}" << std::endl << std::endl;
+}
+
 void
 Entry::genParseAlias(const std::string &aName, std::ostream &fout) const
 {
@@ -566,7 +636,7 @@ Entry::genParseAlias(const std::string &aName, std::ostream &fout) const
         fout << "debugs(0, DBG_CRITICAL, \"ERROR: Directive '" << aName << "' is obsolete.\");\n";
         for (LineList::const_iterator l = doc.begin(); l != doc.end(); ++l) {
             // offset line to strip initial whitespace tab byte
-            fout << "        debugs(0, opt_parse_cfg_only?0:1, \"" << aName << " : " << &(*l)[1] << "\");" << std::endl;
+            fout << "        debugs(0, DBG_PARSE_NOTE(DBG_IMPORTANT), \"" << aName << " : " << &(*l)[1] << "\");" << std::endl;
         }
         fout << "        parse_obsolete(token);";
     } else if (!loc.size() || loc.compare("none") == 0) {

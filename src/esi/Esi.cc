@@ -31,33 +31,36 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the ESI code from compile process when not needed.
  */
 #if (USE_SQUID_ESI == 1)
 
-#include "esi/Esi.h"
-#include "clientStream.h"
 #include "client_side_request.h"
+#include "client_side.h"
+#include "clientStream.h"
 #include "comm/Connection.h"
 #include "errorpage.h"
-#include "esi/Segment.h"
-#include "esi/Element.h"
+#include "esi/Assign.h"
+#include "esi/Attempt.h"
 #include "esi/Context.h"
+#include "esi/Element.h"
+#include "esi/Esi.h"
+#include "esi/Except.h"
+#include "esi/Expression.h"
+#include "esi/Segment.h"
+#include "esi/VarState.h"
 #include "HttpHdrSc.h"
 #include "HttpHdrScTarget.h"
 #include "HttpReply.h"
-#include "esi/Attempt.h"
-#include "esi/Except.h"
-#include "client_side.h"
-#include "esi/VarState.h"
-#include "esi/Assign.h"
-#include "esi/Expression.h"
 #include "HttpRequest.h"
-#include "MemBuf.h"
 #include "ip/Address.h"
+#include "Mem.h"
+#include "MemBuf.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 
 /* quick reference on behaviour here.
  * The ESI specification 1.0 requires the ESI processor to be able to
@@ -98,7 +101,6 @@ bool operator == (ESIElement const *lhs, ESIElement::Pointer const &rhs)
 }
 
 typedef ESIContext::esiKick_t esiKick_t;
-
 
 /* some core operators */
 
@@ -143,7 +145,6 @@ public:
 CBDATA_TYPE (esiRemove);
 static FREE esiRemoveFree;
 static ESIElement * esiRemoveNew(void);
-
 
 /* esiTry */
 
@@ -268,14 +269,12 @@ bool ESIContext::reading() const
     return reading_;
 }
 
-
 ESIStreamContext::ESIStreamContext() : finished(false), include (NULL), localbuffer (new ESISegment), buffer (NULL)
 {}
 
 /* Local functions */
 /* ESIContext */
 static ESIContext *ESIContextNew(HttpReply *, clientStreamNode *, ClientHttpRequest *);
-
 
 void *
 ESIContext::operator new(size_t byteCount)
@@ -484,7 +483,6 @@ esiStreamRead (clientStreamNode *thisNode, ClientHttpRequest *http)
         return;
     }
 
-
     if (context->flags.oktosend && context->flags.finished) {
         StoreIOBuffer tempBuffer;
         assert (!context->outbound.getRaw());
@@ -677,7 +675,6 @@ ESIContext::send ()
 
     if (len == 0)
         len = 1; /* tell the caller we sent something (because we sent headers */
-
 
     cbdataReferenceDone (templock);
 
@@ -971,7 +968,10 @@ ESIContext::ParserState::top()
     return stack[stackdepth-1];
 }
 
-ESIContext::ParserState::ParserState() : inited_ (false)
+ESIContext::ParserState::ParserState() :
+        stackdepth(0),
+        parsing(0),
+        inited_(false)
 {}
 
 bool
@@ -989,7 +989,7 @@ ESIContext::addStackElement (ESIElement::Pointer element)
     debugs(86, 5, "ESIContext::addStackElement: About to add ESI Node " << element.getRaw());
 
     if (!parserState.top()->addElement(element)) {
-        debugs(86, 1, "ESIContext::addStackElement: failed to add esi node, probable error in ESI template");
+        debugs(86, DBG_IMPORTANT, "ESIContext::addStackElement: failed to add esi node, probable error in ESI template");
         flags.error = 1;
     } else {
         /* added ok, push onto the stack */
@@ -1199,13 +1199,13 @@ ESIContext::parserComment (const char *s)
         if (!tempParser->parse("<div>", 5,0) ||
                 !tempParser->parse(s + 3, strlen(s) - 3, 0) ||
                 !tempParser->parse("</div>",6,1)) {
-            debugs(86, 0, "ESIContext::parserComment: Parsing fragment '" << s + 3 << "' failed.");
+            debugs(86, DBG_CRITICAL, "ESIContext::parserComment: Parsing fragment '" << s + 3 << "' failed.");
             setError();
             char tempstr[1024];
             snprintf(tempstr, 1023, "ESIContext::parserComment: Parse error at line %ld:\n%s\n",
                      tempParser->lineNumber(),
                      tempParser->errorString());
-            debugs(86, 0, "" << tempstr << "");
+            debugs(86, DBG_CRITICAL, "" << tempstr << "");
 
             setErrorMessage(tempstr);
         }
@@ -1219,7 +1219,7 @@ ESIContext::parserComment (const char *s)
         len = strlen (s);
 
         if (len > sizeof (localbuf) - 9) {
-            debugs(86, 0, "ESIContext::parserComment: Truncating long comment");
+            debugs(86, DBG_CRITICAL, "ESIContext::parserComment: Truncating long comment");
             len = sizeof (localbuf) - 9;
         }
 
@@ -1241,7 +1241,7 @@ ESIContext::addLiteral (const char *s, int len)
     ESIElement::Pointer element (new esiLiteral (this, s, len));
 
     if (!parserState.top()->addElement(element)) {
-        debugs(86, 1, "ESIContext::addLiteral: failed to add esi node, probable error in ESI template");
+        debugs(86, DBG_IMPORTANT, "ESIContext::addLiteral: failed to add esi node, probable error in ESI template");
         flags.error = 1;
     }
 }
@@ -1267,7 +1267,7 @@ ESIContext::parseOneBuffer()
         snprintf (tempstr, 1023, "esiProcess: Parse error at line %ld:\n%s\n",
                   parserState.theParser->lineNumber(),
                   parserState.theParser->errorString());
-        debugs(86, 0, "" << tempstr << "");
+        debugs(86, DBG_CRITICAL, "" << tempstr << "");
 
         setErrorMessage(tempstr);
 
@@ -1383,7 +1383,7 @@ ESIContext::process ()
             break;
 
         case ESI_PROCESS_FAILED:
-            debugs(86, 0, "esiProcess: tree Processed FAILED");
+            debugs(86, DBG_CRITICAL, "esiProcess: tree Processed FAILED");
             setError();
 
             setErrorMessage("esiProcess: ESI template Processing failed.");
@@ -1451,8 +1451,7 @@ ESIContext::freeResources ()
     /* don't touch incoming, it's a pointer into buffered anyway */
 }
 
-extern ErrorState *clientBuildError (err_type, http_status, char const *, Ip::Address &, HttpRequest *);
-
+ErrorState *clientBuildError (err_type, http_status, char const *, Ip::Address &, HttpRequest *);
 
 /* This can ONLY be used before we have sent *any* data to the client */
 void
@@ -1558,6 +1557,7 @@ esiLiteral::finish()
 esiLiteral::esiLiteral(ESIContext *context, const char *s, int numberOfCharacters)
 {
     assert (s);
+    flags.donevars = 0;
     buffer = new ESISegment;
     ESISegment::Pointer local = buffer;
     size_t start = 0;
@@ -1574,7 +1574,7 @@ esiLiteral::esiLiteral(ESIContext *context, const char *s, int numberOfCharacter
         remainingCharacters -= len;
     }
 
-    varState = cbdataReference (context->varState);
+    varState = cbdataReference(context->varState);
 }
 
 void
@@ -1709,11 +1709,15 @@ esiTry::~esiTry()
     debugs(86, 5, "esiTry::~esiTry " << this);
 }
 
-esiTry::esiTry(esiTreeParentPtr aParent) : parent (aParent) , exceptbuffer(NULL)
-{}
+esiTry::esiTry(esiTreeParentPtr aParent) :
+        parent(aParent),
+        exceptbuffer(NULL)
+{
+    memset(&flags, 0, sizeof(flags));
+}
 
 void
-esiTry::render (ESISegment::Pointer output)
+esiTry::render(ESISegment::Pointer output)
 {
     /* Try renders from it's children */
     assert (this);
@@ -1749,7 +1753,7 @@ esiTry::addElement(ESIElement::Pointer element)
 
     if (dynamic_cast<esiAttempt*>(element.getRaw())) {
         if (attempt.getRaw()) {
-            debugs(86, 1, "esiTryAdd: Failed for " << this << " - try allready has an attempt node (section 3.4)");
+            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try allready has an attempt node (section 3.4)");
             return false;
         }
 
@@ -1759,7 +1763,7 @@ esiTry::addElement(ESIElement::Pointer element)
 
     if (dynamic_cast<esiExcept*>(element.getRaw())) {
         if (except.getRaw()) {
-            debugs(86, 1, "esiTryAdd: Failed for " << this << " - try already has an except node (section 3.4)");
+            debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed for " << this << " - try already has an except node (section 3.4)");
             return false;
         }
 
@@ -1767,7 +1771,7 @@ esiTry::addElement(ESIElement::Pointer element)
         return true;
     }
 
-    debugs(86, 1, "esiTryAdd: Failed to add element " << element.getRaw() << " to try " << this << ", incorrect element type (see section 3.4)");
+    debugs(86, DBG_IMPORTANT, "esiTryAdd: Failed to add element " << element.getRaw() << " to try " << this << ", incorrect element type (see section 3.4)");
     return false;
 }
 
@@ -1787,12 +1791,12 @@ esiTry::process (int dovars)
     assert (this);
 
     if (!attempt.getRaw()) {
-        debugs(86, 0, "esiTryProcess: Try has no attempt element - ESI template is invalid (section 3.4)");
+        debugs(86, DBG_CRITICAL, "esiTryProcess: Try has no attempt element - ESI template is invalid (section 3.4)");
         return ESI_PROCESS_FAILED;
     }
 
     if (!except.getRaw()) {
-        debugs(86, 0, "esiTryProcess: Try has no except element - ESI template is invalid (section 3.4)");
+        debugs(86, DBG_CRITICAL, "esiTryProcess: Try has no except element - ESI template is invalid (section 3.4)");
         return ESI_PROCESS_FAILED;
     }
 
@@ -2057,13 +2061,13 @@ esiChoose::addElement(ESIElement::Pointer element)
 
     /* Some elements require specific parents */
     if (!(dynamic_cast<esiWhen*>(element.getRaw()) || dynamic_cast<esiOtherwise*>(element.getRaw()))) {
-        debugs(86, 0, "esiChooseAdd: invalid child node for esi:choose (section 3.3)");
+        debugs(86, DBG_CRITICAL, "esiChooseAdd: invalid child node for esi:choose (section 3.3)");
         return false;
     }
 
     if (dynamic_cast<esiOtherwise*>(element.getRaw())) {
         if (otherwise.getRaw()) {
-            debugs(86, 0, "esiChooseAdd: only one otherwise node allowed for esi:choose (section 3.3)");
+            debugs(86, DBG_CRITICAL, "esiChooseAdd: only one otherwise node allowed for esi:choose (section 3.3)");
             return false;
         }
 
@@ -2073,12 +2077,13 @@ esiChoose::addElement(ESIElement::Pointer element)
 
         debugs (86,3, "esiChooseAdd: Added a new element, elements = " << elements.size());
 
-        if (chosenelement == -1)
-            if ((dynamic_cast<esiWhen *>(element.getRaw()))->
-                    testsTrue()) {
+        if (chosenelement == -1) {
+            const esiWhen * topElement=dynamic_cast<esiWhen *>(element.getRaw());
+            if (topElement && topElement->testsTrue()) {
                 chosenelement = elements.size() - 1;
                 debugs (86,3, "esiChooseAdd: Chose element " << elements.size());
             }
+        }
     }
 
     return true;
@@ -2091,8 +2096,8 @@ esiChoose::selectElement()
         return;
 
     for (size_t counter = 0; counter < elements.size(); ++counter) {
-        if ((dynamic_cast<esiWhen *>(elements[counter].getRaw()))->
-                testsTrue()) {
+        const esiWhen *el = dynamic_cast<esiWhen *>(elements[counter].getRaw());
+        if (el && el->testsTrue()) {
             chosenelement = counter;
             debugs (86,3, "esiChooseAdd: Chose element " << counter + 1);
             return;
@@ -2215,7 +2220,6 @@ esiChoose::provideData (ESISegment::Pointer data, ESIElement*source)
     parent->provideData (data, this);
 }
 
-
 esiChoose::esiChoose(esiChoose const &old) : chosenelement(-1), otherwise (NULL), parent (NULL)
 {
     for (size_t counter = 0; counter < old.elements.size(); ++counter) {
@@ -2330,9 +2334,12 @@ ElementList::size() const
 }
 
 /* esiWhen */
-esiWhen::esiWhen (esiTreeParentPtr aParent, int attrcount, const char **attr,ESIVarState *aVar) : esiSequence (aParent)
+esiWhen::esiWhen(esiTreeParentPtr aParent, int attrcount, const char **attr,ESIVarState *aVar) :
+        esiSequence(aParent),
+        testValue(false),
+        unevaluatedExpression(NULL),
+        varState(NULL)
 {
-    varState = NULL;
     char const *expression = NULL;
 
     for (int loopCounter = 0; loopCounter < attrcount && attr[loopCounter]; loopCounter += 2) {
@@ -2346,7 +2353,7 @@ esiWhen::esiWhen (esiTreeParentPtr aParent, int attrcount, const char **attr,ESI
             /* ignore mistyped attributes.
              * TODO:? error on these for user feedback - config parameter needed
              */
-            debugs(86, 1, "Found misttyped attribute on ESI When clause");
+            debugs(86, DBG_IMPORTANT, "Found misttyped attribute on ESI When clause");
         }
     }
 
@@ -2375,7 +2382,7 @@ esiWhen::evaluate()
     if (!unevaluatedExpression)
         return;
 
-    assert (varState);
+    assert(varState);
 
     varState->feedData(unevaluatedExpression, strlen (unevaluatedExpression));
 
@@ -2386,14 +2393,14 @@ esiWhen::evaluate()
     safe_free (expression);
 }
 
-esiWhen::esiWhen(esiWhen const &old) : esiSequence (old)
+esiWhen::esiWhen(esiWhen const &old) :
+        esiSequence(old),
+        testValue(false),
+        unevaluatedExpression(NULL),
+        varState(NULL)
 {
-    unevaluatedExpression = NULL;
-
     if (old.unevaluatedExpression)
         unevaluatedExpression = xstrdup(old.unevaluatedExpression);
-
-    varState = NULL;
 }
 
 ESIElement::Pointer

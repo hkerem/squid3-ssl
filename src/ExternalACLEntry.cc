@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 82    External ACL
  * AUTHOR: Henrik Nordstrom, MARA Systems AB
  *
@@ -41,7 +39,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "ExternalACLEntry.h"
 #include "SquidTime.h"
 
@@ -69,7 +67,7 @@ ExternalACLEntry::operator delete (void *address)
 ExternalACLEntry::ExternalACLEntry()
 {
     lru.next = lru.prev = NULL;
-    result = 0;
+    result = ACCESS_DENIED;
     date = 0;
     def = NULL;
 }

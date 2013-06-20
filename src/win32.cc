@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Windows support
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  * inspired by previous work by Romeo Anghelache & Eric Stern.
@@ -33,8 +31,9 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "squid_windows.h"
+#include "win32.h"
 
 #if _SQUID_MSWIN_
 #if HAVE_WIN32_PSAPI
@@ -48,7 +47,6 @@
 SQUIDCEXTERN LPCRITICAL_SECTION dbg_mutex;
 void WIN32_ExceptionHandlerCleanup(void);
 static LPTOP_LEVEL_EXCEPTION_FILTER Win32_Old_ExceptionHandler = NULL;
-
 
 int WIN32_pipe(int handles[2])
 {
@@ -194,7 +192,6 @@ LONG CALLBACK WIN32_ExceptionHandler(EXCEPTION_POINTERS* ep)
 
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
 
 void WIN32_ExceptionHandlerInit()
 {

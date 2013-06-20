@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -37,6 +35,8 @@
 #include "dlink.h"
 #include "HttpHdrScTarget.h"
 
+class StatHist;
+
 /* http surogate control header field */
 
 class HttpHdrSc
@@ -69,10 +69,10 @@ private:
 MEMPROXY_CLASS_INLINE(HttpHdrSc);
 
 /* Http Surrogate Control Header Field */
-extern void httpHdrScStatDumper(StoreEntry * sentry, int idx, double val, double size, int count);
-extern void httpHdrScInitModule (void);
-extern void httpHdrScCleanModule (void);
-extern HttpHdrSc *httpHdrScParseCreate(String const &);
-extern void httpHdrScSetMaxAge(HttpHdrSc *, char const *, int);
+void httpHdrScStatDumper(StoreEntry * sentry, int idx, double val, double size, int count);
+void httpHdrScInitModule (void);
+void httpHdrScCleanModule (void);
+HttpHdrSc *httpHdrScParseCreate(String const &);
+void httpHdrScSetMaxAge(HttpHdrSc *, char const *, int);
 
 #endif /* SQUID_HTTPHDRSURROGATECONTROL_H */

@@ -1,12 +1,8 @@
-/*
- * $Id$
- */
 #include "squid.h"
 #include "dlink.h"
 
 /* dlink are Mem-pooled */
 #include "MemPool.h"
-
 
 dlink_list ClientActiveRequests;
 

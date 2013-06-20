@@ -35,26 +35,39 @@
  \ingroup ServerProtocolICPAPI
  */
 
-#include "squid-old.h"
-#include "Store.h"
+#include "squid.h"
+#include "AccessLogEntry.h"
+#include "acl/Acl.h"
+#include "acl/FilledChecklist.h"
+#include "client_db.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/Loops.h"
 #include "comm/UdpOpenDialer.h"
-#include "ICP.h"
+#include "fd.h"
 #include "HttpRequest.h"
-#include "acl/FilledChecklist.h"
-#include "acl/Acl.h"
-#include "AccessLogEntry.h"
-#include "wordlist.h"
-#include "StatCounters.h"
-#include "SquidTime.h"
-#include "SwapDir.h"
 #include "icmp/net_db.h"
+#include "ICP.h"
 #include "ip/Address.h"
 #include "ip/tools.h"
 #include "ipcache.h"
+#include "md5.h"
+#include "multicast.h"
+#include "neighbors.h"
+#include "refresh.h"
 #include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+#include "Store.h"
+#include "store_key_md5.h"
+#include "SwapDir.h"
+#include "tools.h"
+#include "wordlist.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static void icpIncomingConnectionOpened(const Comm::ConnectionPointer &conn, int errNo);
 
@@ -82,10 +95,13 @@ Comm::ConnectionPointer icpIncomingConn = NULL;
 Comm::ConnectionPointer icpOutgoingConn = NULL;
 
 /* icp_common_t */
-_icp_common_t::_icp_common_t() : opcode(ICP_INVALID), version(0), length(0), reqnum(0), flags(0), pad(0), shostid(0)
+_icp_common_t::_icp_common_t() :
+        opcode(ICP_INVALID), version(0), length(0), reqnum(0),
+        flags(0), pad(0), shostid(0)
 {}
 
-_icp_common_t::_icp_common_t(char *buf, unsigned int len)
+_icp_common_t::_icp_common_t(char *buf, unsigned int len) :
+        opcode(ICP_INVALID), version(0), reqnum(0), flags(0), pad(0), shostid(0)
 {
     if (len < sizeof(_icp_common_t)) {
         /* mark as invalid */
@@ -126,7 +142,6 @@ ICPState::~ICPState()
     safe_free(url);
     HTTPMSGUNLOCK(request);
 }
-
 
 /* End ICPState */
 
@@ -414,9 +429,9 @@ icpDenyAccess(Ip::Address &from, char *url, int reqnum, int fd)
 bool
 icpAccessAllowed(Ip::Address &from, HttpRequest * icp_request)
 {
-    /* absent an explicit allow, we deny all */
+    /* absent any explicit rules, we deny all */
     if (!Config.accessList.icp)
-        return true;
+        return false;
 
     ACLFilledChecklist checklist(Config.accessList.icp, icp_request, NULL);
     checklist.src_addr = from;
@@ -506,8 +521,8 @@ void
 _icp_common_t::handleReply(char *buf, Ip::Address &from)
 {
     if (neighbors_do_private_keys && reqnum == 0) {
-        debugs(12, 0, "icpHandleIcpV2: Neighbor " << from << " returned reqnum = 0");
-        debugs(12, 0, "icpHandleIcpV2: Disabling use of private keys");
+        debugs(12, DBG_CRITICAL, "icpHandleIcpV2: Neighbor " << from << " returned reqnum = 0");
+        debugs(12, DBG_CRITICAL, "icpHandleIcpV2: Disabling use of private keys");
         neighbors_do_private_keys = 0;
     }
 
@@ -562,7 +577,7 @@ icpHandleIcpV2(int fd, Ip::Address &from, char *buf, int len)
         break;
 
     default:
-        debugs(12, 0, "icpHandleIcpV2: UNKNOWN OPCODE: " << header.opcode << " from " << from);
+        debugs(12, DBG_CRITICAL, "icpHandleIcpV2: UNKNOWN OPCODE: " << header.opcode << " from " << from);
 
         break;
     }
@@ -621,7 +636,7 @@ icpHandleUdp(int sock, void *data)
             if (errno != ECONNREFUSED && errno != EHOSTUNREACH)
 #endif
 
-                debugs(50, 1, "icpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
+                debugs(50, DBG_IMPORTANT, "icpHandleUdp: FD " << sock << " recvfrom: " << xstrerror());
 
             break;
         }
@@ -652,7 +667,7 @@ icpHandleUdp(int sock, void *data)
         else if (icp_version == ICP_VERSION_3)
             icpHandleIcpV3(sock, from, buf, len);
         else
-            debugs(12, 1, "WARNING: Unused ICP version " << icp_version <<
+            debugs(12, DBG_IMPORTANT, "WARNING: Unused ICP version " << icp_version <<
                    " received from " << from);
     }
 }

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -39,6 +37,8 @@
 #include "mgr/ActionProfile.h"
 #include "mgr/Command.h"
 #include "mgr/forward.h"
+#include "typedefs.h"
+
 #include <vector>
 
 /**
@@ -49,6 +49,11 @@
  \ingroup CacheManagerAPI
  */
 
+class HttpRequest;
+namespace Mgr
+{
+class ActionPasswordList;
+} //namespace Mgr
 /**
  \ingroup CacheManagerAPI
  * a CacheManager - the menu system for interacting with squid.
@@ -84,7 +89,7 @@ protected:
     Mgr::CommandPointer ParseUrl(const char *url);
     void ParseHeaders(const HttpRequest * request, Mgr::ActionParams &params);
     int CheckPassword(const Mgr::Command &cmd);
-    char *PasswdGet(cachemgr_passwd *, const char *);
+    char *PasswdGet(Mgr::ActionPasswordList *, const char *);
 
     void registerProfile(const Mgr::ActionProfilePointer &profile);
 

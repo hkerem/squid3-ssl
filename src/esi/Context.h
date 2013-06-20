@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,14 +32,14 @@
 #ifndef SQUID_ESICONTEXT_H
 #define SQUID_ESICONTEXT_H
 
+#include "esi/Parser.h"
 #include "esi/Element.h"
 #include "clientStream.h"
+#include "err_type.h"
+#include "HttpStatusCode.h"
 
 class ESIVarState;
-
 class ClientHttpRequest;
-
-#include "esi/Parser.h"
 
 /* ESIContext */
 
@@ -52,7 +50,22 @@ public:
     typedef RefCount<ESIContext> Pointer;
     void *operator new (size_t byteCount);
     void operator delete (void *address);
-    ESIContext():reading_(true) {}
+    ESIContext() :
+            thisNode(NULL),
+            http(NULL),
+            errorpage(ERR_NONE),
+            errorstatus(HTTP_STATUS_NONE),
+            errormessage(NULL),
+            rep(NULL),
+            outbound_offset(0),
+            readpos(0),
+            pos(0),
+            varState(NULL),
+            cachedASTInUse(false),
+            reading_(true),
+            processing(false) {
+        memset(&flags, 0, sizeof(flags));
+    }
 
     ~ESIContext();
 
@@ -149,7 +162,6 @@ public:
     bool cachedASTInUse;
 
 private:
-    CBDATA_CLASS(ESIContext);
     void fail ();
     void freeResources();
     void fixupOutboundTail();
@@ -168,6 +180,8 @@ private:
     virtual void parserDefault (const char *s, int len);
     virtual void parserComment (const char *s);
     bool processing;
+
+    CBDATA_CLASS(ESIContext);
 };
 
 #endif /* SQUID_ESICONTEXT_H */

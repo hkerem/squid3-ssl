@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Debug Routines
  * AUTHOR: Harvest Derived
  *
@@ -65,7 +63,7 @@ static void _db_print_stderr(const char *format, va_list args);
 static void _db_print_file(const char *format, va_list args);
 
 #if _SQUID_MSWIN_
-SQUIDCEXTERN LPCRITICAL_SECTION dbg_mutex;
+extern LPCRITICAL_SECTION dbg_mutex;
 typedef BOOL (WINAPI * PFInitializeCriticalSectionAndSpinCount) (LPCRITICAL_SECTION, DWORD);
 #endif
 
@@ -561,7 +559,7 @@ debugLogKid(void)
 void
 xassert(const char *msg, const char *file, int line)
 {
-    debugs(0, 0, "assertion failed: " << file << ":" << line << ": \"" << msg << "\"");
+    debugs(0, DBG_CRITICAL, "assertion failed: " << file << ":" << line << ": \"" << msg << "\"");
 
     if (!shutting_down)
         abort();
@@ -660,7 +658,6 @@ static const char *Ctx_Descrs[CTX_MAX_LEVEL + 1];
 /* "safe" get secription */
 static const char *ctx_get_descr(Ctx ctx);
 
-
 Ctx
 ctx_enter(const char *descr)
 {
@@ -670,7 +667,7 @@ ctx_enter(const char *descr)
         Ctx_Descrs[Ctx_Current_Level] = descr;
 
     if (Ctx_Current_Level == Ctx_Warn_Level) {
-        debugs(0, 0, "# ctx: suspiciously deep (" << Ctx_Warn_Level << ") nesting:");
+        debugs(0, DBG_CRITICAL, "# ctx: suspiciously deep (" << Ctx_Warn_Level << ") nesting:");
         Ctx_Warn_Level *= 2;
     }
 

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,7 +36,6 @@
 #include "splay.h"
 #include "acl/Acl.h"
 #include "acl/Data.h"
-
 
 class ACLStringData : public ACLData<char const *>
 {

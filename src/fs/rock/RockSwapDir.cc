@@ -1,10 +1,9 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  */
 
 #include "squid.h"
+#include "cache_cf.h"
 #include "ConfigOption.h"
 #include "DiskIO/DiskIOModule.h"
 #include "DiskIO/DiskIOStrategy.h"
@@ -14,11 +13,20 @@
 #include "fs/rock/RockIoState.h"
 #include "fs/rock/RockIoRequests.h"
 #include "fs/rock/RockRebuild.h"
+#include "globals.h"
 #include "ipc/mem/Pages.h"
 #include "MemObject.h"
 #include "Parsing.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
+#include "tools.h"
+
+#include <cstdlib>
 #include <iomanip>
+
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 const int64_t Rock::SwapDir::HeaderSize = 16*1024;
 
@@ -470,7 +478,6 @@ Rock::SwapDir::addEntry(const int filen, const DbCellHeader &header, const Store
     return false;
 }
 
-
 bool
 Rock::SwapDir::canStore(const StoreEntry &e, int64_t diskSpaceNeeded, int &load) const
 {
@@ -785,7 +792,6 @@ Rock::SwapDir::trackReferences(StoreEntry &e)
         repl->Add(repl, &e, &e.repl);
 }
 
-
 void
 Rock::SwapDir::ignoreReferences(StoreEntry &e)
 {
@@ -833,7 +839,6 @@ Rock::SwapDir::statfs(StoreEntry &e) const
     storeAppendPrintf(&e, "\n");
 
 }
-
 
 namespace Rock
 {

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -33,7 +31,9 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
+#include "fatal.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the ESI code from compile process when not needed.
@@ -52,8 +52,19 @@ esiSequence::~esiSequence ()
     debugs(86, 5, "esiSequence::~esiSequence " << this);
 }
 
-esiSequence::esiSequence(esiTreeParentPtr aParent, bool incrementalFlag) : elements(), parent (aParent), mayFail_(true), failed (false), provideIncrementalData (incrementalFlag), processing (false), processingResult (ESI_PROCESS_COMPLETE), nextElementToProcess_ (0)
-{}
+esiSequence::esiSequence(esiTreeParentPtr aParent, bool incrementalFlag) :
+        elements(),
+        processedcount(0),
+        parent(aParent),
+        mayFail_(true),
+        failed(false),
+        provideIncrementalData(incrementalFlag),
+        processing(false),
+        processingResult(ESI_PROCESS_COMPLETE),
+        nextElementToProcess_(0)
+{
+    memset(&flags, 0, sizeof(flags));
+}
 
 size_t
 esiSequence::nextElementToProcess() const
@@ -118,7 +129,6 @@ esiSequence::finish()
     parent = NULL;
 }
 
-
 void
 esiSequence::provideData (ESISegment::Pointer data, ESIElement *source)
 {
@@ -127,7 +137,6 @@ esiSequence::provideData (ESISegment::Pointer data, ESIElement *source)
     if (processing)
         debugs(86, 5, "esiSequence::provideData: " << this << " data provided during processing");
     debugs(86, 5, "esiSequence::provideData " << this << " " << data.getRaw() << " " << source);
-
 
     /* when data is provided, the element *must* be completed */
     /* XXX: when the callback model is complete,
@@ -164,7 +173,7 @@ esiSequence::addElement (ESIElement::Pointer element)
 
     if (dynamic_cast<esiAttempt*>(element.getRaw()) ||
             dynamic_cast<esiExcept*>(element.getRaw())) {
-        debugs(86, 0, "esiSequenceAdd: misparented Attempt or Except element (section 3.4)");
+        debugs(86, DBG_CRITICAL, "esiSequenceAdd: misparented Attempt or Except element (section 3.4)");
         return false;
     }
 
@@ -331,11 +340,17 @@ esiSequence::fail (ESIElement *source, char const *anError)
     parent = NULL;
 }
 
-esiSequence::esiSequence(esiSequence const &old)
-        : processedcount (0), mayFail_(old.mayFail_), failed (old.failed), provideIncrementalData (old.provideIncrementalData), processing (false), nextElementToProcess_ (0)
+esiSequence::esiSequence(esiSequence const &old) :
+        processedcount(0),
+        parent(NULL),
+        mayFail_(old.mayFail_),
+        failed(old.failed),
+        provideIncrementalData(old.provideIncrementalData),
+        processing(false),
+        processingResult(ESI_PROCESS_COMPLETE),
+        nextElementToProcess_(0)
 {
     flags.dovars = old.flags.dovars;
-    parent = NULL;
 }
 
 void

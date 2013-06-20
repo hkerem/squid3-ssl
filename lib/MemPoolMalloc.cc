@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 63    Low Level Memory Pool Management
  * AUTHOR: Alex Rousskov, Andres Kroonmaa, Robert Collins, Henrik Nordstrom
  *
@@ -33,7 +31,6 @@
  *
  */
 
-
 #include "squid.h"
 #if HAVE_ASSERT_H
 #include <assert.h>
@@ -57,7 +54,7 @@ MemPoolMalloc::allocate()
     void *obj = freelist.pop();
     if (obj) {
         memMeterDec(meter.idle);
-        saved_calls++;
+        ++saved_calls;
     } else {
         obj = xcalloc(1, obj_size);
         memMeterInc(meter.alloc);

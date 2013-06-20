@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * AUTHOR: Guido Serassio <serassio@squid-cache.org>
  * inspired by previous work by Robert Collins, Francesco Chemolli.
  *
@@ -107,7 +105,6 @@ void UnloadSecurityDll(void)
 
     hModule = NULL;
 }
-
 
 HMODULE LoadSecurityDll(int mode, char * SSP_Package)
 {
@@ -235,7 +232,6 @@ HMODULE LoadSecurityDll(int mode, char * SSP_Package)
     return hModule;
 }
 
-
 BOOL GenClientContext(PAUTH_SEQ pAS, PSEC_WINNT_AUTH_IDENTITY pAuthIdentity,
                       PVOID pIn, DWORD cbIn, PVOID pOut, PDWORD pcbOut, PBOOL pfDone)
 {
@@ -303,7 +299,6 @@ BOOL GenClientContext(PAUTH_SEQ pAS, PSEC_WINNT_AUTH_IDENTITY pAuthIdentity,
                 || SecurityStatus == SEC_I_COMPLETE_AND_CONTINUE );
     return TRUE;
 }
-
 
 BOOL GenServerContext(PAUTH_SEQ pAS, PVOID pIn, DWORD cbIn, PVOID pOut,
                       PDWORD pcbOut, PBOOL pfDone, char * credentials)
@@ -410,7 +405,6 @@ BOOL GenServerContext(PAUTH_SEQ pAS, PVOID pIn, DWORD cbIn, PVOID pOut,
     return TRUE;
 }
 
-
 BOOL WINAPI SSP_LogonUser(PTSTR szUser, PTSTR szPassword, PTSTR szDomain)
 {
     AUTH_SEQ    asServer   = {0};
@@ -486,7 +480,6 @@ BOOL WINAPI SSP_LogonUser(PTSTR szUser, PTSTR szPassword, PTSTR szDomain)
     return fResult;
 }
 
-
 const char * WINAPI SSP_MakeChallenge(PVOID PNegotiateBuf, int NegotiateLen)
 {
     BOOL        fDone      = FALSE;
@@ -527,7 +520,6 @@ const char * WINAPI SSP_MakeChallenge(PVOID PNegotiateBuf, int NegotiateLen)
     return encoded;
 }
 
-
 BOOL WINAPI SSP_ValidateNTLMCredentials(PVOID PAutenticateBuf, int AutenticateLen, char * credentials)
 {
     BOOL        fDone      = FALSE;
@@ -552,7 +544,6 @@ BOOL WINAPI SSP_ValidateNTLMCredentials(PVOID PAutenticateBuf, int AutenticateLe
 
     return fResult;
 }
-
 
 const char * WINAPI SSP_MakeNegotiateBlob(PVOID PNegotiateBuf, int NegotiateLen, PBOOL fDone, int * Status, char * credentials)
 {
@@ -586,7 +577,6 @@ const char * WINAPI SSP_MakeNegotiateBlob(PVOID PNegotiateBuf, int NegotiateLen,
         encoded = base64_encode_bin((char *) pServerBuf, cbOut);
     return encoded;
 }
-
 
 const char * WINAPI SSP_ValidateNegotiateCredentials(PVOID PAutenticateBuf, int AutenticateLen, PBOOL fDone, int * Status, char * credentials)
 {

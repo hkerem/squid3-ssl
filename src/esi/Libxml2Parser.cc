@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Joachim Bauch (mail@joachim-bauch.de)
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -37,7 +35,7 @@
  * mail@joachim-bauch.de
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 #if USE_SQUID_ESI && HAVE_LIBXML2
 

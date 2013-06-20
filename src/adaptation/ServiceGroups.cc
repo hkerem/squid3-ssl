@@ -1,13 +1,14 @@
-#include "squid-old.h"
-
-#include "ConfigParser.h"
-#include "adaptation/Config.h"
+#include "squid.h"
 #include "adaptation/AccessRule.h"
+#include "adaptation/Config.h"
 #include "adaptation/DynamicGroupCfg.h"
 #include "adaptation/Service.h"
 #include "adaptation/ServiceFilter.h"
 #include "adaptation/ServiceGroups.h"
-
+#include "ConfigParser.h"
+#include "Debug.h"
+#include "StrList.h"
+#include "wordlist.h"
 
 Adaptation::ServiceGroup::ServiceGroup(const String &aKind, bool allSame):
         kind(aKind), method(methodNone), point(pointNone),
@@ -75,7 +76,7 @@ Adaptation::ServiceGroup::finalize()
                     baselineKey = service->cfg().key;
                     baselineBypass = service->cfg().bypass;
                 } else if (baselineBypass != service->cfg().bypass) {
-                    debugs(93,0, "WARNING: Inconsistent bypass in " << kind <<
+                    debugs(93, DBG_CRITICAL, "WARNING: Inconsistent bypass in " << kind <<
                            ' ' << id << " may produce surprising results: " <<
                            baselineKey << " vs. " << serviceId);
                 }
@@ -193,13 +194,11 @@ Adaptation::ServiceGroup::findLink(const ServiceFilter &filter, Pos &pos) const
     return !allServicesSame && findService(filter, pos);
 }
 
-
 /* ServiceSet */
 
 Adaptation::ServiceSet::ServiceSet(): ServiceGroup("adaptation set", true)
 {
 }
-
 
 /* SingleService */
 
@@ -210,13 +209,11 @@ Adaptation::SingleService::SingleService(const String &aServiceId):
     services.push_back(aServiceId);
 }
 
-
 /* ServiceChain */
 
 Adaptation::ServiceChain::ServiceChain(): ServiceGroup("adaptation chain", false)
 {
 }
-
 
 /* DynamicServiceChain */
 
@@ -312,7 +309,6 @@ Adaptation::ServicePlan::print(std::ostream &os) const
     return os << group->id << '[' << pos << ".." << group->services.size() <<
            (atEof ? ".]" : "]");
 }
-
 
 /* globals */
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -21,9 +19,8 @@ typedef enum { fdnNone, fdnHttpSocket, fdnHttpsSocket,
                fdnInIcpSocket, fdnInHtcpSocket, fdnEnd
              } FdNoteId;
 
-extern const char *FdNote(int fdNodeId); ///< converts FdNoteId into a string
+const char *FdNote(int fdNodeId); ///< converts FdNoteId into a string
 
 } // namespace Ipc;
-
 
 #endif /* SQUID_IPC_FD_NOTES_H */

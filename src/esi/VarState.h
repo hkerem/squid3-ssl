@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,6 +36,8 @@
 #include "Trie.h"
 #include "Array.h"
 #include "HttpHeader.h"
+
+class HttpReply;
 
 /* esi variable replacement logic */
 
@@ -191,7 +191,5 @@ private:
     esiBrowser_t browser;
     char *browserversion;
 };
-
-
 
 #endif /* SQUID_ESIVARSTATE_H */

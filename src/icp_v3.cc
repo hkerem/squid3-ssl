@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 12    Internet Cache Protocol (ICP)
  * AUTHOR: Duane Wessels
  *
@@ -37,7 +35,7 @@
  \ingroup ServerProtocolICPAPI
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "Store.h"
 #include "ICP.h"
 #include "HttpRequest.h"
@@ -105,7 +103,6 @@ ICP3State::created(StoreEntry *newEntry)
     delete this;
 }
 
-
 /// \ingroup ServerProtocolICPInternal3
 /* Currently Harvest cached-2.x uses ICP_VERSION_3 */
 void
@@ -150,7 +147,7 @@ icpHandleIcpV3(int fd, Ip::Address &from, char *buf, int len)
         break;
 
     default:
-        debugs(12, 0, "icpHandleIcpV3: UNKNOWN OPCODE: " << header.opcode << " from " << from);
+        debugs(12, DBG_CRITICAL, "icpHandleIcpV3: UNKNOWN OPCODE: " << header.opcode << " from " << from);
         break;
     }
 }

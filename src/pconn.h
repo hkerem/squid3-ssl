@@ -1,6 +1,3 @@
-/*
- * $Id$
- */
 #ifndef SQUID_PCONN_H
 #define SQUID_PCONN_H
 
@@ -90,7 +87,6 @@ private:
     CBDATA_CLASS2(IdleConnList);
 };
 
-
 #include "ip/forward.h"
 
 class StoreEntry;
@@ -144,7 +140,6 @@ private:
     const char *descr;
     int theCount; ///< the number of pooled connections
 };
-
 
 class StoreEntry;
 class PconnPool;

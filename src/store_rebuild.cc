@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 20    Store Rebuild Routines
  * AUTHOR: Duane Wessels
  *
@@ -33,15 +30,24 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "event.h"
+#include "globals.h"
+#include "md5.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "store_key_md5.h"
 #include "SwapDir.h"
+#include "store_digest.h"
+#include "store_rebuild.h"
 #include "StoreSearch.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
-static struct _store_rebuild_data counts;
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
+static StoreRebuildData counts;
 
 static struct timeval rebuild_start;
 static void storeCleanup(void *);
@@ -103,13 +109,13 @@ storeCleanup(void *datanotused)
 
         if ((++validated & 0x3FFFF) == 0)
             /* TODO format the int with with a stream operator */
-            debugs(20, 1, "  " << validated << " Entries Validated so far.");
+            debugs(20, DBG_IMPORTANT, "  " << validated << " Entries Validated so far.");
     }
 
     if (currentSearch->isDone()) {
-        debugs(20, 1, "  Completed Validation Procedure");
-        debugs(20, 1, "  Validated " << validated << " Entries");
-        debugs(20, 1, "  store_swap_size = " << Store::Root().currentSize() / 1024.0 << " KB");
+        debugs(20, DBG_IMPORTANT, "  Completed Validation Procedure");
+        debugs(20, DBG_IMPORTANT, "  Validated " << validated << " Entries");
+        debugs(20, DBG_IMPORTANT, "  store_swap_size = " << Store::Root().currentSize() / 1024.0 << " KB");
         --StoreController::store_dirs_rebuilding;
         assert(0 == StoreController::store_dirs_rebuilding);
 
@@ -131,7 +137,7 @@ storeCleanup(void *datanotused)
 /* meta data recreated from disk image in swap directory */
 void
 
-storeRebuildComplete(struct _store_rebuild_data *dc)
+storeRebuildComplete(StoreRebuildData *dc)
 {
     double dt;
     counts.objcount += dc->objcount;
@@ -155,18 +161,18 @@ storeRebuildComplete(struct _store_rebuild_data *dc)
 
     dt = tvSubDsec(rebuild_start, current_time);
 
-    debugs(20, 1, "Finished rebuilding storage from disk.");
-    debugs(20, 1, "  " << std::setw(7) << counts.scancount  << " Entries scanned");
-    debugs(20, 1, "  " << std::setw(7) << counts.invalid  << " Invalid entries.");
-    debugs(20, 1, "  " << std::setw(7) << counts.badflags  << " With invalid flags.");
-    debugs(20, 1, "  " << std::setw(7) << counts.objcount  << " Objects loaded.");
-    debugs(20, 1, "  " << std::setw(7) << counts.expcount  << " Objects expired.");
-    debugs(20, 1, "  " << std::setw(7) << counts.cancelcount  << " Objects cancelled.");
-    debugs(20, 1, "  " << std::setw(7) << counts.dupcount  << " Duplicate URLs purged.");
-    debugs(20, 1, "  " << std::setw(7) << counts.clashcount  << " Swapfile clashes avoided.");
-    debugs(20, 1, "  Took "<< std::setw(3)<< std::setprecision(2) << dt << " seconds ("<< std::setw(6) <<
+    debugs(20, DBG_IMPORTANT, "Finished rebuilding storage from disk.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.scancount  << " Entries scanned");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.invalid  << " Invalid entries.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.badflags  << " With invalid flags.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.objcount  << " Objects loaded.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.expcount  << " Objects expired.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.cancelcount  << " Objects cancelled.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.dupcount  << " Duplicate URLs purged.");
+    debugs(20, DBG_IMPORTANT, "  " << std::setw(7) << counts.clashcount  << " Swapfile clashes avoided.");
+    debugs(20, DBG_IMPORTANT, "  Took "<< std::setw(3)<< std::setprecision(2) << dt << " seconds ("<< std::setw(6) <<
            ((double) counts.objcount / (dt > 0.0 ? dt : 1.0)) << " objects/sec).");
-    debugs(20, 1, "Beginning Validation Procedure");
+    debugs(20, DBG_IMPORTANT, "Beginning Validation Procedure");
 
     eventAdd("storeCleanup", storeCleanup, NULL, 0.0, 1);
 
@@ -232,7 +238,7 @@ storeRebuildProgress(int sd_index, int total, int sofar)
         d += (double) RebuildProgress[sd_index].total;
     }
 
-    debugs(20, 1, "Store rebuilding is "<< std::setw(4)<< std::setprecision(2) << 100.0 * n / d << "% complete");
+    debugs(20, DBG_IMPORTANT, "Store rebuilding is "<< std::setw(4)<< std::setprecision(2) << 100.0 * n / d << "% complete");
     last_report = squid_curtime;
 }
 
@@ -289,7 +295,7 @@ struct InitStoreEntry : public unary_function<StoreMeta, void> {
 
 bool
 storeRebuildLoadEntry(int fd, int diskIndex, MemBuf &buf,
-                      struct _store_rebuild_data &counts)
+                      StoreRebuildData &counts)
 {
     if (fd < 0)
         return false;
@@ -311,7 +317,7 @@ storeRebuildLoadEntry(int fd, int diskIndex, MemBuf &buf,
 
 bool
 storeRebuildParseEntry(MemBuf &buf, StoreEntry &tmpe, cache_key *key,
-                       struct _store_rebuild_data &counts,
+                       StoreRebuildData &counts,
                        uint64_t expectedSize)
 {
     int swap_hdr_len = 0;
@@ -377,7 +383,7 @@ storeRebuildParseEntry(MemBuf &buf, StoreEntry &tmpe, cache_key *key,
 
 bool
 storeRebuildKeepEntry(const StoreEntry &tmpe, const cache_key *key,
-                      struct _store_rebuild_data &counts)
+                      StoreRebuildData &counts)
 {
     /* this needs to become
      * 1) unpack url

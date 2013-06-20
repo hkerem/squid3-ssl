@@ -30,14 +30,21 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "cbdata.h"
 #include "comm/Loops.h"
 #include "fde.h"
+#include "globals.h"
 #include "log/Config.h"
 #include "log/File.h"
 #include "log/ModDaemon.h"
+#include "SquidIpc.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 /* How many buffers to keep before we say we've buffered too much */
 #define	LOGFILE_MAXBUFS		128
@@ -220,7 +227,6 @@ logfileFlushEvent(void *data)
     eventAdd("logfileFlush", logfileFlushEvent, lf, 1.0, 1);
 }
 
-
 /* External code */
 
 int
@@ -238,7 +244,7 @@ logfile_mod_daemon_open(Logfile * lf, const char *path, size_t bufsz, int fatal_
     lf->f_rotate = logfile_mod_daemon_rotate;
 
     cbdataInternalLock(lf); // WTF?
-    debugs(50, 1, "Logfile Daemon: opening log " << path);
+    debugs(50, DBG_IMPORTANT, "Logfile Daemon: opening log " << path);
     ll = static_cast<l_daemon_t*>(xcalloc(1, sizeof(*ll)));
     lf->data = ll;
     ll->eol = 1;
@@ -270,7 +276,7 @@ static void
 logfile_mod_daemon_close(Logfile * lf)
 {
     l_daemon_t *ll = static_cast<l_daemon_t *>(lf->data);
-    debugs(50, 1, "Logfile Daemon: closing log " << lf->path);
+    debugs(50, DBG_IMPORTANT, "Logfile Daemon: closing log " << lf->path);
     logfileFlush(lf);
     if (ll->rfd == ll->wfd)
         comm_close(ll->rfd);
@@ -289,7 +295,7 @@ static void
 logfile_mod_daemon_rotate(Logfile * lf)
 {
     char tb[3];
-    debugs(50, 1, "logfileRotate: " << lf->path);
+    debugs(50, DBG_IMPORTANT, "logfileRotate: " << lf->path);
     tb[0] = 'R';
     tb[1] = '\n';
     tb[2] = '\0';

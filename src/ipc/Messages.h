@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -26,6 +24,5 @@ typedef enum { mtNone = 0, mtRegistration,
              } MessageType;
 
 } // namespace Ipc;
-
 
 #endif /* SQUID_IPC_MESSAGES_H */

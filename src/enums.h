@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,8 +31,6 @@
 
 #ifndef SQUID_ENUMS_H
 #define SQUID_ENUMS_H
-
-#include "HttpStatusCode.h"
 
 typedef enum {
     LOG_TAG_NONE,
@@ -111,7 +107,6 @@ typedef enum {
     SC_OTHER,
     SC_ENUM_END
 } http_hdr_sc_type;
-
 
 typedef enum _mem_status_t {
     NOT_IN_MEMORY,
@@ -195,8 +190,7 @@ enum {
     SNMP_C_USER,
     SNMP_C_COMMUNITY
 };
-
-#endif
+#endif /* SQUID_SNMP */
 
 typedef enum {
     MEM_NONE,
@@ -248,7 +242,6 @@ typedef enum {
     psParsed,
     psError
 } HttpMsgParseState;
-
 
 enum {
     PCTILE_HTTP,
@@ -304,7 +297,6 @@ enum {
     ROR_REPLY
 };
 
-
 /* CygWin & Windows NT Port */
 #if _SQUID_WINDOWS_
 /*
@@ -323,7 +315,7 @@ enum {
     _WIN_OS_WINLON,
     _WIN_OS_WIN7
 };
-#endif
+#endif /* _SQUID_WINDOWS_ */
 
 enum {
     DISABLE_PMTU_OFF,
@@ -333,13 +325,12 @@ enum {
 
 #if USE_HTCP
 /*
- * This should be in htcp.h but because neighborsHtcpClear is defined in
- * protos.h it has to be here.
+ * TODO: This should be in htcp.h
  */
 typedef enum {
     HTCP_CLR_PURGE,
     HTCP_CLR_INVALIDATION
 } htcp_clr_reason;
-#endif
+#endif /* USE_HTCP */
 
 #endif /* SQUID_ENUMS_H */

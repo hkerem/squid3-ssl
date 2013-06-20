@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -33,10 +31,11 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
-//#include "compat/getaddrinfo.h"
+#include "squid.h"
 #include "acl/Ip.h"
 #include "acl/Checklist.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "ip/tools.h"
 #include "MemBuf.h"
 #include "wordlist.h"
@@ -99,7 +98,7 @@ acl_ip_data::toStr(char *buf, int len) const
 
     if (!addr2.IsAnyAddr()) {
         b2[0] = '-';
-        rlen++;
+        ++rlen;
         addr2.NtoA(&(b2[1]), len - rlen );
         rlen = strlen(buf);
     } else
@@ -109,7 +108,7 @@ acl_ip_data::toStr(char *buf, int len) const
 
     if (!mask.IsNoAddr()) {
         b3[0] = '/';
-        rlen++;
+        ++rlen;
         int cidr =  mask.GetCIDR() - (addr1.IsIPv4()?96:0);
         snprintf(&(b3[1]), (len-rlen), "%u", (unsigned int)(cidr<0?0:cidr) );
     } else
@@ -147,7 +146,6 @@ aclIpAddrNetworkCompare(acl_ip_data * const &p, acl_ip_data * const &q)
     }
 }
 
-
 /*
  * acl_ip_data::NetworkCompare - Compare two acl_ip_data entries.  Strictly
  * used by the splay insertion routine.  It emits a warning if it
@@ -179,9 +177,9 @@ acl_ip_data::NetworkCompare(acl_ip_data * const & a, acl_ip_data * const &b)
             a->toStr(buf_n1, 3*(MAX_IPSTRLEN+1));
             b->toStr(buf_n2, 3*(MAX_IPSTRLEN+1));
         }
-        debugs(28, 0, "WARNING: (" << (bina?'B':'A') << ") '" << buf_n1 << "' is a subnetwork of (" << (bina?'A':'B') << ") '" << buf_n2 << "'");
-        debugs(28, 0, "WARNING: because of this '" << (bina?buf_n2:buf_n1) << "' is ignored to keep splay tree searching predictable");
-        debugs(28, 0, "WARNING: You should probably remove '" << buf_n1 << "' from the ACL named '" << AclMatchedName << "'");
+        debugs(28, DBG_CRITICAL, "WARNING: (" << (bina?'B':'A') << ") '" << buf_n1 << "' is a subnetwork of (" << (bina?'A':'B') << ") '" << buf_n2 << "'");
+        debugs(28, DBG_CRITICAL, "WARNING: because of this '" << (bina?buf_n2:buf_n1) << "' is ignored to keep splay tree searching predictable");
+        debugs(28, DBG_CRITICAL, "WARNING: You should probably remove '" << buf_n1 << "' from the ACL named '" << AclMatchedName << "'");
     }
 
     return ret;
@@ -411,18 +409,9 @@ acl_ip_data::FactoryParse(const char *t)
 
         memset(&hints, 0, sizeof(struct addrinfo));
 
-        if ( iptype != AF_UNSPEC ) {
-            hints.ai_flags |= AI_NUMERICHOST;
-        }
-
-#if 0
-        if (Ip::EnableIpv6&IPV6_SPECIAL_V4MAPPING)
-            hints.ai_flags |= AI_V4MAPPED | AI_ALL;
-#endif
-
         int errcode = getaddrinfo(addr1,NULL,&hints,&hp);
         if (hp == NULL) {
-            debugs(28, 0, "aclIpParseIpData: Bad host/IP: '" << addr1 <<
+            debugs(28, DBG_CRITICAL, "aclIpParseIpData: Bad host/IP: '" << addr1 <<
                    "' in '" << t << "', flags=" << hints.ai_flags <<
                    " : (" << errcode << ") " << gai_strerror(errcode) );
             self_destruct();
@@ -458,7 +447,7 @@ acl_ip_data::FactoryParse(const char *t)
         }
 
         if (*Q != NULL) {
-            debugs(28, 0, "aclIpParseIpData: Bad host/IP: '" << t << "'");
+            debugs(28, DBG_CRITICAL, "aclIpParseIpData: Bad host/IP: '" << t << "'");
             self_destruct();
             return NULL;
         }
@@ -477,7 +466,7 @@ acl_ip_data::FactoryParse(const char *t)
 
     /* Decode addr1 */
     if (!*addr1 || !(q->addr1 = addr1)) {
-        debugs(28, 0, "aclIpParseIpData: unknown first address in '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclIpParseIpData: unknown first address in '" << t << "'");
         delete q;
         self_destruct();
         return NULL;
@@ -487,7 +476,7 @@ acl_ip_data::FactoryParse(const char *t)
     if (!*addr2)
         q->addr2.SetAnyAddr();
     else if (!(q->addr2=addr2) ) {
-        debugs(28, 0, "aclIpParseIpData: unknown second address in '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclIpParseIpData: unknown second address in '" << t << "'");
         delete q;
         self_destruct();
         return NULL;
@@ -495,7 +484,7 @@ acl_ip_data::FactoryParse(const char *t)
 
     /* Decode mask (NULL or empty means a exact host mask) */
     if (!DecodeMask(mask, q->mask, iptype)) {
-        debugs(28, 0, "aclParseIpData: unknown netmask '" << mask << "' in '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclParseIpData: unknown netmask '" << mask << "' in '" << t << "'");
         delete q;
         self_destruct();
         return NULL;
@@ -506,7 +495,7 @@ acl_ip_data::FactoryParse(const char *t)
     changed += q->addr2.ApplyMask(q->mask);
 
     if (changed)
-        debugs(28, 0, "aclIpParseIpData: WARNING: Netmask masks away part of the specified IP in '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclIpParseIpData: WARNING: Netmask masks away part of the specified IP in '" << t << "'");
 
     debugs(28,9, HERE << "Parsed: " << q->addr1 << "-" << q->addr2 << "/" << q->mask << "(/" << q->mask.GetCIDR() <<")");
 

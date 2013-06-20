@@ -4,6 +4,7 @@ include $(top_srcdir)/src/TestHeaders.am
 noinst_LTLIBRARIES = liblog.la
 
 liblog_la_SOURCES = \
+	access_log.h \
 	access_log.cc \
 	Config.cc \
 	Config.h \
@@ -26,5 +27,7 @@ liblog_la_SOURCES = \
 	ModTcp.cc \
 	ModTcp.h \
 	ModUdp.cc \
-	ModUdp.h
+	ModUdp.h \
+	CustomLog.h \
+	CustomLog.cc
 

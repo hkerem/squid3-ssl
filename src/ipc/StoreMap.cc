@@ -1,13 +1,12 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  */
 
-#include "squid-old.h"
-
-#include "Store.h"
+#include "squid.h"
 #include "ipc/StoreMap.h"
+#include "store_key_md5.h"
+#include "Store.h"
+#include "tools.h"
 
 Ipc::StoreMap::Owner *
 Ipc::StoreMap::Init(const char *const path, const int limit, const size_t extrasSize)
@@ -266,7 +265,6 @@ Ipc::StoreMap::freeLocked(Slot &s, bool keepLocked)
     debugs(54, 5, HERE << " freed slot at " << (&s - shared->slots.raw()) <<
            " in map [" << path << ']');
 }
-
 
 /* Ipc::StoreMapSlot */
 

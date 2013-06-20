@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Announcement Server
  * AUTHOR: Harvest Derived
  *
@@ -76,7 +74,6 @@ sig_handle(int)
     exit(0);
 }
 
-
 int
 main(int argc, char *argv[])
 {
@@ -93,7 +90,6 @@ main(int argc, char *argv[])
         signal(len, sig_handle);
     }
 
-
     if (argc > 1)
         logfile = argv[1];
     else
@@ -108,7 +104,6 @@ main(int argc, char *argv[])
 
     close(2);
     dup(1);
-
 
     IPAddress ipa;
     chat tmp[MAX_HOSTNAMELEN];

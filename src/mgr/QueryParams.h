@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -13,7 +11,6 @@
 #include "SquidString.h"
 #include <vector>
 #include <utility>
-
 
 namespace Mgr
 {

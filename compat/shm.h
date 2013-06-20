@@ -1,6 +1,3 @@
-/*
- * $Id$
- */
 #ifndef SQUID_COMPAT_SHM_H
 #define SQUID_COMPAT_SHM_H
 
@@ -41,7 +38,6 @@ extern "C" {
 } /* extern "C" */
 
 #endif /* HAVE_SHM */
-
 
 /// Determines whether segment names are iterpreted as full file paths.
 bool shm_portable_segment_name_is_path();

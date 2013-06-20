@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -15,9 +13,7 @@
 #include "StoreClient.h"
 #include "Store.h"
 
-
 CBDATA_NAMESPACED_CLASS_INIT(Mgr, StoreToCommWriter);
-
 
 Mgr::StoreToCommWriter::StoreToCommWriter(const Comm::ConnectionPointer &conn, StoreEntry* anEntry):
         AsyncJob("Mgr::StoreToCommWriter"),

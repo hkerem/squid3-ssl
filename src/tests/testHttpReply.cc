@@ -3,12 +3,15 @@
 #include <cppunit/TestAssert.h>
 
 #include "testHttpReply.h"
+#include "HttpHeader.h"
 #include "HttpReply.h"
 #include "Mem.h"
+#include "mime_header.h"
+#include "SquidConfig.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testHttpReply );
 
-struct SquidConfig Config;
+class SquidConfig Config;
 
 /* stub functions to link successfully */
 
@@ -85,7 +88,7 @@ testHttpReply::testSanityCheckFirstLine()
 #endif
 
     // valid ICY protocol status line
-    input.append("ICY 200 Okay\n\n", 18);
+    input.append("ICY 200 Okay\n\n", 14);
     hdr_len = headersEnd(input.content(),input.contentSize());
     CPPUNIT_ASSERT( engine.sanityCheckStartLine(&input, hdr_len, &error) );
     CPPUNIT_ASSERT_EQUAL(error, HTTP_STATUS_NONE);

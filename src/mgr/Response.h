@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "ipc/forward.h"
 #include "ipc/Response.h"
 #include "mgr/Action.h"
-
 
 namespace Mgr
 {

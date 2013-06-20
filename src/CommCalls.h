@@ -1,8 +1,3 @@
-
-/*
- * $Id$
- */
-
 #ifndef SQUID_COMMCALLS_H
 #define SQUID_COMMCALLS_H
 
@@ -49,7 +44,6 @@ typedef void FDECB(const FdeCbParams &params);
  * parameters, which is not trivial when the caller type/kind is not
  * known to comm and there are many kinds of parameters.
  */
-
 
 /* Comm*CbParams classes below handle callback parameters */
 
@@ -166,7 +160,6 @@ Params &GetCommParams(AsyncCall::Pointer &call)
     return dp->params;
 }
 
-
 // All job dialers with comm parameters are merged into one since they
 // all have exactly one callback argument and differ in Params type only
 template <class C, class Params_>
@@ -197,7 +190,6 @@ public:
 protected:
     virtual void doDial() { ((&(*this->job))->*method)(this->params); }
 };
-
 
 // accept (IOACB) dialer
 class CommAcceptCbPtrFun: public CallDialer,
@@ -234,7 +226,6 @@ public:
     CNCB *handler;
 };
 
-
 // read/write (IOCB) dialer
 class CommIoCbPtrFun: public CallDialer,
         public CommDialerParamsT<CommIoCbParams>
@@ -250,7 +241,6 @@ public:
 public:
     IOCB *handler;
 };
-
 
 // close (CLCB) dialer
 class CommCloseCbPtrFun: public CallDialer,
@@ -353,7 +343,6 @@ CommCbFunPtrCallT<Dialer>::CommCbFunPtrCallT(int aDebugSection, int aDebugLevel,
         dialer(aDialer)
 {
 }
-
 
 template <class Dialer>
 bool

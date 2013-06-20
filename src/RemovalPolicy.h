@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,7 +33,6 @@
 #ifndef   SQUID_REMOVALPOLICY_H
 #define   SQUID_REMOVALPOLICY_H
 
-#include "squid-old.h"
 #include "cbdata.h"
 
 class RemovalPolicyWalker;
@@ -100,9 +97,8 @@ private:
     CBDATA_CLASS2(RemovalPurgeWalker);
 };
 
-extern RemovalPolicy *createRemovalPolicy(RemovalPolicySettings * settings);
+RemovalPolicy *createRemovalPolicy(RemovalPolicySettings * settings);
 
 typedef RemovalPolicy *REMOVALPOLICYCREATE(wordlist * args);
-
 
 #endif /* SQUID_REMOVALPOLICY_H */

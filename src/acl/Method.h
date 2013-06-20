@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -37,6 +35,7 @@
 
 #include "acl/Strategy.h"
 #include "acl/Strategised.h"
+#include "HttpRequestMethod.h"
 
 /// \ingroup ACLAPI
 class ACLMethodStrategy : public ACLStrategy<HttpRequestMethod>

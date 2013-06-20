@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG:
  * AUTHOR: Harvest Derived
  *
@@ -124,8 +122,8 @@ check_init(void)
     /* calloc the ptrs so that we don't see them when hunting lost memory */
     malloc_ptrs = calloc(DBG_ARRY_BKTS, sizeof(*malloc_ptrs));
 
-    for (B = 0; B < DBG_ARRY_BKTS; B++) {
-        for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (B = 0; B < DBG_ARRY_BKTS; ++B) {
+        for (I = 0; I < DBG_ARRY_SZ; ++I) {
             malloc_ptrs[B][I] = NULL;
             malloc_size[B][I] = 0;
 #if XMALLOC_TRACE
@@ -147,7 +145,7 @@ check_free(void *s)
     int B, I;
     B = DBG_HASH_BUCKET(s);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I] != s)
             continue;
 
@@ -189,7 +187,7 @@ check_malloc(void *p, size_t sz)
 
     B = DBG_HASH_BUCKET(p);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (!(P = malloc_ptrs[B][I]))
             continue;
 
@@ -206,7 +204,7 @@ check_malloc(void *p, size_t sz)
         }
     }
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I])
             continue;
 
@@ -244,7 +242,7 @@ xmallocblksize(void *p)
     int B, I;
     B = DBG_HASH_BUCKET(p);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I] == p)
             return malloc_size[B][I];
     }
@@ -261,7 +259,7 @@ malloc_file_name(void *p)
     int B, I;
     B = DBG_HASH_BUCKET(p);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I] == p)
             return malloc_file[B][I];
     }
@@ -275,7 +273,7 @@ malloc_line_number(void *p)
     int B, I;
     B = DBG_HASH_BUCKET(p);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I] == p)
             return malloc_line[B][I];
     }
@@ -289,7 +287,7 @@ malloc_number(void *p)
     int B, I;
     B = DBG_HASH_BUCKET(p);
 
-    for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (I = 0; I < DBG_ARRY_SZ; ++I) {
         if (malloc_ptrs[B][I] == p)
             return malloc_count[B][I];
     }
@@ -350,7 +348,7 @@ xmalloc_scan_region(void *start, int size, int depth)
         if (p && p != start) {
             B = DBG_HASH_BUCKET(p);
 
-            for (I = 0; I < DBG_ARRY_SZ; I++) {
+            for (I = 0; I < DBG_ARRY_SZ; ++I) {
                 if (malloc_ptrs[B][I] == p) {
                     if (!malloc_refs[B][I]++) {
                         /* A new reference */
@@ -399,8 +397,8 @@ xmalloc_find_leaks(void)
     fprintf(stderr, "----- Memory map ----\n");
     xmalloc_scan_region(&_etext, (void *) sbrk(0) - (void *) &_etext, 0);
 
-    for (B = 0; B < DBG_ARRY_BKTS; B++) {
-        for (I = 0; I < DBG_ARRY_SZ; I++) {
+    for (B = 0; B < DBG_ARRY_BKTS; ++B) {
+        for (I = 0; I < DBG_ARRY_SZ; ++I) {
             if (malloc_ptrs[B][I] && malloc_refs[B][I] == 0) {
                 /* Found a leak... */
                 fprintf(stderr, "Leak found: %p", malloc_ptrs[B][I]);

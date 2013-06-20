@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  *
  */
@@ -11,7 +9,6 @@
 #include "ipc/forward.h"
 #include "mgr/forward.h"
 #include "mgr/Action.h"
-
 
 /// store disk daemon stats
 class DiskdActionData

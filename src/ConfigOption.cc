@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 03    Configuration File Parsing
  * AUTHOR: Robert Collins
  *
@@ -32,7 +30,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "ConfigOption.h"
 
 ConfigOptionVector::~ConfigOptionVector()

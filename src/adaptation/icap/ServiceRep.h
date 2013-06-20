@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -80,7 +78,6 @@ class OptXact;
  * not try to fetch fresh options for such a service. It should be
  * auto-destroyed by refcounting when no longer used.
  */
-
 
 class ServiceRep : public RefCountable, public Adaptation::Service,
         public Adaptation::Initiator

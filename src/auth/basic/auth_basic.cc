@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Duane Wessels
  *
@@ -36,17 +34,18 @@
  * They DO NOT perform access control or auditing.
  * See acl.c for access control and client_side.c for auditing */
 
-
-#include "squid-old.h"
+#include "squid.h"
 #include "auth/basic/auth_basic.h"
 #include "auth/basic/Scheme.h"
 #include "auth/basic/User.h"
 #include "auth/basic/UserRequest.h"
 #include "auth/Gadgets.h"
 #include "auth/State.h"
+#include "cache_cf.h"
 #include "charset.h"
 #include "mgr/Registration.h"
 #include "Store.h"
+#include "HttpHeaderTools.h"
 #include "HttpReply.h"
 #include "rfc1738.h"
 #include "uudecode.h"
@@ -59,7 +58,6 @@ static AUTHSSTATS authenticateBasicStats;
 helper *basicauthenticators = NULL;
 
 static int authbasic_initialised = 0;
-
 
 /*
  *
@@ -223,11 +221,11 @@ Auth::Basic::Config::decodeCleartext(const char *httpAuthHeader)
 
     /* trim BASIC from string */
     while (xisgraph(*proxy_auth))
-        proxy_auth++;
+        ++proxy_auth;
 
     /* Trim leading whitespace before decoding */
     while (xisspace(*proxy_auth))
-        proxy_auth++;
+        ++proxy_auth;
 
     /* Trim trailing \n before decoding */
     // XXX: really? is the \n actually still there? does the header parse not drop it?

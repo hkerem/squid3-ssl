@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -10,10 +8,16 @@
 
 #include "cache_snmp.h"
 #include "comm/forward.h"
+#include "typedefs.h"
+
+namespace Ip
+{
+class Address;
+}
+class MemBuf;
 
 #define SNMP_REQUEST_SIZE 4096
 #define MAX_PROTOSTAT 5
-
 
 typedef struct _mib_tree_entry mib_tree_entry;
 typedef oid *(instance_Fn) (oid * name, snint * len, mib_tree_entry * current, oid_ParseFn ** Fn);
@@ -32,9 +36,17 @@ struct _mib_tree_entry {
     AggrType aggrType;
 };
 
-extern struct snmp_pdu* snmpAgentResponse(struct snmp_pdu* PDU);
-extern AggrType snmpAggrType(oid* Current, snint CurrentLen);
+struct snmp_pdu* snmpAgentResponse(struct snmp_pdu* PDU);
+AggrType snmpAggrType(oid* Current, snint CurrentLen);
 
 extern Comm::ConnectionPointer snmpOutgoingConn;
+
+extern PF snmpHandleUdp;
+void snmpInit(void);
+void snmpOpenPorts(void);
+void snmpClosePorts(void);
+const char * snmpDebugOid(oid * Name, snint Len, MemBuf &outbuf);
+void addr2oid(Ip::Address &addr, oid *Dest);
+void oid2addr(oid *Dest, Ip::Address &addr, u_int code);
 
 #endif /* SQUID_SNMP_CORE_H */

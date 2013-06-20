@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,9 +31,11 @@
 #ifndef SQUID_HTTPREQUESTMETHOD_H
 #define SQUID_HTTPREQUESTMETHOD_H
 
-#include "squid-old.h"
-#include <iosfwd>
 #include "SquidString.h"
+
+class SquidConfig;
+
+#include <iosfwd>
 
 enum _method_t {
     METHOD_NONE,		/* 000 */
@@ -71,7 +71,6 @@ enum _method_t {
     METHOD_OTHER,
     METHOD_ENUM_END  // MUST be last, (yuck) this is used as an array-initialization index constant!
 };
-
 
 /**
  * This class represents an HTTP Request METHOD

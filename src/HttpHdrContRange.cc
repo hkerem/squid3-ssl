@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 68    HTTP Content-Range Header
  * AUTHOR: Alex Rousskov
  *
@@ -33,8 +31,12 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
+#include "enums.h"
 #include "HttpHdrContRange.h"
+#include "HttpHeaderTools.h"
+#include "Mem.h"
 
 /*
  *    Currently only byte ranges are supported
@@ -47,7 +49,6 @@
  *    byte-range-resp-spec = first-byte-pos "-" last-byte-pos
  *    entity-length        = 1*DIGIT
  */
-
 
 /* local constants */
 #define range_spec_unknown (-1)

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section --    Refcount allocator
  * AUTHOR:  Robert Collins
  *
@@ -33,7 +31,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "RefCount.h"
 
 class _ToRefCount :public RefCountable

@@ -2,7 +2,7 @@
  * DEBUG: section 93    Adaptation
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "adaptation/Answer.h"
 #include "adaptation/Config.h"
 #include "adaptation/Iterator.h"
@@ -13,7 +13,6 @@
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "HttpMsg.h"
-
 
 Adaptation::Iterator::Iterator(
     HttpMsg *aMsg, HttpRequest *aCause,
@@ -56,6 +55,12 @@ void Adaptation::Iterator::step()
         Must(done());
         return;
     }
+
+    HttpRequest *request = dynamic_cast<HttpRequest*>(theMsg);
+    if (!request)
+        request = theCause;
+    assert(request);
+    request->clearError();
 
     if (iterations > Adaptation::Config::service_iteration_limit) {
         debugs(93,DBG_CRITICAL, "Adaptation iterations limit (" <<

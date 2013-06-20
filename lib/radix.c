@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 53    Radix Tree data structure implementation
  * AUTHOR: NetBSD Derived
  *
@@ -31,7 +29,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
  *
  */
-
 
 /*
  * Copyright (c) 1988, 1989, 1993
@@ -122,7 +119,6 @@ static char *rn_zeros, *rn_ones;
 #define rn_r rn_u.rn_node.rn_R
 #define rm_mask rm_rmu.rmu_mask
 #define rm_leaf rm_rmu.rmu_leaf	/* extra field would make 32 bytes */
-
 
 /* Helper macros */
 #define squid_Bcmp(a, b, l) (l == 0 ? 0 : memcmp((caddr_t)(a), (caddr_t)(b), (u_long)l))

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 76    Internal Squid Object handling
  * AUTHOR: Duane, Alex, Henrik
  *
@@ -33,17 +31,20 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
 #include "errorpage.h"
+#include "icmp/net_db.h"
 #include "Store.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "tools.h"
+#include "URL.h"
 #include "wordlist.h"
-#include "icmp/net_db.h"
 
 /* called when we "miss" on an internal object;
  * generate known dynamic objects,

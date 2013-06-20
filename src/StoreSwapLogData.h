@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -59,7 +57,9 @@
  *      the value for MemObject->swap_hdr_sz.
  */
 
-#include "squid-old.h"
+#include "md5.h"
+#include "MemPool.h"
+#include "typedefs.h"
 
 /// maintains a 24-bit checksum over integer fields
 class SwapChecksum24
@@ -222,6 +222,5 @@ public:
     int32_t version;
     int32_t record_size;
 };
-
 
 #endif /* SQUID_STORESWAPLOGDATA_H */

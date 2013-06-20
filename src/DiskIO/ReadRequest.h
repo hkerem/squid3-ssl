@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,8 +31,6 @@
 
 #ifndef SQUID_READREQUEST_H
 #define SQUID_READREQUEST_H
-
-#include "squid-old.h"
 
 #include "cbdata.h"
 #include "RefCount.h"

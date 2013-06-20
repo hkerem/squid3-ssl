@@ -1,6 +1,7 @@
 #include "squid.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "format/Config.h"
-#include "protos.h"
 #include <list>
 
 Format::FmtConfig Format::TheConfig;
@@ -39,5 +40,5 @@ Format::FmtConfig::registerTokens(const String &nsName, TokenTableEntry const *t
     if (tokenArray != NULL)
         tokens.push_back(TokenNamespace(nsName, tokenArray));
     else
-        debugs(0,0, "BUG: format tokens for '" << nsName << "' missing!");
+        debugs(0, DBG_CRITICAL, "BUG: format tokens for '" << nsName << "' missing!");
 }

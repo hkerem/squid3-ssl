@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 01    Startup and Main Loop
  * AUTHOR: Harvest Derived
  *
@@ -32,8 +30,73 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
+#include "acl/Acl.h"
+#include "acl/Asn.h"
+#include "AuthReg.h"
+#include "base/RunnersRegistry.h"
+#include "base/Subscription.h"
+#include "base/TextException.h"
+#include "cache_cf.h"
+#include "carp.h"
+#include "client_db.h"
+#include "client_side.h"
+#include "comm.h"
+#include "ConfigParser.h"
+#include "CpuAffinity.h"
+#include "disk.h"
+#include "DiskIO/DiskIOModule.h"
+#include "errorpage.h"
+#include "event.h"
+#include "EventLoop.h"
+#include "ExternalACL.h"
+#include "fd.h"
+#include "format/Token.h"
+#include "forward.h"
+#include "fs/Module.h"
+#include "fqdncache.h"
+#include "globals.h"
+#include "htcp.h"
+#include "HttpHeader.h"
+#include "HttpReply.h"
+#include "icmp/IcmpSquid.h"
+#include "icmp/net_db.h"
+#include "ICP.h"
+#include "ident/Ident.h"
+#include "ipcache.h"
+#include "ipc/Coordinator.h"
+#include "ipc/Kids.h"
+#include "ipc/Strand.h"
+#include "ip/tools.h"
+#include "Mem.h"
+#include "MemPool.h"
+#include "mime.h"
+#include "neighbors.h"
+#include "pconn.h"
+#include "PeerSelectState.h"
+#include "peer_sourcehash.h"
+#include "peer_userhash.h"
+#include "profiler/Profiler.h"
+#include "redirect.h"
+#include "refresh.h"
+#include "send-announce.h"
+#include "store_log.h"
+#include "tools.h"
+#include "SquidConfig.h"
+#include "SquidDns.h"
+#include "SquidTime.h"
+#include "stat.h"
+#include "StatCounters.h"
+#include "StoreFileSystem.h"
+#include "Store.h"
+#include "SwapDir.h"
+#include "unlinkd.h"
+#include "URL.h"
+#include "wccp.h"
+#include "wccp2.h"
+#include "WinSvc.h"
+
 #if USE_ADAPTATION
 #include "adaptation/Config.h"
 #endif
@@ -47,62 +110,22 @@
 #if USE_AUTH
 #include "auth/Gadgets.h"
 #endif
-#include "base/RunnersRegistry.h"
-#include "base/Subscription.h"
-#include "base/TextException.h"
 #if USE_DELAY_POOLS
 #include "ClientDelayConfig.h"
 #endif
-#include "comm.h"
-#include "ConfigParser.h"
-#include "CpuAffinity.h"
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-#include "errorpage.h"
-#include "event.h"
-#include "EventLoop.h"
-#include "ExternalACL.h"
-#include "format/Token.h"
-#include "fs/Module.h"
-#include "PeerSelectState.h"
-#include "SquidDns.h"
-#include "Store.h"
-#include "ICP.h"
-#include "ident/Ident.h"
-#include "HttpReply.h"
-#include "pconn.h"
-#include "Mem.h"
-#include "acl/Asn.h"
-#include "acl/Acl.h"
-#include "htcp.h"
-#include "StoreFileSystem.h"
-#include "DiskIO/DiskIOModule.h"
-#include "ipc/Kids.h"
-#include "ipc/Coordinator.h"
-#include "ipc/Strand.h"
-#include "ip/tools.h"
-#include "SquidTime.h"
-#include "StatCounters.h"
-#include "SwapDir.h"
-#include "forward.h"
-#include "MemPool.h"
-#include "icmp/IcmpSquid.h"
-#include "icmp/net_db.h"
-
 #if USE_LOADABLE_MODULES
 #include "LoadableModules.h"
 #endif
-
 #if USE_SSL_CRTD
 #include "ssl/helper.h"
 #include "ssl/certificate_db.h"
 #endif
-
 #if USE_SSL
 #include "ssl/context_storage.h"
 #endif
-
 #if ICAP_CLIENT
 #include "adaptation/icap/Config.h"
 #endif
@@ -115,10 +138,18 @@
 #if USE_SQUID_ESI
 #include "esi/Module.h"
 #endif
-#include "fs/Module.h"
+#if SQUID_SNMP
+#include "snmp_core.h"
+#endif
 
 #if HAVE_PATHS_H
 #include <paths.h>
+#endif
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 #if USE_WIN32_SERVICE
@@ -129,7 +160,7 @@ static int opt_install_service = FALSE;
 static int opt_remove_service = FALSE;
 static int opt_signal_service = FALSE;
 static int opt_command_line = FALSE;
-extern void WIN32_svcstatusupdate(DWORD, DWORD);
+void WIN32_svcstatusupdate(DWORD, DWORD);
 void WINAPI WIN32_svcHandler(DWORD);
 
 #endif
@@ -165,8 +196,8 @@ static void serverConnectionsClose(void);
 static void watch_child(char **);
 static void setEffectiveUser(void);
 #if MEM_GEN_TRACE
-extern void log_trace_done();
-extern void log_trace_init(char *);
+void log_trace_done();
+void log_trace_init(char *);
 #endif
 static void SquidShutdown(void);
 static void mainSetCwd(void);
@@ -236,8 +267,8 @@ SignalEngine::checkEvents(int timeout)
 void
 SignalEngine::doShutdown(time_t wait)
 {
-    debugs(1, 1, "Preparing for shutdown after " << statCounter.client_http.requests << " requests");
-    debugs(1, 1, "Waiting " << wait << " seconds for active connections to finish");
+    debugs(1, DBG_IMPORTANT, "Preparing for shutdown after " << statCounter.client_http.requests << " requests");
+    debugs(1, DBG_IMPORTANT, "Waiting " << wait << " seconds for active connections to finish");
 
     shutting_down = 1;
 
@@ -656,7 +687,6 @@ serverConnectionsOpen(void)
 {
     if (IamPrimaryProcess()) {
 #if USE_WCCP
-
         wccpConnectionOpen();
 #endif
 
@@ -725,7 +755,7 @@ serverConnectionsClose(void)
 static void
 mainReconfigureStart(void)
 {
-    debugs(1, 1, "Reconfiguring Squid Cache (version " << version_string << ")...");
+    debugs(1, DBG_IMPORTANT, "Reconfiguring Squid Cache (version " << version_string << ")...");
     reconfiguring = 1;
 
     // Initiate asynchronous closing sequence
@@ -847,10 +877,8 @@ mainReconfigureFinish(void *)
 
     mimeInit(Config.mimeTablePathname);
 
-#if USE_UNLINKD
     if (unlinkdNeeded())
         unlinkdInit();
-#endif
 
 #if USE_DELAY_POOLS
     Config.ClientDelay.finalize();
@@ -911,10 +939,10 @@ setEffectiveUser(void)
 #endif
 
     if (geteuid() == 0) {
-        debugs(0, 0, "Squid is not safe to run as root!  If you must");
-        debugs(0, 0, "start Squid as root, then you must configure");
-        debugs(0, 0, "it to run as a non-priveledged user with the");
-        debugs(0, 0, "'cache_effective_user' option in the config file.");
+        debugs(0, DBG_CRITICAL, "Squid is not safe to run as root!  If you must");
+        debugs(0, DBG_CRITICAL, "start Squid as root, then you must configure");
+        debugs(0, DBG_CRITICAL, "it to run as a non-priveledged user with the");
+        debugs(0, DBG_CRITICAL, "'cache_effective_user' option in the config file.");
         fatal("Don't run Squid as root, set 'cache_effective_user'!");
     }
 }
@@ -928,18 +956,18 @@ mainSetCwd(void)
         if (0 == strcmp("none", Config.coredump_dir)) {
             (void) 0;
         } else if (chdir(Config.coredump_dir) == 0) {
-            debugs(0, 1, "Set Current Directory to " << Config.coredump_dir);
+            debugs(0, DBG_IMPORTANT, "Set Current Directory to " << Config.coredump_dir);
             return;
         } else {
-            debugs(50, 0, "chdir: " << Config.coredump_dir << ": " << xstrerror());
+            debugs(50, DBG_CRITICAL, "chdir: " << Config.coredump_dir << ": " << xstrerror());
         }
     }
 
     /* If we don't have coredump_dir or couldn't cd there, report current dir */
     if (getcwd(pathbuf, MAXPATHLEN)) {
-        debugs(0, 1, "Current Directory is " << pathbuf);
+        debugs(0, DBG_IMPORTANT, "Current Directory is " << pathbuf);
     } else {
-        debugs(50, 0, "WARNING: Can't find current directory, getcwd: " << xstrerror());
+        debugs(50, DBG_CRITICAL, "WARNING: Can't find current directory, getcwd: " << xstrerror());
     }
 }
 
@@ -975,29 +1003,29 @@ mainInitialize(void)
 
 #endif
 
-    debugs(1, 0, "Starting Squid Cache version " << version_string << " for " << CONFIG_HOST_TYPE << "...");
+    debugs(1, DBG_CRITICAL, "Starting Squid Cache version " << version_string << " for " << CONFIG_HOST_TYPE << "...");
 
 #if _SQUID_WINDOWS_
     if (WIN32_run_mode == _WIN_SQUID_RUN_MODE_SERVICE) {
-        debugs(1, 0, "Running as " << WIN32_Service_name << " Windows System Service on " << WIN32_OS_string);
-        debugs(1, 0, "Service command line is: " << WIN32_Service_Command_Line);
+        debugs(1, DBG_CRITICAL, "Running as " << WIN32_Service_name << " Windows System Service on " << WIN32_OS_string);
+        debugs(1, DBG_CRITICAL, "Service command line is: " << WIN32_Service_Command_Line);
     } else
-        debugs(1, 0, "Running on " << WIN32_OS_string);
+        debugs(1, DBG_CRITICAL, "Running on " << WIN32_OS_string);
 #endif
 
-    debugs(1, 1, "Process ID " << getpid());
+    debugs(1, DBG_IMPORTANT, "Process ID " << getpid());
 
-    debugs(1, 1, "Process Roles:" << ProcessRoles());
+    debugs(1, DBG_IMPORTANT, "Process Roles:" << ProcessRoles());
 
     setSystemLimits();
-    debugs(1, 1, "With " << Squid_MaxFD << " file descriptors available");
+    debugs(1, DBG_IMPORTANT, "With " << Squid_MaxFD << " file descriptors available");
 
 #if _SQUID_MSWIN_
 
-    debugs(1, 1, "With " << _getmaxstdio() << " CRT stdio descriptors available");
+    debugs(1, DBG_IMPORTANT, "With " << _getmaxstdio() << " CRT stdio descriptors available");
 
     if (WIN32_Socks_initialized)
-        debugs(1, 1, "Windows sockets initialized");
+        debugs(1, DBG_IMPORTANT, "Windows sockets initialized");
 
     if (WIN32_OS_version > _WIN_OS_WINNT) {
         WIN32_IpAddrChangeMonitorInit();
@@ -1054,10 +1082,8 @@ mainInitialize(void)
 #endif
 
     if (!configured_once) {
-#if USE_UNLINKD
         if (unlinkdNeeded())
             unlinkdInit();
-#endif
 
         urlInitialize();
         statInit();
@@ -1256,12 +1282,7 @@ SquidMain(int argc, char **argv)
 {
     ConfigureCurrentKid(argv[0]);
 
-#if _SQUID_WINDOWS_
-    int WIN32_init_err;
-#endif
-
 #if HAVE_SBRK
-
     sbrk_start = sbrk(0);
 #endif
 
@@ -1275,10 +1296,10 @@ SquidMain(int argc, char **argv)
 
 #endif
 
-#if _SQUID_WINDOWS_
+    /* NOP under non-windows */
+    int WIN32_init_err=0;
     if ((WIN32_init_err = WIN32_Subsystem_Init(&argc, &argv)))
         return WIN32_init_err;
-#endif
 
     /* call mallopt() before anything else */
 #if HAVE_MALLOPT
@@ -1363,9 +1384,7 @@ SquidMain(int argc, char **argv)
 
         /* we may want the parsing process to set this up in the future */
         Store::Root(new StoreController);
-#if USE_AUTH
-        Auth::Init();      /* required for config parsing */
-#endif
+        Auth::Init();      /* required for config parsing. NOP if !USE_AUTH */
         Ip::ProbeTransport(); // determine IPv4 or IPv6 capabilities before parsing.
 
         Format::Token::Init(); // XXX: temporary. Use a runners registry of pre-parse runners instead.
@@ -1517,29 +1536,23 @@ sendSignal(void)
     debug_log = stderr;
 
     if (strcmp(Config.pidFilename, "none") == 0) {
-        debugs(0, 1, "No pid_filename specified. Trusting you know what you are doing.");
+        debugs(0, DBG_IMPORTANT, "No pid_filename specified. Trusting you know what you are doing.");
     }
 
     pid = readPidFile();
 
     if (pid > 1) {
 #if USE_WIN32_SERVICE
-
         if (opt_signal_service) {
             WIN32_sendSignal(opt_send_signal);
             exit(0);
-        } else
-#if _SQUID_MSWIN_
-        {
+        } else {
             fprintf(stderr, "%s: ERROR: Could not send ", APP_SHORTNAME);
             fprintf(stderr, "signal to Squid Service:\n");
             fprintf(stderr, "missing -n command line switch.\n");
             exit(1);
         }
-
         /* NOTREACHED */
-#endif
-
 #endif
 
         if (kill(pid, opt_send_signal) &&
@@ -1629,7 +1642,7 @@ checkRunningPid(void)
     if (kill(pid, 0) < 0)
         return 0;
 
-    debugs(0, 0, "Squid is already running!  Process ID " <<  pid);
+    debugs(0, DBG_CRITICAL, "Squid is already running!  Process ID " <<  pid);
 
     return 1;
 }
@@ -1823,7 +1836,7 @@ SquidShutdown()
     WIN32_svcstatusupdate(SERVICE_STOP_PENDING, 10000);
 #endif
 
-    debugs(1, 1, "Shutting down...");
+    debugs(1, DBG_IMPORTANT, "Shutting down...");
     dnsShutdown();
 #if USE_SSL_CRTD
     Ssl::Helper::GetInstance()->Shutdown();
@@ -1865,10 +1878,8 @@ SquidShutdown()
 #endif
 
     Store::Root().sync(); /* Flush pending object writes/unlinks */
-#if USE_UNLINKD
 
-    unlinkdClose();	  /* after sync/flush */
-#endif
+    unlinkdClose();	  /* after sync/flush. NOP if !USE_UNLINKD */
 
     storeDirWriteCleanLogs(0);
     PrintRusage();
@@ -1920,7 +1931,7 @@ SquidShutdown()
 
     xmalloc_find_leaks();
 
-    debugs(1, 0, "Memory used after shutdown: " << xmalloc_total);
+    debugs(1, DBG_CRITICAL, "Memory used after shutdown: " << xmalloc_total);
 
 #endif
 #if MEM_GEN_TRACE
@@ -1937,7 +1948,7 @@ SquidShutdown()
         }
     }
 
-    debugs(1, 1, "Squid Cache (Version " << version_string << "): Exiting normally.");
+    debugs(1, DBG_IMPORTANT, "Squid Cache (Version " << version_string << "): Exiting normally.");
 
     /*
      * DPW 2006-10-23

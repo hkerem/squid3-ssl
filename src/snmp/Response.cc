@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -10,7 +8,6 @@
 #include "ipc/Messages.h"
 #include "ipc/TypedMsgHdr.h"
 #include "snmp/Response.h"
-
 
 std::ostream& Snmp::operator << (std::ostream& os, const Response& response)
 {

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -10,7 +8,6 @@
 
 #include "ipc/forward.h"
 #include "RefCount.h"
-
 
 namespace Ipc
 {
@@ -36,7 +33,6 @@ public:
     int requestorId; ///< kidId of the requestor; used for response destination
     unsigned int requestId; ///< unique for sender; matches request w/ response
 };
-
 
 } // namespace Ipc
 

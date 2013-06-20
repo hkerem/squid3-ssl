@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,6 +36,7 @@
 #include "acl/Acl.h"
 #include "acl/Data.h"
 #include "CbDataList.h"
+#include "HttpRequestMethod.h"
 
 /// \ingroup ACLAPI
 class ACLMethodData : public ACLData<HttpRequestMethod>

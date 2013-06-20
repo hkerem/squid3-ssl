@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 44    Peer Selection Algorithm
  * AUTHOR: Duane Wessels
  *
@@ -32,22 +30,31 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "acl/FilledChecklist.h"
+#include "CachePeer.h"
+#include "carp.h"
+#include "client_side.h"
 #include "DnsLookupDetails.h"
 #include "errorpage.h"
 #include "event.h"
-#include "PeerSelectState.h"
-#include "Store.h"
-#include "hier_code.h"
-#include "ICP.h"
-#include "HttpRequest.h"
-#include "acl/FilledChecklist.h"
-#include "htcp.h"
 #include "forward.h"
-#include "SquidTime.h"
+#include "globals.h"
+#include "hier_code.h"
+#include "htcp.h"
+#include "HttpRequest.h"
 #include "icmp/net_db.h"
+#include "ICP.h"
 #include "ipcache.h"
 #include "ip/tools.h"
+#include "Mem.h"
+#include "neighbors.h"
+#include "peer_sourcehash.h"
+#include "peer_userhash.h"
+#include "PeerSelectState.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "Store.h"
 #include "URL.h"
 
 static struct {
@@ -65,10 +72,10 @@ static void peerSelectFoo(ps_state *);
 static void peerPingTimeout(void *data);
 static IRCB peerHandlePingReply;
 static void peerSelectStateFree(ps_state * psstate);
-static void peerIcpParentMiss(peer *, icp_common_t *, ps_state *);
+static void peerIcpParentMiss(CachePeer *, icp_common_t *, ps_state *);
 #if USE_HTCP
-static void peerHtcpParentMiss(peer *, htcpReplyData *, ps_state *);
-static void peerHandleHtcpReply(peer *, peer_t, htcpReplyData *, void *);
+static void peerHtcpParentMiss(CachePeer *, HtcpReplyData *, ps_state *);
+static void peerHandleHtcpReply(CachePeer *, peer_t, HtcpReplyData *, void *);
 #endif
 static int peerCheckNetdbDirect(ps_state * psstate);
 static void peerGetSomeNeighbor(ps_state *);
@@ -76,7 +83,7 @@ static void peerGetSomeNeighborReplies(ps_state *);
 static void peerGetSomeDirect(ps_state *);
 static void peerGetSomeParent(ps_state *);
 static void peerGetAllParents(ps_state *);
-static void peerAddFwdServer(FwdServer **, peer *, hier_code);
+static void peerAddFwdServer(FwdServer **, CachePeer *, hier_code);
 static void peerSelectPinned(ps_state * ps);
 static void peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, void *data);
 
@@ -95,7 +102,7 @@ peerSelectStateFree(ps_state * psstate)
     }
 
     if (psstate->acl_checklist) {
-        debugs(44, 1, "calling aclChecklistFree() from peerSelectStateFree");
+        debugs(44, DBG_IMPORTANT, "calling aclChecklistFree() from peerSelectStateFree");
         delete (psstate->acl_checklist);
     }
 
@@ -134,7 +141,6 @@ peerSelectIcpPing(HttpRequest * request, int direct, StoreEntry * entry)
 
     return n;
 }
-
 
 void
 peerSelect(Comm::ConnectionList * paths,
@@ -189,12 +195,7 @@ peerCheckNeverDirectDone(allow_t answer, void *data)
     case ACCESS_DENIED: // not relevant.
     case ACCESS_DUNNO:  // not relevant.
         break;
-    case ACCESS_REQ_PROXY_AUTH:
-#if WHEN_AUTH_CASES_PORT
     case ACCESS_AUTH_REQUIRED:
-    case ACCESS_AUTH_EXPIRED_OK:
-    case ACCESS_AUTH_EXPIRED_BAD:
-#endif
         debugs(44, DBG_IMPORTANT, "WARNING: never_direct resulted in " << answer << ". Username ACLs are not reliable here.");
         break;
     }
@@ -217,12 +218,7 @@ peerCheckAlwaysDirectDone(allow_t answer, void *data)
     case ACCESS_DENIED: // not relevant.
     case ACCESS_DUNNO:  // not relevant.
         break;
-    case ACCESS_REQ_PROXY_AUTH:
-#if WHEN_AUTH_CASES_PORT
     case ACCESS_AUTH_REQUIRED:
-    case ACCESS_AUTH_EXPIRED_OK:
-    case ACCESS_AUTH_EXPIRED_BAD:
-#endif
         debugs(44, DBG_IMPORTANT, "WARNING: always_direct resulted in " << answer << ". Username ACLs are not reliable here.");
         break;
     }
@@ -240,7 +236,7 @@ peerSelectDnsPaths(ps_state *psstate)
     // on intercepted traffic which failed Host verification
     const HttpRequest *req = psstate->request;
     const bool isIntercepted = !req->flags.redirected &&
-                               (req->flags.intercepted || req->flags.spoof_client_ip);
+                               (req->flags.intercepted || req->flags.spoofClientIp);
     const bool useOriginalDst = Config.onoff.client_dst_passthru || !req->flags.hostVerified;
     const bool choseDirect = fs && fs->code == HIER_DIRECT;
     if (isIntercepted && useOriginalDst && choseDirect) {
@@ -343,7 +339,7 @@ peerSelectDnsResults(const ipcache_addrs *ia, const DnsLookupDetails &details, v
                 break;
 
             // for TPROXY we must skip unusable addresses.
-            if (psstate->request->flags.spoof_client_ip && !(fs->_peer && fs->_peer->options.no_tproxy) ) {
+            if (psstate->request->flags.spoofClientIp && !(fs->_peer && fs->_peer->options.no_tproxy) ) {
                 if (ia->in_addrs[n].IsIPv4() != psstate->request->client_addr.IsIPv4()) {
                     // we CAN'T spoof the address on this link. find another.
                     continue;
@@ -394,7 +390,7 @@ static int
 peerCheckNetdbDirect(ps_state * psstate)
 {
 #if USE_ICMP
-    peer *p;
+    CachePeer *p;
     int myrtt;
     int myhops;
 
@@ -455,11 +451,11 @@ peerSelectFoo(ps_state * ps)
             ps->acl_checklist = new ACLFilledChecklist(Config.accessList.NeverDirect, request, NULL);
             ps->acl_checklist->nonBlockingCheck(peerCheckNeverDirectDone, ps);
             return;
-        } else if (request->flags.no_direct) {
+        } else if (request->flags.noDirect) {
             /** if we are accelerating, direct is not an option. */
             ps->direct = DIRECT_NO;
             debugs(44, 3, "peerSelectFoo: direct = " << DirectStr[ps->direct] << " (forced non-direct)");
-        } else if (request->flags.loopdetect) {
+        } else if (request->flags.loopDetected) {
             /** if we are in a forwarding-loop, direct is not an option. */
             ps->direct = DIRECT_YES;
             debugs(44, 3, "peerSelectFoo: direct = " << DirectStr[ps->direct] << " (forwarding loop detected)");
@@ -519,7 +515,7 @@ peerSelectFoo(ps_state * ps)
     peerSelectDnsPaths(ps);
 }
 
-bool peerAllowedToUse(const peer * p, HttpRequest * request);
+bool peerAllowedToUse(const CachePeer * p, HttpRequest * request);
 
 /**
  * peerSelectPinned
@@ -532,7 +528,7 @@ peerSelectPinned(ps_state * ps)
     HttpRequest *request = ps->request;
     if (!request->pinnedConnection())
         return;
-    peer *pear = request->pinnedConnection()->pinnedPeer();
+    CachePeer *pear = request->pinnedConnection()->pinnedPeer();
     if (Comm::IsConnOpen(request->pinnedConnection()->validatePinnedConnection(request, pear))) {
         if (pear && peerAllowedToUse(pear, request)) {
             peerAddFwdServer(&ps->servers, pear, PINNED);
@@ -561,7 +557,7 @@ peerGetSomeNeighbor(ps_state * ps)
 {
     StoreEntry *entry = ps->entry;
     HttpRequest *request = ps->request;
-    peer *p;
+    CachePeer *p;
     hier_code code = HIER_NONE;
     assert(entry->ping_status == PING_NONE);
 
@@ -591,11 +587,10 @@ peerGetSomeNeighbor(ps_state * ps)
                                                &ps->ping.timeout);
 
             if (ps->ping.n_sent == 0)
-                debugs(44, 0, "WARNING: neighborsUdpPing returned 0");
+                debugs(44, DBG_CRITICAL, "WARNING: neighborsUdpPing returned 0");
             debugs(44, 3, "peerSelect: " << ps->ping.n_replies_expected <<
                    " ICP replies expected, RTT " << ps->ping.timeout <<
                    " msec");
-
 
             if (ps->ping.n_replies_expected > 0) {
                 entry->ping_status = PING_WAITING;
@@ -626,7 +621,7 @@ static void
 peerGetSomeNeighborReplies(ps_state * ps)
 {
     HttpRequest *request = ps->request;
-    peer *p = NULL;
+    CachePeer *p = NULL;
     hier_code code = HIER_NONE;
     assert(ps->entry->ping_status == PING_WAITING);
     assert(ps->direct != DIRECT_YES);
@@ -655,7 +650,6 @@ peerGetSomeNeighborReplies(ps_state * ps)
     }
 }
 
-
 /*
  * peerGetSomeDirect
  *
@@ -678,7 +672,7 @@ peerGetSomeDirect(ps_state * ps)
 static void
 peerGetSomeParent(ps_state * ps)
 {
-    peer *p;
+    CachePeer *p;
     HttpRequest *request = ps->request;
     hier_code code = HIER_NONE;
     debugs(44, 3, "peerGetSomeParent: " << RequestMethodStr(request->method) << " " << request->GetHost());
@@ -715,7 +709,7 @@ peerGetSomeParent(ps_state * ps)
 static void
 peerGetAllParents(ps_state * ps)
 {
-    peer *p;
+    CachePeer *p;
     HttpRequest *request = ps->request;
     /* Add all alive parents */
 
@@ -775,7 +769,7 @@ peerSelectInit(void)
 }
 
 static void
-peerIcpParentMiss(peer * p, icp_common_t * header, ps_state * ps)
+peerIcpParentMiss(CachePeer * p, icp_common_t * header, ps_state * ps)
 {
     int rtt;
 
@@ -816,7 +810,7 @@ peerIcpParentMiss(peer * p, icp_common_t * header, ps_state * ps)
 }
 
 static void
-peerHandleIcpReply(peer * p, peer_t type, icp_common_t * header, void *data)
+peerHandleIcpReply(CachePeer * p, peer_t type, icp_common_t * header, void *data)
 {
     ps_state *psstate = (ps_state *)data;
     icp_opcode op = header->getOpCode();
@@ -850,7 +844,7 @@ peerHandleIcpReply(peer * p, peer_t type, icp_common_t * header, void *data)
 
 #if USE_HTCP
 static void
-peerHandleHtcpReply(peer * p, peer_t type, htcpReplyData * htcp, void *data)
+peerHandleHtcpReply(CachePeer * p, peer_t type, HtcpReplyData * htcp, void *data)
 {
     ps_state *psstate = (ps_state *)data;
     debugs(44, 3, "peerHandleHtcpReply: " <<
@@ -875,7 +869,7 @@ peerHandleHtcpReply(peer * p, peer_t type, htcpReplyData * htcp, void *data)
 }
 
 static void
-peerHtcpParentMiss(peer * p, htcpReplyData * htcp, ps_state * ps)
+peerHtcpParentMiss(CachePeer * p, HtcpReplyData * htcp, ps_state * ps)
 {
     int rtt;
 
@@ -916,7 +910,7 @@ peerHtcpParentMiss(peer * p, htcpReplyData * htcp, ps_state * ps)
 #endif
 
 static void
-peerHandlePingReply(peer * p, peer_t type, AnyP::ProtocolType proto, void *pingdata, void *data)
+peerHandlePingReply(CachePeer * p, peer_t type, AnyP::ProtocolType proto, void *pingdata, void *data)
 {
     if (proto == AnyP::PROTO_ICP)
         peerHandleIcpReply(p, type, (icp_common_t *)pingdata, data);
@@ -924,16 +918,16 @@ peerHandlePingReply(peer * p, peer_t type, AnyP::ProtocolType proto, void *pingd
 #if USE_HTCP
 
     else if (proto == AnyP::PROTO_HTCP)
-        peerHandleHtcpReply(p, type, (htcpReplyData *)pingdata, data);
+        peerHandleHtcpReply(p, type, (HtcpReplyData *)pingdata, data);
 
 #endif
 
     else
-        debugs(44, 1, "peerHandlePingReply: unknown protocol " << proto);
+        debugs(44, DBG_IMPORTANT, "peerHandlePingReply: unknown protocol " << proto);
 }
 
 static void
-peerAddFwdServer(FwdServer ** FSVR, peer * p, hier_code code)
+peerAddFwdServer(FwdServer ** FSVR, CachePeer * p, hier_code code)
 {
     FwdServer *fs = (FwdServer *)memAllocate(MEM_FWD_SERVER);
     debugs(44, 5, "peerAddFwdServer: adding " <<

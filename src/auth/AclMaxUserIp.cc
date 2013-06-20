@@ -1,46 +1,17 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
- *
- * SQUID Web Proxy Cache          http://www.squid-cache.org/
- * ----------------------------------------------------------
- *
- *  Squid is the result of efforts by numerous individuals from
- *  the Internet community; see the CONTRIBUTORS file for full
- *  details.   Many organizations have provided support for Squid's
- *  development; see the SPONSORS file for full details.  Squid is
- *  Copyrighted (C) 2001 by the Regents of the University of
- *  California; see the COPYRIGHT file for full details.  Squid
- *  incorporates software developed and/or copyrighted by other
- *  sources; see the CREDITS file for full details.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
- *
- * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "auth/Acl.h"
 #include "auth/AclMaxUserIp.h"
 #include "auth/UserRequest.h"
+#include "Debug.h"
 #include "wordlist.h"
 #include "ConfigParser.h"
+#include "Parsing.h"
 
 ACL *
 ACLMaxUserIP::clone() const
@@ -79,7 +50,7 @@ void
 ACLMaxUserIP::parse()
 {
     if (maximum) {
-        debugs(28, 1, "Attempting to alter already set User max IP acl");
+        debugs(28, DBG_IMPORTANT, "Attempting to alter already set User max IP acl");
         return;
     }
 
@@ -123,7 +94,7 @@ ACLMaxUserIP::match(Auth::UserRequest::Pointer auth_user_request, Ip::Address co
     if (authenticateAuthUserRequestIPCount(auth_user_request) <= maximum)
         return 0;
 
-    debugs(28, 1, "aclMatchUserMaxIP: user '" << auth_user_request->username() << "' tries to use too many IP addresses (max " << maximum << " allowed)!");
+    debugs(28, DBG_IMPORTANT, "aclMatchUserMaxIP: user '" << auth_user_request->username() << "' tries to use too many IP addresses (max " << maximum << " allowed)!");
 
     /* this is a match */
     if (flags.strict) {
@@ -150,16 +121,29 @@ int
 ACLMaxUserIP::match(ACLChecklist *cl)
 {
     ACLFilledChecklist *checklist = Filled(cl);
+    allow_t answer = AuthenticateAcl(checklist);
     int ti;
 
-    if ((ti = AuthenticateAcl(checklist)) != 1)
+    // convert to tri-state ACL match 1,0,-1
+    switch (answer) {
+    case ACCESS_ALLOWED:
+        // check for a match
+        ti = match(checklist->auth_user_request, checklist->src_addr);
+        checklist->auth_user_request = NULL;
         return ti;
 
-    ti = match(checklist->auth_user_request, checklist->src_addr);
+    case ACCESS_DENIED:
+        return 0; // non-match
 
-    checklist->auth_user_request = NULL;
-
-    return ti;
+    case ACCESS_DUNNO:
+    case ACCESS_AUTH_REQUIRED:
+    default:
+        // If the answer is not allowed or denied (matches/not matches) and
+        // async authentication is not needed (asyncNeeded), then we are done.
+        if (!checklist->asyncNeeded())
+            checklist->markFinished(answer, "AuthenticateAcl exception");
+        return -1; // other
+    }
 }
 
 wordlist *

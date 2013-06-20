@@ -2,7 +2,7 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "adaptation/Answer.h"
 #include "adaptation/icap/Config.h"
 #include "adaptation/icap/ModXact.h"
@@ -12,10 +12,13 @@
 #include "base/TextException.h"
 #include "comm/Connection.h"
 #include "ConfigParser.h"
-#include "ip/tools.h"
-#include "HttpReply.h"
-#include "SquidTime.h"
+#include "Debug.h"
 #include "fde.h"
+#include "globals.h"
+#include "HttpReply.h"
+#include "ip/tools.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
 
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, ServiceRep);
 
@@ -254,7 +257,7 @@ void Adaptation::Icap::ServiceRep::suspend(const char *reason)
         debugs(93,4, HERE << "keeping suspended, also for " << reason);
     } else {
         isSuspended = reason;
-        debugs(93,1, "suspending ICAP service for " << reason);
+        debugs(93, DBG_IMPORTANT, "suspending ICAP service for " << reason);
         scheduleUpdate(squid_curtime + TheConfig.service_revival_delay);
         announceStatusChange("suspended", true);
     }
@@ -293,7 +296,6 @@ bool Adaptation::Icap::ServiceRep::availableForOld() const
     return (available != 0); // it is -1 (no limit) or has available slots
 }
 
-
 bool Adaptation::Icap::ServiceRep::wantsUrl(const String &urlPath) const
 {
     Must(hasOptions());
@@ -328,7 +330,6 @@ bool Adaptation::Icap::ServiceRep::allows206() const
         return true; // in the future, we may have ACLs to prevent 206s
     return false;
 }
-
 
 static
 void ServiceRep_noteTimeToUpdate(void *data)
@@ -455,7 +456,7 @@ void Adaptation::Icap::ServiceRep::checkOptions()
         return;
 
     if (!theOptions->valid()) {
-        debugs(93,1, "WARNING: Squid got an invalid ICAP OPTIONS response " <<
+        debugs(93, DBG_IMPORTANT, "WARNING: Squid got an invalid ICAP OPTIONS response " <<
                "from service " << cfg().uri << "; error: " << theOptions->error);
         return;
     }
@@ -479,17 +480,16 @@ void Adaptation::Icap::ServiceRep::checkOptions()
 
             method_list.append(ICAP::methodStr(*iter));
             method_list.append(" ", 1);
-            iter++;
+            ++iter;
         }
 
         if (!method_found) {
-            debugs(93,1, "WARNING: Squid is configured to use ICAP method " <<
+            debugs(93, DBG_IMPORTANT, "WARNING: Squid is configured to use ICAP method " <<
                    cfg().methodStr() <<
                    " for service " << cfg().uri <<
                    " but OPTIONS response declares the methods are " << method_list);
         }
     }
-
 
     /*
      *  Check the ICAP server's date header for clock skew
@@ -498,7 +498,7 @@ void Adaptation::Icap::ServiceRep::checkOptions()
     if (abs(skew) > theOptions->ttl()) {
         // TODO: If skew is negative, the option will be considered down
         // because of stale options. We should probably change this.
-        debugs(93, 1, "ICAP service's clock is skewed by " << skew <<
+        debugs(93, DBG_IMPORTANT, "ICAP service's clock is skewed by " << skew <<
                " seconds: " << cfg().uri);
     }
 }
@@ -540,7 +540,7 @@ void Adaptation::Icap::ServiceRep::noteAdaptationAnswer(const Answer &answer)
         newOptions = new Adaptation::Icap::Options;
         newOptions->configure(r);
     } else {
-        debugs(93,1, "ICAP service got wrong options message " << status());
+        debugs(93, DBG_IMPORTANT, "ICAP service got wrong options message " << status());
     }
 
     handleNewOptions(newOptions);
@@ -599,7 +599,7 @@ void Adaptation::Icap::ServiceRep::scheduleUpdate(time_t when)
         if (eventFind(&ServiceRep_noteTimeToUpdate, this))
             eventDelete(&ServiceRep_noteTimeToUpdate, this);
         else
-            debugs(93,1, "XXX: ICAP service lost an update event.");
+            debugs(93, DBG_IMPORTANT, "XXX: ICAP service lost an update event.");
         updateScheduled = false;
     }
 

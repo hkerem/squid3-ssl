@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -32,12 +30,14 @@
  *
  */
 #include "squid.h"
-
 #include "acl/Acl.h"
 #include "acl/Checklist.h"
-#include "ConfigParser.h"
-#include "dlink.h"
 #include "anyp/PortCfg.h"
+#include "ConfigParser.h"
+#include "Debug.h"
+#include "dlink.h"
+#include "globals.h"
+#include "SquidConfig.h"
 
 const char *AclMatchedName = NULL;
 
@@ -80,7 +80,12 @@ ACL::Factory (char const *type)
     return result;
 }
 
-ACL::ACL () :cfgline(NULL) {}
+ACL::ACL() :
+        cfgline(NULL),
+        next(NULL)
+{
+    *name = 0;
+}
 
 bool ACL::valid () const
 {
@@ -99,13 +104,13 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
     /* snarf the ACL name */
 
     if ((t = strtok(NULL, w_space)) == NULL) {
-        debugs(28, 0, "aclParseAclLine: missing ACL name.");
+        debugs(28, DBG_CRITICAL, "aclParseAclLine: missing ACL name.");
         parser.destruct();
         return;
     }
 
     if (strlen(t) >= ACL_NAME_SZ) {
-        debugs(28, 0, "aclParseAclLine: aclParseAclLine: ACL name '" << t <<
+        debugs(28, DBG_CRITICAL, "aclParseAclLine: aclParseAclLine: ACL name '" << t <<
                "' too long, max " << ACL_NAME_SZ - 1 << " characters supported");
         parser.destruct();
         return;
@@ -113,16 +118,10 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
 
     xstrncpy(aclname, t, ACL_NAME_SZ);
     /* snarf the ACL type */
-    char *theType;
+    const char *theType;
 
     if ((theType = strtok(NULL, w_space)) == NULL) {
-        debugs(28, 0, "aclParseAclLine: missing ACL type.");
-        parser.destruct();
-        return;
-    }
-
-    if (!Prototype::Registered (theType)) {
-        debugs(28, 0, "aclParseAclLine: Invalid ACL type '" << theType << "'");
+        debugs(28, DBG_CRITICAL, "aclParseAclLine: missing ACL type.");
         parser.destruct();
         return;
     }
@@ -136,6 +135,8 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
                 debugs(28, DBG_CRITICAL, "WARNING: 'myip' ACL is not reliable for interception proxies. Please use 'myportname' instead.");
             p = p->next;
         }
+        debugs(28, DBG_IMPORTANT, "UPGRADE: ACL 'myip' type is has been renamed to 'localip' and matches the IP the client connected to.");
+        theType = "localip";
     } else if (strcmp(theType, "myport") == 0) {
         AnyP::PortCfg *p = Config.Sockaddr.http;
         while (p) {
@@ -145,6 +146,15 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
                 debugs(28, DBG_CRITICAL, "WARNING: 'myport' ACL is not reliable for interception proxies. Please use 'myportname' instead.");
             p = p->next;
         }
+        theType = "localport";
+        debugs(28, DBG_IMPORTANT, "UPGRADE: ACL 'myport' type is has been renamed to 'localport' and matches the port the client connected to.");
+    }
+
+    if (!Prototype::Registered(theType)) {
+        debugs(28, DBG_CRITICAL, "FATAL: Invalid ACL type '" << theType << "'");
+        // XXX: make this an ERROR and skip the ACL creation. We *may* die later when its use is attempted. Or may not.
+        parser.destruct();
+        return;
     }
 
     if ((A = FindByName(aclname)) == NULL) {
@@ -155,7 +165,7 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
         new_acl = 1;
     } else {
         if (strcmp (A->typeString(),theType) ) {
-            debugs(28, 0, "aclParseAclLine: ACL '" << A->name << "' already exists with different type.");
+            debugs(28, DBG_CRITICAL, "aclParseAclLine: ACL '" << A->name << "' already exists with different type.");
             parser.destruct();
             return;
         }
@@ -182,7 +192,7 @@ ACL::ParseAclLine(ConfigParser &parser, ACL ** head)
         return;
 
     if (A->empty()) {
-        debugs(28, 0, "Warning: empty ACL: " << A->cfgline);
+        debugs(28, DBG_CRITICAL, "Warning: empty ACL: " << A->cfgline);
     }
 
     if (!A->valid()) {
@@ -202,7 +212,6 @@ ACL::isProxyAuth() const
 {
     return false;
 }
-
 
 ACLList::ACLList() : op (1), _acl (NULL), next (NULL)
 {}
@@ -298,12 +307,12 @@ ACL::checklistMatches(ACLChecklist *checklist)
     int rv;
 
     if (!checklist->hasRequest() && requiresRequest()) {
-        debugs(28, 1, "ACL::checklistMatches WARNING: '" << name << "' ACL is used but there is no HTTP request -- not matching.");
+        debugs(28, DBG_IMPORTANT, "ACL::checklistMatches WARNING: '" << name << "' ACL is used but there is no HTTP request -- not matching.");
         return 0;
     }
 
     if (!checklist->hasReply() && requiresReply()) {
-        debugs(28, 1, "ACL::checklistMatches WARNING: '" << name << "' ACL is used but there is no HTTP reply -- not matching.");
+        debugs(28, DBG_IMPORTANT, "ACL::checklistMatches WARNING: '" << name << "' ACL is used but there is no HTTP reply -- not matching.");
         return 0;
     }
 
@@ -317,18 +326,23 @@ bool
 ACLList::matches (ACLChecklist *checklist) const
 {
     assert (_acl);
+    // XXX: AclMatchedName does not contain a matched ACL name when the acl
+    // does not match (or contains stale name if no ACLs are checked). In
+    // either case, we get misleading debugging and possibly incorrect error
+    // messages. Unfortunately, deny_info's "when none http_access
+    // lines match" exception essentially requires this mess.
+    // TODO: Rework by using an acl-free deny_info for the no-match cases?
     AclMatchedName = _acl->name;
     debugs(28, 3, "ACLList::matches: checking " << (op ? null_string : "!") << _acl->name);
 
     if (_acl->checklistMatches(checklist) != op) {
         debugs(28, 4, "ACLList::matches: result is false");
-        return checklist->lastACLResult(false);
+        return false;
     }
 
     debugs(28, 4, "ACLList::matches: result is true");
-    return checklist->lastACLResult(true);
+    return true;
 }
-
 
 /*********************/
 /* Destroy functions */

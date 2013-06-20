@@ -72,11 +72,9 @@ int lutil_sasl_interact(
 void lutil_sasl_freedefs(
     void *defaults);
 
-
 /*
  * SASL definitions for openldap support
  */
-
 
 typedef struct lutil_sasl_defaults_s {
     char *mech;
@@ -186,7 +184,7 @@ lutil_sasl_interact(
 
         if (rc)
             return rc;
-        interact++;
+        ++interact;
     }
 
     return LDAP_SUCCESS;
@@ -232,11 +230,7 @@ tool_sasl_bind(LDAP * ld, char *binddn, char *ssl)
     char *sasl_realm = NULL;
     char *sasl_authc_id = NULL;
     char *sasl_authz_id = NULL;
-#ifdef HAVE_SUN_LDAP_SDK
     char *sasl_mech = (char *) "GSSAPI";
-#else
-    char *sasl_mech = NULL;
-#endif
     /*
      * Force encryption
      */

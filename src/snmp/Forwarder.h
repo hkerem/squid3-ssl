@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -11,7 +9,6 @@
 #include "ipc/Forwarder.h"
 #include "snmp/Pdu.h"
 #include "snmp/Session.h"
-
 
 class CommCloseCbParams;
 
@@ -45,7 +42,7 @@ private:
     CBDATA_CLASS2(Forwarder);
 };
 
-extern void SendResponse(unsigned int requestId, const Pdu& pdu);
+void SendResponse(unsigned int requestId, const Pdu& pdu);
 
 } // namespace Snmp
 

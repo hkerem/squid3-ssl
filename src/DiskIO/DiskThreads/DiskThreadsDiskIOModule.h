@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -51,6 +49,5 @@ public:
 private:
     static DiskThreadsDiskIOModule Instance;
 };
-
 
 #endif /* SQUID_DISKTHREADSDISKIOMODULE_H */

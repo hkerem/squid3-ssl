@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -10,7 +8,6 @@
 #include "CpuAffinityMap.h"
 #include "CpuAffinitySet.h"
 #include "Debug.h"
-
 
 bool
 CpuAffinityMap::add(const Vector<int> &aProcesses, const Vector<int> &aCores)

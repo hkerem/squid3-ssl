@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Low level DNS protocol routines
  * AUTHOR: Duane Wessels
  *
@@ -77,8 +75,6 @@
 #else
 #define RFC1035_UNPACK_DEBUG  (void)0
 #endif
-
-
 
 /*
  * rfc1035HeaderPack()

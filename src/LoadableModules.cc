@@ -1,12 +1,13 @@
-#include "squid-old.h"
-#include "wordlist.h"
+#include "squid.h"
+#include "Debug.h"
 #include "LoadableModule.h"
 #include "LoadableModules.h"
+#include "wordlist.h"
 
 static void
 LoadModule(const char *fname)
 {
-    debugs(1, 1, "Loading Squid module from '" << fname << "'");
+    debugs(1, DBG_IMPORTANT, "Loading Squid module from '" << fname << "'");
 
     LoadableModule *m = new LoadableModule(fname);
     m->load();
@@ -21,5 +22,5 @@ LoadableModulesConfigure(const wordlist *names)
     int count = 0;
     for (const wordlist *i = names; i; i = i->next, ++count)
         LoadModule(i->key);
-    debugs(1, 1, "Squid plugin modules loaded: " << count);
+    debugs(1, DBG_IMPORTANT, "Squid plugin modules loaded: " << count);
 }

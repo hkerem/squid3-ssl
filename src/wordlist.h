@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,8 +30,9 @@
 #ifndef SQUID_WORDLIST_H
 #define SQUID_WORDLIST_H
 
-#include "squid-old.h"
+#include "globals.h"
 #include "MemPool.h"
+#include "profiler/Profiler.h"
 
 class wordlist
 {
@@ -46,10 +45,13 @@ public:
 
 MEMPROXY_CLASS_INLINE(wordlist);
 
-SQUIDCEXTERN const char *wordlistAdd(wordlist **, const char *);
-SQUIDCEXTERN void wordlistAddWl(wordlist **, wordlist *);
-SQUIDCEXTERN void wordlistJoin(wordlist **, wordlist **);
-SQUIDCEXTERN wordlist *wordlistDup(const wordlist *);
-SQUIDCEXTERN void wordlistDestroy(wordlist **);
+class MemBuf;
+
+const char *wordlistAdd(wordlist **, const char *);
+void wordlistCat(const wordlist *, MemBuf * mb);
+void wordlistAddWl(wordlist **, wordlist *);
+void wordlistJoin(wordlist **, wordlist **);
+wordlist *wordlistDup(const wordlist *);
+void wordlistDestroy(wordlist **);
 
 #endif /* SQUID_WORDLIST_H */

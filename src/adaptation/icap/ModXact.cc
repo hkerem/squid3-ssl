@@ -2,7 +2,7 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
 #include "adaptation/Answer.h"
 #include "adaptation/History.h"
@@ -19,11 +19,13 @@
 #include "ChunkedCodingParser.h"
 #include "comm.h"
 #include "comm/Connection.h"
-#include "HttpMsg.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
-#include "SquidTime.h"
 #include "err_detail_type.h"
+#include "HttpHeaderTools.h"
+#include "HttpMsg.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "SquidTime.h"
+#include "URL.h"
 
 // flow and terminology:
 //     HTTP| --> receive --> encode --> write --> |network
@@ -715,8 +717,6 @@ void Adaptation::Icap::ModXact::disableBypass(const char *reason, bool including
     }
 }
 
-
-
 // note that allocation for echoing is done in handle204NoContent()
 void Adaptation::Icap::ModXact::maybeAllocateHttpMsg()
 {
@@ -1317,7 +1317,6 @@ void Adaptation::Icap::ModXact::finalizeLogInfo()
     Xaction::finalizeLogInfo();
 }
 
-
 void Adaptation::Icap::ModXact::makeRequestHeaders(MemBuf &buf)
 {
     char ntoabuf[MAX_IPSTRLEN];
@@ -1363,7 +1362,6 @@ void Adaptation::Icap::ModXact::makeRequestHeaders(MemBuf &buf)
             }
         }
     }
-
 
     buf.Printf("Encapsulated: ");
 
@@ -1784,7 +1782,6 @@ void Adaptation::Icap::ModXact::makeAdaptedBodyPipe(const char *what)
            adapted.body_pipe << " pipe");
 }
 
-
 // TODO: Move SizedEstimate and Preview elsewhere
 
 Adaptation::Icap::SizedEstimate::SizedEstimate()
@@ -1812,8 +1809,6 @@ uint64_t Adaptation::Icap::SizedEstimate::size() const
     Must(knownSize());
     return static_cast<uint64_t>(theData);
 }
-
-
 
 Adaptation::Icap::VirginBodyAct::VirginBodyAct(): theStart(0), theState(stUndecided)
 {}
@@ -1845,7 +1840,6 @@ uint64_t Adaptation::Icap::VirginBodyAct::offset() const
     Must(active());
     return static_cast<uint64_t>(theStart);
 }
-
 
 Adaptation::Icap::Preview::Preview(): theWritten(0), theAd(0), theState(stDisabled)
 {}
@@ -1921,6 +1915,17 @@ void Adaptation::Icap::ModXact::detailError(int errDetail)
 
     if (request)
         request->detailError(ERR_ICAP_FAILURE, errDetail);
+}
+
+void Adaptation::Icap::ModXact::clearError()
+{
+    HttpRequest *request = dynamic_cast<HttpRequest*>(adapted.header);
+    // if no adapted request, update virgin (and inherit its properties later)
+    if (!request)
+        request = const_cast<HttpRequest*>(&virginRequest());
+
+    if (request)
+        request->clearError();
 }
 
 /* Adaptation::Icap::ModXactLauncher */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -8,13 +6,14 @@
 #include "squid.h"
 #include "base/TextException.h"
 #include "comm/Connection.h"
+#include "globals.h"
 #include "ipc/UdsOp.h"
 #include "mgr/Command.h"
 #include "mgr/Filler.h"
 #include "mgr/FunAction.h"
 #include "mgr/Request.h"
 #include "Store.h"
-
+#include "tools.h"
 
 Mgr::FunAction::Pointer
 Mgr::FunAction::Create(const Command::Pointer &aCmd, OBJH* aHandler)

@@ -30,12 +30,19 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm.h"
 #include "comm/Connection.h"
+#include "disk.h"
+#include "fd.h"
 #include "log/File.h"
 #include "log/ModUdp.h"
 #include "Parsing.h"
+#include "SquidConfig.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 /*
  * This logfile UDP module is mostly inspired by a patch by Tim Starling
@@ -61,10 +68,10 @@ logfile_mod_udp_write(Logfile * lf, const char *buf, size_t len)
     fd_bytes(ll->fd, s, FD_WRITE);
 #if 0
     if (s < 0) {
-        debugs(1, 1, "logfile (udp): got errno (" << errno << "):" << xstrerror());
+        debugs(1, DBG_IMPORTANT, "logfile (udp): got errno (" << errno << "):" << xstrerror());
     }
     if (s != len) {
-        debugs(1, 1, "logfile (udp): len=" << len << ", wrote=" << s);
+        debugs(1, DBG_IMPORTANT, "logfile (udp): len=" << len << ", wrote=" << s);
     }
 #endif
 
@@ -140,8 +147,6 @@ logfile_mod_udp_close(Logfile * lf)
     xfree(lf->data);
     lf->data = NULL;
 }
-
-
 
 /*
  * This code expects the path to be //host:port

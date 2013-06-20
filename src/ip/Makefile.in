@@ -48,6 +48,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -60,8 +62,8 @@ libip_la_LIBADD =
 am_libip_la_OBJECTS = Address.lo Intercept.lo QosConfig.lo tools.lo
 libip_la_OBJECTS = $(am_libip_la_OBJECTS)
 am_testIpAddress_OBJECTS = testAddress.$(OBJEXT)
-nodist_testIpAddress_OBJECTS = stub_debug.$(OBJEXT) testMain.$(OBJEXT) \
-	test_tools.$(OBJEXT)
+nodist_testIpAddress_OBJECTS = stub_debug.$(OBJEXT) \
+	stub_tools.$(OBJEXT) testMain.$(OBJEXT)
 testIpAddress_OBJECTS = $(am_testIpAddress_OBJECTS) \
 	$(nodist_testIpAddress_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -342,8 +344,8 @@ testIpAddress_SOURCES = \
 
 nodist_testIpAddress_SOURCES = \
 	$(top_srcdir)/src/tests/stub_debug.cc \
-	$(top_srcdir)/src/tests/testMain.cc \
-	$(top_srcdir)/test-suite/test_tools.cc
+	$(top_srcdir)/src/tests/stub_tools.cc \
+	$(top_srcdir)/src/tests/testMain.cc
 
 testIpAddress_LDADD = \
 	libip.la \
@@ -421,9 +423,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Intercept.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/QosConfig.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_debug.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stub_tools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testAddress.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testMain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_tools.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tools.Plo@am__quote@
 
 .cc.o:
@@ -461,6 +463,20 @@ stub_debug.obj: $(top_srcdir)/src/tests/stub_debug.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_debug.obj `if test -f '$(top_srcdir)/src/tests/stub_debug.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_debug.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_debug.cc'; fi`
 
+stub_tools.o: $(top_srcdir)/src/tests/stub_tools.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_tools.o -MD -MP -MF $(DEPDIR)/stub_tools.Tpo -c -o stub_tools.o `test -f '$(top_srcdir)/src/tests/stub_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_tools.cc
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_tools.Tpo $(DEPDIR)/stub_tools.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_tools.cc' object='stub_tools.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_tools.o `test -f '$(top_srcdir)/src/tests/stub_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/stub_tools.cc
+
+stub_tools.obj: $(top_srcdir)/src/tests/stub_tools.cc
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT stub_tools.obj -MD -MP -MF $(DEPDIR)/stub_tools.Tpo -c -o stub_tools.obj `if test -f '$(top_srcdir)/src/tests/stub_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_tools.cc'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/stub_tools.Tpo $(DEPDIR)/stub_tools.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/stub_tools.cc' object='stub_tools.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o stub_tools.obj `if test -f '$(top_srcdir)/src/tests/stub_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/stub_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/stub_tools.cc'; fi`
+
 testMain.o: $(top_srcdir)/src/tests/testMain.cc
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT testMain.o -MD -MP -MF $(DEPDIR)/testMain.Tpo -c -o testMain.o `test -f '$(top_srcdir)/src/tests/testMain.cc' || echo '$(srcdir)/'`$(top_srcdir)/src/tests/testMain.cc
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/testMain.Tpo $(DEPDIR)/testMain.Po
@@ -474,20 +490,6 @@ testMain.obj: $(top_srcdir)/src/tests/testMain.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/src/tests/testMain.cc' object='testMain.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o testMain.obj `if test -f '$(top_srcdir)/src/tests/testMain.cc'; then $(CYGPATH_W) '$(top_srcdir)/src/tests/testMain.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/src/tests/testMain.cc'; fi`
-
-test_tools.o: $(top_srcdir)/test-suite/test_tools.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT test_tools.o -MD -MP -MF $(DEPDIR)/test_tools.Tpo -c -o test_tools.o `test -f '$(top_srcdir)/test-suite/test_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/test-suite/test_tools.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/test_tools.Tpo $(DEPDIR)/test_tools.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/test-suite/test_tools.cc' object='test_tools.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o test_tools.o `test -f '$(top_srcdir)/test-suite/test_tools.cc' || echo '$(srcdir)/'`$(top_srcdir)/test-suite/test_tools.cc
-
-test_tools.obj: $(top_srcdir)/test-suite/test_tools.cc
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT test_tools.obj -MD -MP -MF $(DEPDIR)/test_tools.Tpo -c -o test_tools.obj `if test -f '$(top_srcdir)/test-suite/test_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/test-suite/test_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/test-suite/test_tools.cc'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/test_tools.Tpo $(DEPDIR)/test_tools.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(top_srcdir)/test-suite/test_tools.cc' object='test_tools.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o test_tools.obj `if test -f '$(top_srcdir)/test-suite/test_tools.cc'; then $(CYGPATH_W) '$(top_srcdir)/test-suite/test_tools.cc'; else $(CYGPATH_W) '$(srcdir)/$(top_srcdir)/test-suite/test_tools.cc'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

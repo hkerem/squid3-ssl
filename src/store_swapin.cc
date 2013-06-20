@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapin Functions
  * AUTHOR: Duane Wessels
  *
@@ -33,10 +30,12 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "globals.h"
 #include "StatCounters.h"
 #include "StoreClient.h"
 #include "Store.h"
+#include "store_swapin.h"
 
 static StoreIOState::STIOCB storeSwapInFileClosed;
 static StoreIOState::STFNCB storeSwapInFileNotify;
@@ -59,12 +58,12 @@ storeSwapInStart(store_client * sc)
            e->swap_filen << " " <<  e->getMD5Text());
 
     if (e->swap_status != SWAPOUT_WRITING && e->swap_status != SWAPOUT_DONE) {
-        debugs(20, 1, "storeSwapInStart: bad swap_status (" << swapStatusStr[e->swap_status] << ")");
+        debugs(20, DBG_IMPORTANT, "storeSwapInStart: bad swap_status (" << swapStatusStr[e->swap_status] << ")");
         return;
     }
 
     if (e->swap_filen < 0) {
-        debugs(20, 1, "storeSwapInStart: swap_filen < 0");
+        debugs(20, DBG_IMPORTANT, "storeSwapInStart: swap_filen < 0");
         return;
     }
 

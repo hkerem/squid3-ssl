@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Debug Routines
  * AUTHOR: Harvest Derived
  *
@@ -61,8 +59,8 @@
 
 /* context-based debugging, the actual type is subject to change */
 typedef int Ctx;
-extern Ctx ctx_enter(const char *descr);
-extern void ctx_exit(Ctx ctx);
+Ctx ctx_enter(const char *descr);
+void ctx_exit(Ctx ctx);
 
 /* defined debug section limits */
 #define MAX_DEBUG_SECTIONS 100
@@ -154,9 +152,9 @@ inline std::ostream& operator <<(std::ostream &os, const uint8_t d)
 #define old_debug(SECTION, LEVEL)  if do_debug((SECTION), (LEVEL)) _db_print
 
 /* Legacy debug function definitions */
-extern void _db_init(const char *logfile, const char *options);
-extern void _db_print(const char *,...) PRINTF_FORMAT_ARG1;
-extern void _db_set_syslog(const char *facility);
-extern void _db_rotate_log(void);
+void _db_init(const char *logfile, const char *options);
+void _db_print(const char *,...) PRINTF_FORMAT_ARG1;
+void _db_set_syslog(const char *facility);
+void _db_rotate_log(void);
 
 #endif /* SQUID_DEBUG_H */

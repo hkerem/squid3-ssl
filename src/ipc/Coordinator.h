@@ -1,13 +1,10 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
 
 #ifndef SQUID_IPC_COORDINATOR_H
 #define SQUID_IPC_COORDINATOR_H
-
 
 #include "Array.h"
 #include "ipc/Messages.h"
@@ -79,7 +76,6 @@ private:
 
     CBDATA_CLASS2(Coordinator);
 };
-
 
 } // namespace Ipc
 

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 34    Dnsserver interface
  * AUTHOR: Harvest Derived
  *
@@ -33,12 +31,13 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "helper.h"
+#include "mgr/Registration.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
 #include "Store.h"
 #include "wordlist.h"
-#include "SquidTime.h"
-#include "mgr/Registration.h"
-#include "helper.h"
 
 /* MS VisualStudio Projects are monolitich, so we need the following
    #if to include the external DNS code in compile process when
@@ -128,7 +127,7 @@ dnsSubmit(const char *lookup, HLPCB * callback, void *data)
         if (squid_curtime - first_warn > 3 * 60)
             fatal("DNS servers not responding for 3 minutes");
 
-        debugs(34, 1, "dnsSubmit: queue overload, rejecting " << lookup);
+        debugs(34, DBG_IMPORTANT, "dnsSubmit: queue overload, rejecting " << lookup);
 
         callback(data, (char *)"$fail Temporary network problem, please retry later");
 

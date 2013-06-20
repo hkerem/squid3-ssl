@@ -30,7 +30,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "cbdata.h"
 #include "CacheManager.h"
 #include "DnsLookupDetails.h"
@@ -38,12 +38,19 @@
 #include "ip/Address.h"
 #include "ip/tools.h"
 #include "ipcache.h"
+#include "Mem.h"
 #include "mgr/Registration.h"
+#include "rfc3596.h"
+#include "SquidConfig.h"
 #include "SquidDns.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
 #include "wordlist.h"
+
+#if SQUID_SNMP
+#include "snmp_core.h"
+#endif
 
 /**
  \defgroup IPCacheAPI IP Cache API
@@ -175,8 +182,6 @@ ipcache_entry::age() const
     return request_time.tv_sec ? tvSubMsec(request_time, current_time) : -1;
 }
 
-
-
 /**
  \ingroup IPCacheInternal
  *
@@ -186,12 +191,12 @@ static void
 ipcacheRelease(ipcache_entry * i, bool dofree)
 {
     if (!i) {
-        debugs(14, 0, "ipcacheRelease: Releasing entry with i=<NULL>");
+        debugs(14, DBG_CRITICAL, "ipcacheRelease: Releasing entry with i=<NULL>");
         return;
     }
 
     if (!i || !i->hash.key) {
-        debugs(14, 0, "ipcacheRelease: Releasing entry without hash link!");
+        debugs(14, DBG_CRITICAL, "ipcacheRelease: Releasing entry without hash link!");
         return;
     }
 
@@ -371,7 +376,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
     i->addrs.count = 0;
 
     if (inbuf == NULL) {
-        debugs(14, 1, "ipcacheParse: Got <NULL> reply");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: Got <NULL> reply");
         i->error_message = xstrdup("Internal Error");
         return -1;
     }
@@ -381,7 +386,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
     token = strtok(buf, w_space);
 
     if (NULL == token) {
-        debugs(14, 1, "ipcacheParse: expecting result, got '" << inbuf << "'");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: expecting result, got '" << inbuf << "'");
 
         i->error_message = xstrdup("Internal Error");
         return -1;
@@ -395,7 +400,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
     }
 
     if (0 != strcmp(token, "$addr")) {
-        debugs(14, 1, "ipcacheParse: expecting '$addr', got '" << inbuf << "' in response to '" << name << "'");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: expecting '$addr', got '" << inbuf << "' in response to '" << name << "'");
 
         i->error_message = xstrdup("Internal Error");
         return -1;
@@ -404,7 +409,7 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
     token = strtok(NULL, w_space);
 
     if (NULL == token) {
-        debugs(14, 1, "ipcacheParse: expecting TTL, got '" << inbuf << "' in response to '" << name << "'");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: expecting TTL, got '" << inbuf << "' in response to '" << name << "'");
 
         i->error_message = xstrdup("Internal Error");
         return -1;
@@ -432,14 +437,14 @@ ipcacheParse(ipcache_entry *i, const char *inbuf)
             if ((i->addrs.in_addrs[j] = A[k]))
                 ++j;
             else
-                debugs(14, 1, "ipcacheParse: Invalid IP address '" << A[k] << "' in response to '" << name << "'");
+                debugs(14, DBG_IMPORTANT, "ipcacheParse: Invalid IP address '" << A[k] << "' in response to '" << name << "'");
         }
 
         i->addrs.count = (unsigned char) j;
     }
 
     if (i->addrs.count <= 0) {
-        debugs(14, 1, "ipcacheParse: No addresses in response to '" << name << "'");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: No addresses in response to '" << name << "'");
         return -1;
     }
 
@@ -496,7 +501,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
 
         if (Ip::EnableIpv6 && answers[k].type == RFC1035_TYPE_AAAA) {
             if (answers[k].rdlength != sizeof(struct in6_addr)) {
-                debugs(14, 1, "ipcacheParse: Invalid IPv6 address in response to '" << name << "'");
+                debugs(14, DBG_IMPORTANT, "ipcacheParse: Invalid IPv6 address in response to '" << name << "'");
                 continue;
             }
             ++na;
@@ -506,7 +511,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
 
         if (answers[k].type == RFC1035_TYPE_A) {
             if (answers[k].rdlength != sizeof(struct in_addr)) {
-                debugs(14, 1, "ipcacheParse: Invalid IPv4 address in response to '" << name << "'");
+                debugs(14, DBG_IMPORTANT, "ipcacheParse: Invalid IPv4 address in response to '" << name << "'");
                 continue;
             }
             ++na;
@@ -525,7 +530,7 @@ ipcacheParse(ipcache_entry *i, const rfc1035_rr * answers, int nr, const char *e
         debugs(14, 9, HERE << "Unknown RR type received: type=" << answers[k].type << " starting at " << &(answers[k]) );
     }
     if (na == 0) {
-        debugs(14, 1, "ipcacheParse: No Address records in response to '" << name << "'");
+        debugs(14, DBG_IMPORTANT, "ipcacheParse: No Address records in response to '" << name << "'");
         i->error_message = xstrdup("No Address records");
         if (cname_found)
             ++IpcacheStats.cname_only;
@@ -710,7 +715,6 @@ ipcacheRegisterWithCacheManager(void)
                         stat_ipcache_get, 0, 1);
 }
 
-
 /**
  \ingroup IPCacheAPI
  *
@@ -805,12 +809,12 @@ ipcacheStatPrint(ipcache_entry * i, StoreEntry * sentry)
     char buf[MAX_IPSTRLEN];
 
     if (!sentry) {
-        debugs(14, 0, HERE << "CRITICAL: sentry is NULL!");
+        debugs(14, DBG_CRITICAL, HERE << "CRITICAL: sentry is NULL!");
         return;
     }
 
     if (!i) {
-        debugs(14, 0, HERE << "CRITICAL: ipcache_entry is NULL!");
+        debugs(14, DBG_CRITICAL, HERE << "CRITICAL: ipcache_entry is NULL!");
         storeAppendPrintf(sentry, "CRITICAL ERROR\n");
         return;
     }
@@ -983,7 +987,7 @@ static void
 ipcacheUnlockEntry(ipcache_entry * i)
 {
     if (i->locks < 1) {
-        debugs(14, 1, "WARNING: ipcacheEntry unlocked with no lock! locks=" << i->locks);
+        debugs(14, DBG_IMPORTANT, "WARNING: ipcacheEntry unlocked with no lock! locks=" << i->locks);
         return;
     }
 
@@ -1188,7 +1192,7 @@ ipcacheAddEntryFromHosts(const char *name, const char *ipaddr)
         if (strchr(ipaddr, ':') && strspn(ipaddr, "0123456789abcdefABCDEF:") == strlen(ipaddr)) {
             debugs(14, 3, "ipcacheAddEntryFromHosts: Skipping IPv6 address '" << ipaddr << "'");
         } else {
-            debugs(14, 1, "ipcacheAddEntryFromHosts: Bad IP address '" << ipaddr << "'");
+            debugs(14, DBG_IMPORTANT, "ipcacheAddEntryFromHosts: Bad IP address '" << ipaddr << "'");
         }
 
         return 1;
@@ -1198,7 +1202,7 @@ ipcacheAddEntryFromHosts(const char *name, const char *ipaddr)
         if (1 == i->flags.fromhosts) {
             ipcacheUnlockEntry(i);
         } else if (i->locks > 0) {
-            debugs(14, 1, "ipcacheAddEntryFromHosts: can't add static entry for locked name '" << name << "'");
+            debugs(14, DBG_IMPORTANT, "ipcacheAddEntryFromHosts: can't add static entry for locked name '" << name << "'");
             return 1;
         } else {
             ipcacheRelease(i);

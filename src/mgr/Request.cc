@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -12,7 +10,6 @@
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/ActionParams.h"
 #include "mgr/Request.h"
-
 
 Mgr::Request::Request(int aRequestorId, unsigned int aRequestId, const Comm::ConnectionPointer &aConn,
                       const ActionParams &aParams):

@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapfile Metadata
  * AUTHOR: Kostas Anagnostakis
  *
@@ -33,11 +31,16 @@
  *
  */
 
-#include "squid-old.h"
-#include "Store.h"
+#include "squid.h"
+#include "md5.h"
 #include "MemObject.h"
+#include "Store.h"
 #include "StoreMeta.h"
 #include "StoreMetaUnpacker.h"
+
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 void
 storeSwapTLVFree(tlv * n)
@@ -88,7 +91,6 @@ storeSwapMetaBuild(StoreEntry * e)
         storeSwapTLVFree(TLV);
         return NULL;
     }
-
 
     if (objsize >= 0) {
         T = StoreMeta::Add(T, t);

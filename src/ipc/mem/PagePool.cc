@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -9,7 +7,6 @@
 #include "base/TextException.h"
 #include "ipc/mem/Page.h"
 #include "ipc/mem/PagePool.h"
-
 
 // Ipc::Mem::PagePool
 

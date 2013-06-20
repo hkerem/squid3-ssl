@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Disk IO Routines
  */
 
@@ -13,6 +11,7 @@
 #include "fs/rock/RockIoState.h"
 #include "fs/rock/RockIoRequests.h"
 #include "fs/rock/RockSwapDir.h"
+#include "globals.h"
 
 Rock::IoState::IoState(SwapDir *dir,
                        StoreEntry *anEntry,
@@ -192,7 +191,6 @@ private:
     int errflag;
     Rock::IoState::Pointer sio;
 };
-
 
 void
 Rock::IoState::callBack(int errflag)

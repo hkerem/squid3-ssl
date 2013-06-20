@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  * AUTHOR: Robert Collins
  *
@@ -34,10 +32,17 @@
  */
 #include "squid.h"
 #include "BlockingFile.h"
+#include "Debug.h"
+#include "defines.h"
+#include "globals.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "disk.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 CBDATA_CLASS_INIT(BlockingFile);
 
 void *
@@ -99,7 +104,6 @@ BlockingFile::create(int flags, mode_t mode, RefCount<IORequestor> callback)
     /* We use the same logic path for open */
     open(flags, mode, callback);
 }
-
 
 void BlockingFile::doClose()
 {
@@ -223,7 +227,7 @@ BlockingFile::writeDone(int rvfd, int errflag, size_t len)
     writeRequest = NULL;
 
     if (errflag) {
-        debugs(79, 0, "storeUfsWriteDone: got failure (" << errflag << ")");
+        debugs(79, DBG_CRITICAL, "storeUfsWriteDone: got failure (" << errflag << ")");
         doClose();
         ioRequestor->writeCompleted (DISK_ERROR,0, result);
         return;

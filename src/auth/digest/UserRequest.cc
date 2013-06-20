@@ -4,6 +4,7 @@
 #include "auth/digest/UserRequest.h"
 #include "auth/State.h"
 #include "charset.h"
+#include "HttpHeaderTools.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "SquidTime.h"
@@ -19,7 +20,10 @@ Auth::Digest::UserRequest::UserRequest() :
         uri(NULL),
         response(NULL),
         nonce(NULL)
-{}
+{
+    memset(nc, 0, sizeof(nc));
+    memset(&flags, 0, sizeof(flags));
+}
 
 /**
  * Delete the digest request structure.

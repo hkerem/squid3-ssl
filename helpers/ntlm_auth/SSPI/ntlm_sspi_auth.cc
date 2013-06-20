@@ -140,7 +140,7 @@ Valid_Group(char *UserName, char *Group)
      */
     if (nStatus == NERR_Success) {
         if ((pTmpBuf = pBuf) != NULL) {
-            for (i = 0; i < dwEntriesRead; i++) {
+            for (i = 0; i < dwEntriesRead; ++i) {
                 if (pTmpBuf == NULL) {
                     result = FALSE;
                     break;
@@ -149,8 +149,8 @@ Valid_Group(char *UserName, char *Group)
                     result = TRUE;
                     break;
                 }
-                pTmpBuf++;
-                dwTotalCount++;
+                ++pTmpBuf;
+                ++dwTotalCount;
             }
         }
     } else
@@ -162,7 +162,6 @@ Valid_Group(char *UserName, char *Group)
         NetApiBufferFree(pBuf);
     return result;
 }
-
 
 char * AllocStrFromLSAStr(LSA_UNICODE_STRING LsaStr)
 {
@@ -184,7 +183,6 @@ char * AllocStrFromLSAStr(LSA_UNICODE_STRING LsaStr)
     target[len-1] = '\0';
     return target;
 }
-
 
 char * GetDomainName(void)
 
@@ -367,7 +365,6 @@ usage()
             " -h  this message\n\n",
             my_program_name);
 }
-
 
 void
 process_options(int argc, char *argv[])

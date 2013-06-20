@@ -1,8 +1,7 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "adaptation/ServiceFilter.h"
-
 
 Adaptation::ServiceFilter::ServiceFilter(Method aMethod, VectPoint aPoint,
         HttpRequest *aReq, HttpReply *aRep): method(aMethod), point(aPoint),

@@ -32,12 +32,12 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/AsyncCall.h"
-#include "StoreIOBuffer.h"
+#include "cbdata.h"
 #include "comm.h"
-#include "event.h"
-#include "fde.h"
+#include "ClientInfo.h"
+#include "CommCalls.h"
 #include "comm/AcceptLimiter.h"
 #include "comm/comm_internal.h"
 #include "comm/Connection.h"
@@ -46,28 +46,44 @@
 #include "comm/Write.h"
 #include "comm/TcpAcceptor.h"
 #include "CommRead.h"
-#include "MemBuf.h"
-#include "pconn.h"
-#include "SquidTime.h"
-#include "CommCalls.h"
+#include "compat/cmsg.h"
 #include "DescriptorSet.h"
+#include "event.h"
+#include "fd.h"
+#include "fde.h"
+#include "globals.h"
 #include "icmp/net_db.h"
 #include "ip/Address.h"
 #include "ip/Intercept.h"
 #include "ip/QosConfig.h"
 #include "ip/tools.h"
-#include "ClientInfo.h"
+#include "MemBuf.h"
+#include "pconn.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
 #include "StatCounters.h"
+#include "StoreIOBuffer.h"
+#include "tools.h"
+
 #if USE_SSL
 #include "ssl/support.h"
 #endif
 
-#include "cbdata.h"
 #if _SQUID_CYGWIN_
 #include <sys/ioctl.h>
 #endif
 #ifdef HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
+#endif
+#if HAVE_SYS_UN_H
+#include <sys/un.h>
+#endif
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 /*
@@ -100,7 +116,6 @@ static void commSetTcpNoDelay(int);
 #endif
 static void commSetTcpRcvbuf(int, int);
 
-static MemAllocator *conn_close_pool = NULL;
 fd_debug_t *fdd_table = NULL;
 
 bool
@@ -198,7 +213,6 @@ comm_empty_os_read_buffers(int fd)
     }
 #endif
 }
-
 
 /**
  * Return whether the FD has a pending completed callback.
@@ -309,7 +323,6 @@ comm_read_cancel(int fd, AsyncCall::Pointer &callback)
     Comm::SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
 }
 
-
 /**
  * synchronous wrapper around udp socket functions
  */
@@ -348,7 +361,6 @@ comm_udp_send(int s, const void *buf, size_t len, int flags)
     return send(s, buf, len, flags);
 }
 
-
 bool
 comm_has_incomplete_write(int fd)
 {
@@ -385,7 +397,7 @@ comm_local_port(int fd)
     temp.InitAddrInfo(addr);
 
     if (getsockname(fd, addr->ai_addr, &(addr->ai_addrlen)) ) {
-        debugs(50, 1, "comm_local_port: Failed to retrieve TCP/UDP port number for socket: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "comm_local_port: Failed to retrieve TCP/UDP port number for socket: FD " << fd << ": " << xstrerror());
         temp.FreeAddrInfo(addr);
         return 0;
     }
@@ -475,7 +487,7 @@ comm_set_v6only(int fd, int tos)
 {
 #ifdef IPV6_V6ONLY
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &tos, sizeof(int)) < 0) {
-        debugs(50, 1, "comm_open: setsockopt(IPV6_V6ONLY) " << (tos?"ON":"OFF") << " for FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "comm_open: setsockopt(IPV6_V6ONLY) " << (tos?"ON":"OFF") << " for FD " << fd << ": " << xstrerror());
     }
 #else
     debugs(50, 0, "WARNING: comm_open: setsockopt(IPV6_V6ONLY) not supported on this platform");
@@ -483,12 +495,13 @@ comm_set_v6only(int fd, int tos)
 }
 
 /**
- * Set the socket IP_TRANSPARENT option for Linux TPROXY v4 support.
+ * Set the socket IP_TRANSPARENT option for Linux TPROXY v4 support,
+ * or set the socket SO_BINDANY option for BSD divert-to support.
  */
 void
 comm_set_transparent(int fd)
 {
-#if defined(IP_TRANSPARENT)
+#if _SQUID_LINUX_ && defined(IP_TRANSPARENT)
     int tos = 1;
     if (setsockopt(fd, SOL_IP, IP_TRANSPARENT, (char *) &tos, sizeof(int)) < 0) {
         debugs(50, DBG_IMPORTANT, "comm_open: setsockopt(IP_TRANSPARENT) on FD " << fd << ": " << xstrerror());
@@ -496,6 +509,18 @@ comm_set_transparent(int fd)
         /* mark the socket as having transparent options */
         fd_table[fd].flags.transparent = 1;
     }
+
+#elif defined(SO_BINDANY)
+    int tos = 1;
+    enter_suid();
+    if (setsockopt(fd, SOL_SOCKET, SO_BINDANY, (char *) &tos, sizeof(int)) < 0) {
+        debugs(50, DBG_IMPORTANT, "comm_open: setsockopt(SO_BINDANY) on FD " << fd << ": " << xstrerror());
+    } else {
+        /* mark the socket as having transparent options */
+        fd_table[fd].flags.transparent = true;
+    }
+    leave_suid();
+
 #else
     debugs(50, DBG_CRITICAL, "WARNING: comm_open: setsockopt(IP_TRANSPARENT) not supported on this platform");
 #endif /* sockopt */
@@ -661,7 +686,7 @@ comm_apply_flags(int new_socket,
 
     if ( (flags & COMM_DOBIND) || addr.GetPort() > 0 || !addr.IsAnyAddr() ) {
         if ( !(flags & COMM_DOBIND) && addr.IsAnyAddr() )
-            debugs(5,1,"WARNING: Squid is attempting to bind() port " << addr << " without being a listener.");
+            debugs(5, DBG_IMPORTANT,"WARNING: Squid is attempting to bind() port " << addr << " without being a listener.");
         if ( addr.IsNoAddr() )
             debugs(5,0,"CRITICAL: Squid is attempting to bind() port " << addr << "!!");
 
@@ -915,9 +940,9 @@ comm_connect_addr(int sock, const Ip::Address &address)
     F->remote_port = address.GetPort(); /* remote_port is HS */
 
     if (status == COMM_OK) {
-        debugs(5, 10, "comm_connect_addr: FD " << sock << " connected to " << address);
+        debugs(5, DBG_DATA, "comm_connect_addr: FD " << sock << " connected to " << address);
     } else if (status == COMM_INPROGRESS) {
-        debugs(5, 10, "comm_connect_addr: FD " << sock << " connection pending");
+        debugs(5, DBG_DATA, "comm_connect_addr: FD " << sock << " connection pending");
     }
 
     return status;
@@ -1144,7 +1169,6 @@ _comm_close(int fd, char const *file, int line)
 
     comm_empty_os_read_buffers(fd);
 
-
     AsyncCall::Pointer completeCall=commCbCall(5,4, "comm_close_complete",
                                     FdeCbPtrFun(comm_close_complete, NULL));
     FdeCbParams &completeParams = GetCommParams<FdeCbParams>(completeCall);
@@ -1192,7 +1216,7 @@ comm_udp_sendto(int fd,
     if (ECONNREFUSED != errno)
 #endif
 
-        debugs(50, 1, "comm_udp_sendto: FD " << fd << ", (family=" << fd_table[fd].sock_family << ") " << to_addr << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "comm_udp_sendto: FD " << fd << ", (family=" << fd_table[fd].sock_family << ") " << to_addr << ": " << xstrerror());
 
     return COMM_ERROR;
 }
@@ -1221,7 +1245,6 @@ comm_add_close_handler(int fd, AsyncCall::Pointer &call)
 
     fd_table[fd].closeHandler = call;
 }
-
 
 // remove function-based close handler
 void
@@ -1288,19 +1311,19 @@ commSetReuseAddr(int fd)
     int on = 1;
 
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0)
-        debugs(50, 1, "commSetReuseAddr: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "commSetReuseAddr: FD " << fd << ": " << xstrerror());
 }
 
 static void
 commSetTcpRcvbuf(int fd, int size)
 {
     if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &size, sizeof(size)) < 0)
-        debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
     if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &size, sizeof(size)) < 0)
-        debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
 #ifdef TCP_WINDOW_CLAMP
     if (setsockopt(fd, SOL_TCP, TCP_WINDOW_CLAMP, (char *) &size, sizeof(size)) < 0)
-        debugs(50, 1, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "commSetTcpRcvbuf: FD " << fd << ", SIZE " << size << ": " << xstrerror());
 #endif
 }
 
@@ -1401,7 +1424,7 @@ commSetTcpNoDelay(int fd)
     int on = 1;
 
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &on, sizeof(on)) < 0)
-        debugs(50, 1, "commSetTcpNoDelay: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "commSetTcpNoDelay: FD " << fd << ": " << xstrerror());
 
     fd_table[fd].flags.nodelay = 1;
 }
@@ -1416,23 +1439,23 @@ commSetTcpKeepalive(int fd, int idle, int interval, int timeout)
     if (timeout && interval) {
         int count = (timeout + interval - 1) / interval;
         if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(on)) < 0)
-            debugs(5, 1, "commSetKeepalive: FD " << fd << ": " << xstrerror());
+            debugs(5, DBG_IMPORTANT, "commSetKeepalive: FD " << fd << ": " << xstrerror());
     }
 #endif
 #ifdef TCP_KEEPIDLE
     if (idle) {
         if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(on)) < 0)
-            debugs(5, 1, "commSetKeepalive: FD " << fd << ": " << xstrerror());
+            debugs(5, DBG_IMPORTANT, "commSetKeepalive: FD " << fd << ": " << xstrerror());
     }
 #endif
 #ifdef TCP_KEEPINTVL
     if (interval) {
         if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(on)) < 0)
-            debugs(5, 1, "commSetKeepalive: FD " << fd << ": " << xstrerror());
+            debugs(5, DBG_IMPORTANT, "commSetKeepalive: FD " << fd << ": " << xstrerror());
     }
 #endif
     if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &on, sizeof(on)) < 0)
-        debugs(5, 1, "commSetKeepalive: FD " << fd << ": " << xstrerror());
+        debugs(5, DBG_IMPORTANT, "commSetKeepalive: FD " << fd << ": " << xstrerror());
 }
 
 void
@@ -1452,8 +1475,6 @@ comm_init(void)
      * after accepting a client but before it opens a socket or a file.
      * Since Squid_MaxFD can be as high as several thousand, don't waste them */
     RESERVED_FD = min(100, Squid_MaxFD / 4);
-
-    conn_close_pool = memPoolCreate("close_handler", sizeof(close_handler));
 
     TheHalfClosed = new DescriptorSet;
 
@@ -1918,7 +1939,6 @@ commHalfClosedReader(const Comm::ConnectionPointer &conn, char *, size_t size, c
     // continue waiting for close or error
     commPlanHalfClosedCheck(); // make sure this fd will be checked again
 }
-
 
 CommRead::CommRead() : conn(NULL), buf(NULL), len(0), callback(NULL) {}
 

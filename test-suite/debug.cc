@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Robert Collins
  *
@@ -34,9 +32,10 @@
  * Copyright (c) 2003  Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
-#include "stmem.h"
+#include "squid.h"
+#include "Debug.h"
 #include "mem_node.h"
+#include "stmem.h"
 
 class StreamTest
 {
@@ -81,10 +80,10 @@ main(int argc, char **argv)
     if (true)
         debugs(1,9,"this won't compile if the macro is broken.");
     else
-        debugs(1,1,"bar");
+        debugs(1, DBG_IMPORTANT,"bar");
     StreamTest aStreamObject;
     StreamTest *streamPointer (&aStreamObject);
-    debugs(1,1,aStreamObject);
-    debugs(1,1,streamPointer->getAnInt() << " " << aStreamObject.getACString());
+    debugs(1, DBG_IMPORTANT,aStreamObject);
+    debugs(1, DBG_IMPORTANT,streamPointer->getAnInt() << " " << aStreamObject.getACString());
     return 0;
 }

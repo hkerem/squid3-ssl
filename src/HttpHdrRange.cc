@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 64    HTTP Range Header
  * AUTHOR: Alex Rousskov
  *
@@ -33,11 +31,13 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "Store.h"
 #include "HttpHeaderRange.h"
 #include "client_side_request.h"
 #include "HttpReply.h"
+#include "HttpHeaderTools.h"
+#include "StrList.h"
 
 /*
  *    Currently only byte ranges are supported
@@ -56,7 +56,6 @@
  *    Note: when response length becomes known, we convert any range
  *    spec into type one above. (Canonization process).
  */
-
 
 /* local routines */
 #define known_spec(s) ((s) > HttpHdrRangeSpec::UnknownPosition)
@@ -97,7 +96,7 @@ HttpHdrRangeSpec::parseInit(const char *field, int flen)
             return false;
     } else
         /* must have a '-' somewhere in _this_ field */
-        if (!((p = strchr(field, '-')) || (p - field >= flen))) {
+        if (!((p = strchr(field, '-')) && (p - field < flen))) {
             debugs(64, 2, "invalid (missing '-') range-spec near: '" << field << "'");
             return false;
         } else {
@@ -360,7 +359,6 @@ HttpHdrRange::merge (Vector<HttpHdrRangeSpec *> &basis)
     debugs(64, 3, "HttpHdrRange::merge: had " << basis.size() <<
            " specs, merged " << basis.size() - specs.size() << " specs");
 }
-
 
 void
 HttpHdrRange::getCanonizedSpecs (Vector<HttpHdrRangeSpec *> &copy)

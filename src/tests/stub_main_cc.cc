@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Francesco Chemolli
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -35,15 +33,10 @@
 
 #include "squid.h"
 
-void
-shut_down(int)
-{ /* stub */ }
+#define STUB_API "stub_main_cc.cc"
+#include "tests/STUB.h"
 
-void
-reconfigure(int)
-{ /* stub */ }
-
-void
-rotate_logs(int)
-{ /* stub */ }
+void shut_down(int) STUB
+void reconfigure(int) STUB
+void rotate_logs(int) STUB
 

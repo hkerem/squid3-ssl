@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,10 +32,13 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/DomainData.h"
 #include "acl/Checklist.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "wordlist.h"
+#include "src/URL.h"
 
 template<class T>
 inline void
@@ -78,7 +79,6 @@ aclHostDomainCompare( char *const &a, char * const &b)
     const char *d = static_cast<const char *>(b);
     return matchDomainName(h, d);
 }
-
 
 /* compare two domains */
 
@@ -172,7 +172,6 @@ ACLDomainData::empty() const
 {
     return domains->empty();
 }
-
 
 ACLData<char const *> *
 ACLDomainData::clone() const

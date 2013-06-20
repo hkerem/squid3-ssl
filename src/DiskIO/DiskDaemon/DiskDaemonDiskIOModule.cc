@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -31,7 +29,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "DiskDaemonDiskIOModule.h"
 #include "DiskdIOStrategy.h"
 #include "DiskIO/DiskDaemon/DiskdAction.h"
@@ -67,7 +65,7 @@ DiskDaemonDiskIOModule::init()
      * the debug log is configured and we'll get the message on
      * stderr when doing things like 'squid -k reconfigure'
      */
-    debugs(47, 1, "diskd started");
+    debugs(47, DBG_IMPORTANT, "diskd started");
 #endif
     initialised = true;
 

@@ -1,7 +1,8 @@
 #include "squid.h"
 #include "Debug.h"
 #include "HttpParser.h"
-#include "structs.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 
 void
 HttpParser::clear()
@@ -107,7 +108,6 @@ HttpParser::parseRequestFirstLine()
 
     // NP: we have now seen EOL, more-data (0) cannot occur.
     //     From here on any failure is -1, success is 1
-
 
     // Input Validation:
 

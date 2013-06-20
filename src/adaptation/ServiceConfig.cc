@@ -2,9 +2,11 @@
  * DEBUG: section 93    Adaptation
  */
 
-#include "squid-old.h"
-#include "ConfigParser.h"
+#include "squid.h"
 #include "adaptation/ServiceConfig.h"
+#include "ConfigParser.h"
+#include "Debug.h"
+#include "globals.h"
 #include "ip/tools.h"
 #include <set>
 
@@ -80,11 +82,11 @@ Adaptation::ServiceConfig::parse()
         if (strcmp(option, "0") == 0) { // backward compatibility
             name = "bypass";
             value = "off";
-            debugs(3, opt_parse_cfg_only?0:1, "UPGRADE: Please use 'bypass=off' option to disable service bypass");
+            debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "UPGRADE: Please use 'bypass=off' option to disable service bypass");
         }  else if (strcmp(option, "1") == 0) { // backward compatibility
             name = "bypass";
             value = "on";
-            debugs(3, opt_parse_cfg_only?0:1, "UPGRADE: Please use 'bypass=on' option to enable service bypass");
+            debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "UPGRADE: Please use 'bypass=on' option to enable service bypass");
         } else {
             char *eq = strstr(option, "=");
             const char *sffx = strstr(option, "://");
@@ -115,7 +117,7 @@ Adaptation::ServiceConfig::parse()
         else if (strcmp(name, "ipv6") == 0) {
             grokked = grokBool(ipv6, name, value);
             if (grokked && ipv6 && !Ip::EnableIpv6)
-                debugs(3, DBG_IMPORTANT, "WARNING: IPv6 is disabled. ICAP service option ignored.");
+                debugs(3, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: IPv6 is disabled. ICAP service option ignored.");
         } else if (strcmp(name, "max-conn") == 0)
             grokked = grokLong(maxConn, name, value);
         else if (strcmp(name, "on-overload") == 0) {
@@ -155,7 +157,7 @@ Adaptation::ServiceConfig::grokUri(const char *value)
     // AYJ: most of this is duplicate of urlParse() in src/url.cc
 
     if (!value || !*value) {
-        debugs(3, 0, HERE << cfg_filename << ':' << config_lineno << ": " <<
+        debugs(3, DBG_CRITICAL, HERE << cfg_filename << ':' << config_lineno << ": " <<
                "empty adaptation service URI");
         return false;
     }
@@ -187,7 +189,7 @@ Adaptation::ServiceConfig::grokUri(const char *value)
         if ((t = strchr(s, ']')) == NULL)
             return false;
 
-        s++;
+        ++s;
         len = t - s;
         if ((e = strchr(t, ':')) != NULL) {
             have_port = true;
@@ -212,7 +214,7 @@ Adaptation::ServiceConfig::grokUri(const char *value)
 
     port = -1;
     if (have_port) {
-        s++;
+        ++s;
 
         if ((e = strchr(s, '/')) != NULL) {
             char *t;
@@ -235,19 +237,18 @@ Adaptation::ServiceConfig::grokUri(const char *value)
 
     // if no port, the caller may use service_configConfigs or supply the default if neeeded
 
-    s++;
+    ++s;
     e = strchr(s, '\0');
     len = e - s;
 
     if (len > 1024) {
-        debugs(3, 0, HERE << cfg_filename << ':' << config_lineno << ": " <<
+        debugs(3, DBG_CRITICAL, HERE << cfg_filename << ':' << config_lineno << ": " <<
                "long resource name (>1024), probably wrong");
     }
 
     resource.limitInit(s, len + 1);
     return true;
 }
-
 
 bool
 Adaptation::ServiceConfig::grokBool(bool &var, const char *name, const char *value)
@@ -257,7 +258,7 @@ Adaptation::ServiceConfig::grokBool(bool &var, const char *name, const char *val
     else if (!strcmp(value, "1") || !strcmp(value, "on"))
         var = true;
     else {
-        debugs(3, 0, HERE << cfg_filename << ':' << config_lineno << ": " <<
+        debugs(3, DBG_CRITICAL, HERE << cfg_filename << ':' << config_lineno << ": " <<
                "wrong value for boolean " << name << "; " <<
                "'0', '1', 'on', or 'off' expected but got: " << value);
         return false;

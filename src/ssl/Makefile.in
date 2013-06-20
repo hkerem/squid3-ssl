@@ -50,6 +50,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -61,11 +63,12 @@ LTLIBRARIES = $(noinst_LTLIBRARIES)
 libsslsquid_la_LIBADD =
 am__libsslsquid_la_SOURCES_DIST = context_storage.cc context_storage.h \
 	Config.cc Config.h ErrorDetail.cc ErrorDetail.h \
-	ErrorDetailManager.cc ErrorDetailManager.h support.cc \
-	support.h helper.cc helper.h
+	ErrorDetailManager.cc ErrorDetailManager.h ProxyCerts.h \
+	ServerBump.cc ServerBump.h support.cc support.h helper.cc \
+	helper.h
 @USE_SSL_CRTD_TRUE@am__objects_1 = helper.lo
 am_libsslsquid_la_OBJECTS = context_storage.lo Config.lo \
-	ErrorDetail.lo ErrorDetailManager.lo support.lo \
+	ErrorDetail.lo ErrorDetailManager.lo ServerBump.lo support.lo \
 	$(am__objects_1)
 libsslsquid_la_OBJECTS = $(am_libsslsquid_la_OBJECTS)
 libsslutil_la_LIBADD =
@@ -356,6 +359,9 @@ libsslsquid_la_SOURCES = \
 	ErrorDetail.h \
 	ErrorDetailManager.cc \
 	ErrorDetailManager.h \
+	ProxyCerts.h \
+	ServerBump.cc \
+	ServerBump.h \
 	support.cc \
 	support.h \
 	\
@@ -481,6 +487,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ErrorDetail.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ErrorDetailManager.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ServerBump.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/certificate_db.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/context_storage.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crtd_message.Plo@am__quote@

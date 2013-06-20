@@ -1,7 +1,8 @@
-#include "squid-old.h"
-#include "fde.h"
+#include "squid.h"
 #include "comm/Connection.h"
 #include "CommCalls.h"
+#include "fde.h"
+#include "globals.h"
 
 /* CommCommonCbParams */
 
@@ -35,7 +36,6 @@ CommCommonCbParams::print(std::ostream &os) const
     if (data)
         os << ", data=" << data;
 }
-
 
 /* CommAcceptCbParams */
 
@@ -82,7 +82,6 @@ CommIoCbParams::syncWithComm()
     return true; // now we are in sync and can handle the call
 }
 
-
 void
 CommIoCbParams::print(std::ostream &os) const
 {
@@ -92,7 +91,6 @@ CommIoCbParams::print(std::ostream &os) const
         os << ", buf=" << (void*)buf;
     }
 }
-
 
 /* CommCloseCbParams */
 
@@ -144,7 +142,6 @@ CommAcceptCbPtrFun::print(std::ostream &os) const
     os << ')';
 }
 
-
 /* CommConnectCbPtrFun */
 
 CommConnectCbPtrFun::CommConnectCbPtrFun(CNCB *aHandler,
@@ -168,7 +165,6 @@ CommConnectCbPtrFun::print(std::ostream &os) const
     os << ')';
 }
 
-
 /* CommIoCbPtrFun */
 
 CommIoCbPtrFun::CommIoCbPtrFun(IOCB *aHandler, const CommIoCbParams &aParams):
@@ -190,7 +186,6 @@ CommIoCbPtrFun::print(std::ostream &os) const
     params.print(os);
     os << ')';
 }
-
 
 /* CommCloseCbPtrFun */
 

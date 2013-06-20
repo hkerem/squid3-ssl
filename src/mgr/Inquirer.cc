@@ -1,12 +1,11 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
 
 #include "squid.h"
 #include "base/TextException.h"
+#include "comm.h"
 #include "comm/Connection.h"
 #include "comm/Write.h"
 #include "CommCalls.h"
@@ -24,9 +23,7 @@
 #include <memory>
 #include <algorithm>
 
-
 CBDATA_NAMESPACED_CLASS_INIT(Mgr, Inquirer);
-
 
 Mgr::Inquirer::Inquirer(Action::Pointer anAction,
                         const Request &aCause, const Ipc::StrandCoords &coords):
@@ -70,16 +67,28 @@ Mgr::Inquirer::start()
     Must(Comm::IsConnOpen(conn));
     Must(aggrAction != NULL);
 
+#if HAVE_UNIQUE_PTR
+    std::unique_ptr<MemBuf> replyBuf;
+#else
     std::auto_ptr<MemBuf> replyBuf;
+#endif
     if (strands.empty()) {
         LOCAL_ARRAY(char, url, MAX_URL);
         snprintf(url, MAX_URL, "%s", aggrAction->command().params.httpUri.termedBuf());
         HttpRequest *req = HttpRequest::CreateFromUrl(url);
         ErrorState err(ERR_INVALID_URL, HTTP_NOT_FOUND, req);
+#if HAVE_UNIQUE_PTR
+        std::unique_ptr<HttpReply> reply(err.BuildHttpReply());
+#else
         std::auto_ptr<HttpReply> reply(err.BuildHttpReply());
+#endif
         replyBuf.reset(reply->pack());
     } else {
+#if HAVE_UNIQUE_PTR
+        std::unique_ptr<HttpReply> reply(new HttpReply);
+#else
         std::auto_ptr<HttpReply> reply(new HttpReply);
+#endif
         reply->setHeaders(HTTP_OK, NULL, "text/plain", -1, squid_curtime, squid_curtime);
         reply->header.putStr(HDR_CONNECTION, "close"); // until we chunk response
         replyBuf.reset(reply->pack());

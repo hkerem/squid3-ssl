@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 06    Disk I/O Routines
  * AUTHOR: Harvest Derived
  *
@@ -32,11 +30,20 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm/Loops.h"
+#include "disk.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
+#include "Mem.h"
 #include "MemBuf.h"
+#include "profiler/Profiler.h"
 #include "StatCounters.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static PF diskHandleRead;
 static PF diskHandleWrite;
@@ -93,7 +100,6 @@ file_open(const char *path, int mode)
     PROF_stop(file_open);
     return fd;
 }
-
 
 /* close a disk file. */
 void
@@ -161,7 +167,7 @@ file_close(int fd)
  * select() loop.       --SLF
  */
 static void
-diskCombineWrites(struct _fde_disk *fdd)
+diskCombineWrites(_fde_disk *fdd)
 {
     /*
      * We need to combine multiple write requests on an FD's write
@@ -214,7 +220,7 @@ diskHandleWrite(int fd, void *notused)
     int len = 0;
     fde *F = &fd_table[fd];
 
-    struct _fde_disk *fdd = &F->disk;
+    _fde_disk *fdd = &F->disk;
     dwrite_q *q = fdd->write_q;
     int status = DISK_OK;
     int do_close;
@@ -254,7 +260,7 @@ diskHandleWrite(int fd, void *notused)
     if (len < 0) {
         if (!ignoreErrno(errno)) {
             status = errno == ENOSPC ? DISK_NO_SPACE_LEFT : DISK_ERROR;
-            debugs(50, 1, "diskHandleWrite: FD " << fd << ": disk write error: " << xstrerror());
+            debugs(50, DBG_IMPORTANT, "diskHandleWrite: FD " << fd << ": disk write error: " << xstrerror());
 
             /*
              * If there is no write callback, then this file is
@@ -299,10 +305,9 @@ diskHandleWrite(int fd, void *notused)
         q->buf_offset += len;
 
         if (q->buf_offset > q->len)
-            debugs(50, 1, "diskHandleWriteComplete: q->buf_offset > q->len (" <<
+            debugs(50, DBG_IMPORTANT, "diskHandleWriteComplete: q->buf_offset > q->len (" <<
                    q << "," << (int) q->buf_offset << ", " << q->len << ", " <<
                    len << " FD " << fd << ")");
-
 
         assert(q->buf_offset <= q->len);
 
@@ -354,7 +359,6 @@ diskHandleWrite(int fd, void *notused)
 
     PROF_stop(diskHandleWrite);
 }
-
 
 /* write block to a file */
 /* write back queue. Only one writer at a time. */
@@ -464,7 +468,7 @@ diskHandleRead(int fd, void *data)
             return;
         }
 
-        debugs(50, 1, "diskHandleRead: FD " << fd << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "diskHandleRead: FD " << fd << ": " << xstrerror());
         len = 0;
         rc = DISK_ERROR;
     } else if (len == 0) {
@@ -480,7 +484,6 @@ diskHandleRead(int fd, void *data)
 
     PROF_stop(diskHandleRead);
 }
-
 
 /* start read operation */
 /* buffer must be allocated from the caller.
@@ -510,7 +513,7 @@ safeunlink(const char *s, int quiet)
     ++ statCounter.syscalls.disk.unlinks;
 
     if (unlink(s) < 0 && !quiet)
-        debugs(50, 1, "safeunlink: Couldn't delete " << s << ": " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "safeunlink: Couldn't delete " << s << ": " << xstrerror());
 }
 
 /*

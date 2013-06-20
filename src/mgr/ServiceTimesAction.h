@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -9,7 +7,6 @@
 #define SQUID_MGR_SERVICE_TIMES_ACTION_H
 
 #include "mgr/Action.h"
-
 
 namespace Mgr
 {

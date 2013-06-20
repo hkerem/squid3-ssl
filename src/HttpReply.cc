@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 58    HTTP Reply (Response)
  * AUTHOR: Alex Rousskov
  *
@@ -33,17 +31,21 @@
  *
  */
 
-#include "squid-old.h"
-#include "SquidTime.h"
-#include "Store.h"
-#include "HttpBody.h"
-#include "HttpReply.h"
-#include "HttpHdrContRange.h"
-#include "HttpHdrCc.h"
-#include "HttpHdrSc.h"
+#include "squid.h"
+#include "acl/AclSizeLimit.h"
 #include "acl/FilledChecklist.h"
+#include "globals.h"
+#include "HttpBody.h"
+#include "HttpHdrCc.h"
+#include "HttpHdrContRange.h"
+#include "HttpHdrSc.h"
+#include "HttpReply.h"
 #include "HttpRequest.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "Store.h"
+#include "StrList.h"
 
 /* local constants */
 
@@ -596,7 +598,7 @@ HttpReply::calcMaxBodySize(HttpRequest& request)
 
     ACLFilledChecklist ch(NULL, &request, NULL);
     ch.reply = HTTPMSGLOCK(this); // XXX: this lock makes method non-const
-    for (acl_size_t *l = Config.ReplyBodySize; l; l = l -> next) {
+    for (AclSizeLimit *l = Config.ReplyBodySize; l; l = l -> next) {
         /* if there is no ACL list or if the ACLs listed match use this size value */
         if (!l->aclList || ch.fastCheck(l->aclList) == ACCESS_ALLOWED) {
             debugs(58, 4, HERE << "bodySizeMax=" << bodySizeMax);
@@ -623,7 +625,6 @@ HttpReply::clone() const
     // keep_alive is handled in hdrCacheInit()
     return rep;
 }
-
 
 bool HttpReply::inheritProperties(const HttpMsg *aMsg)
 {

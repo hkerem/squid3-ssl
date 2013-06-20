@@ -20,6 +20,7 @@ STUB_SOURCE= tests/STUB.h \
 	tests/stub_debug.cc \
 	tests/stub_errorpage.cc \
 	tests/stub_event.cc \
+	tests/stub_fatal.cc \
 	tests/stub_fd.cc \
 	tests/stub_helper.cc \
 	tests/stub_http.cc \
@@ -30,6 +31,7 @@ STUB_SOURCE= tests/STUB.h \
 	tests/stub_ipc_TypedMsgHdr.cc \
 	tests/stub_ipcache.cc \
 	tests/stub_libcomm.cc \
+	tests/stub_libformat.cc \
 	tests/stub_libicmp.cc \
 	tests/stub_libmgr.cc \
 	tests/stub_libsslsquid.cc \
@@ -45,4 +47,5 @@ STUB_SOURCE= tests/STUB.h \
 	tests/stub_store_rebuild.cc \
 	tests/stub_store_stats.cc \
 	tests/stub_store_swapout.cc \
-	tests/stub_tools.cc 
+	tests/stub_tools.cc \
+	tests/stub_wordlist.cc 

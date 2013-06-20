@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 20    Swap Dir base object
  * AUTHOR: Robert Collins
  *
@@ -32,11 +30,16 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "cache_cf.h"
 #include "compat/strtoll.h"
-#include "SwapDir.h"
-#include "StoreFileSystem.h"
 #include "ConfigOption.h"
+#include "globals.h"
+#include "Parsing.h"
+#include "SquidConfig.h"
+#include "StoreFileSystem.h"
+#include "SwapDir.h"
+#include "tools.h"
 
 SwapDir::SwapDir(char const *aType): theType(aType),
         max_size(0), min_objsize(0), max_objsize (-1),
@@ -182,7 +185,6 @@ SwapDir::canStore(const StoreEntry &e, int64_t diskSpaceNeeded, int &load) const
     return true; // kids may provide more tests and should report true load
 }
 
-
 void
 SwapDir::sync() {}
 
@@ -299,7 +301,7 @@ SwapDir::parseOptions(int isaReconfig)
 
     if (isaReconfig) {
         if (old_read_only != flags.read_only) {
-            debugs(3, 1, "Cache dir '" << path << "' now " << (flags.read_only ? "No-Store" : "Read-Write"));
+            debugs(3, DBG_IMPORTANT, "Cache dir '" << path << "' now " << (flags.read_only ? "No-Store" : "Read-Write"));
         }
     }
 }

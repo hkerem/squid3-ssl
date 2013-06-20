@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -36,10 +34,9 @@
 #ifndef SQUID_ESIASSIGN_H
 #define SQUID_ESIASSIGN_H
 
-#include "squid-old.h"
 #include "esi/Element.h"
-#include "SquidString.h"
 #include "esi/VarState.h"
+#include "SquidString.h"
 
 /* ESIVariableExpression */
 /* This is a variable that is itself and expression */

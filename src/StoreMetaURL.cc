@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapfile Metadata
  * AUTHOR: Kostas Anagnostakis
  *
@@ -33,7 +31,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "StoreMetaURL.h"
 #include "Store.h"
 #include "MemObject.h"
@@ -47,8 +45,8 @@ StoreMetaURL::checkConsistency(StoreEntry *e) const
         return true;
 
     if (strcasecmp(e->mem_obj->url, (char *)value)) {
-        debugs(20, 1, "storeClientReadHeader: URL mismatch");
-        debugs(20, 1, "\t{" << (char *) value << "} != {" << e->mem_obj->url << "}");
+        debugs(20, DBG_IMPORTANT, "storeClientReadHeader: URL mismatch");
+        debugs(20, DBG_IMPORTANT, "\t{" << (char *) value << "} != {" << e->mem_obj->url << "}");
         return false;
     }
 

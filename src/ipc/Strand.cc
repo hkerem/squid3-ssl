@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -9,6 +7,7 @@
 #include "base/Subscription.h"
 #include "base/TextException.h"
 #include "comm/Connection.h"
+#include "globals.h"
 #include "ipc/Strand.h"
 #include "ipc/StrandCoord.h"
 #include "ipc/Messages.h"
@@ -30,7 +29,6 @@
 #endif
 
 CBDATA_NAMESPACED_CLASS_INIT(Ipc, Strand);
-
 
 Ipc::Strand::Strand():
         Port(MakeAddr(strandAddrPfx, KidIdentifier)),
@@ -106,7 +104,7 @@ void Ipc::Strand::receive(const TypedMsgHdr &message)
 #endif
 
     default:
-        debugs(54, 1, HERE << "Unhandled message type: " << message.type());
+        debugs(54, DBG_IMPORTANT, HERE << "Unhandled message type: " << message.type());
         break;
     }
 }

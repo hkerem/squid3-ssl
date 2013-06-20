@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "mgr/IntParam.h"
 #include "mgr/StringParam.h"
 #include "mgr/QueryParams.h"
-
 
 Mgr::QueryParam::Pointer
 Mgr::QueryParams::get(const String& name) const

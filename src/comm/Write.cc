@@ -1,14 +1,21 @@
 #include "squid.h"
-#if USE_DELAY_POOLS
-#include "ClientInfo.h"
-#endif
 #include "comm/Connection.h"
 #include "comm/IoCallback.h"
 #include "comm/Write.h"
+#include "fd.h"
 #include "fde.h"
-#include "StatCounters.h"
-#include "SquidTime.h"
+#include "globals.h"
 #include "MemBuf.h"
+#include "profiler/Profiler.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+
+#if USE_DELAY_POOLS
+#include "ClientInfo.h"
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 void
 Comm::Write(const Comm::ConnectionPointer &conn, MemBuf *mb, AsyncCall::Pointer &callback)
@@ -98,7 +105,7 @@ Comm::HandleWrite(int fd, void *data)
             /* we wrote data - drain them from bucket */
             clientInfo->bucketSize -= len;
             if (clientInfo->bucketSize < 0.0) {
-                debugs(5,1, HERE << "drained too much"); // should not happen
+                debugs(5, DBG_IMPORTANT, HERE << "drained too much"); // should not happen
                 clientInfo->bucketSize = 0;
             }
         }

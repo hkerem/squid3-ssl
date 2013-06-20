@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -36,7 +34,6 @@
 #ifndef SQUID_ESIVAR_H
 #define SQUID_ESIVAR_H
 
-#include "squid-old.h"
 #include "esi/Element.h"
 #include "esi/Sequence.h"
 

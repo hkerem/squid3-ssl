@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -10,8 +8,8 @@
 #include "base/RunnersRegistry.h"
 #include "ipc/mem/PagePool.h"
 #include "ipc/mem/Pages.h"
-#include "structs.h"
 #include "SwapDir.h"
+#include "tools.h"
 
 // Uses a single PagePool instance, for now.
 // Eventually, we may have pools dedicated to memory caching, disk I/O, etc.
@@ -102,7 +100,6 @@ private:
 };
 
 RunnerRegistrationEntry(rrAfterConfig, SharedMemPagesRr);
-
 
 void
 SharedMemPagesRr::run(const RunnerRegistry &r)

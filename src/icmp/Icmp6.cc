@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 42    ICMP Pinger program
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -33,10 +31,11 @@
  */
 //#define SQUID_HELPER 1
 
-#include "squid-old.h"
+#include "squid.h"
 
 #if USE_ICMP
 
+#include "leakcheck.h"
 #include "SquidTime.h"
 #include "Debug.h"
 #include "Icmp6.h"
@@ -119,12 +118,12 @@ Icmp6::Open(void)
     icmp_sock = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 
     if (icmp_sock < 0) {
-        debugs(50, 0, HERE << " icmp_sock: " << xstrerror());
+        debugs(50, DBG_CRITICAL, HERE << " icmp_sock: " << xstrerror());
         return -1;
     }
 
     icmp_ident = getpid() & 0xffff;
-    debugs(42, 1, "pinger: ICMPv6 socket opened");
+    debugs(42, DBG_IMPORTANT, "pinger: ICMPv6 socket opened");
 
     return icmp_sock;
 }
@@ -163,7 +162,6 @@ Icmp6::SendEcho(Ip::Address &to, int opcode, const char *payload, int len)
 
     icmp6_pktsize = sizeof(struct icmp6_hdr);
 
-
     // Fill Icmp6 ECHO data content
     echo = (icmpEchoData *) (pkt + sizeof(icmp6_hdr));
     echo->opcode = (unsigned char) opcode;
@@ -197,7 +195,7 @@ Icmp6::SendEcho(Ip::Address &to, int opcode, const char *payload, int len)
                S->ai_addrlen);
 
     if (x < 0) {
-        debugs(42, 1, HERE << "Error sending to ICMPv6 packet to " << to << ". ERR: " << xstrerror());
+        debugs(42, DBG_IMPORTANT, HERE << "Error sending to ICMPv6 packet to " << to << ". ERR: " << xstrerror());
     }
     debugs(42,9, HERE << "x=" << x);
 
@@ -221,7 +219,7 @@ Icmp6::Recv(void)
     static pingerReplyData preply;
 
     if (icmp_sock < 0) {
-        debugs(42,0, HERE << "dropping ICMPv6 read. No socket!?");
+        debugs(42, DBG_CRITICAL, HERE << "dropping ICMPv6 read. No socket!?");
         return;
     }
 
@@ -268,11 +266,10 @@ Icmp6::Recv(void)
     #define ip6_hlim	// MAX hops  (always 64, but no guarantee)
     #define ip6_hops	// HOPS!!!  (can it be true??)
 
-
         ip = (struct ip6_hdr *) pkt;
         pkt += sizeof(ip6_hdr);
 
-    debugs(42,0, HERE << "ip6_nxt=" << ip->ip6_nxt <<
+    debugs(42, DBG_CRITICAL, HERE << "ip6_nxt=" << ip->ip6_nxt <<
     		", ip6_plen=" << ip->ip6_plen <<
     		", ip6_hlim=" << ip->ip6_hlim <<
     		", ip6_hops=" << ip->ip6_hops	<<

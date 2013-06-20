@@ -1,7 +1,3 @@
-/*
- * $Id$
- */
-
 #ifndef SQUID_SPLAY_H
 #define SQUID_SPLAY_H
 
@@ -78,7 +74,6 @@ public:
 
     size_t elements;
 };
-
 
 SQUIDCEXTERN int splayLastResult;
 

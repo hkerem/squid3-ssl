@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -34,17 +32,19 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 /* MS Visual Studio Projects are monolithic, so we need the following
  * #if to exclude the ESI code from compile process when not needed.
  */
 #if (USE_SQUID_ESI == 1)
 
+#include "client_side_request.h"
+#include "client_side.h"
 #include "esi/Include.h"
 #include "esi/VarState.h"
-#include "client_side_request.h"
 #include "HttpReply.h"
+#include "log/access_log.h"
 
 CBDATA_CLASS_INIT (ESIStreamContext);
 
@@ -160,7 +160,6 @@ esiBufferRecipient (clientStreamNode *node, ClientHttpRequest *http, HttpReply *
         return;
     }
 
-
     /* after the write to the user occurs, (ie here, or in a callback)
      * we call */
     if (clientHttpRequestStatus(-1, http)) {
@@ -184,7 +183,7 @@ esiBufferRecipient (clientStreamNode *node, ClientHttpRequest *http, HttpReply *
         return;
 
     case STREAM_FAILED:
-        debugs(86, 1, "ESI subrequest failed transfer");
+        debugs(86, DBG_IMPORTANT, "ESI subrequest failed transfer");
         esiStream->include->includeFail (esiStream);
         esiStream->finished = 1;
         httpRequestFree (http);
@@ -260,8 +259,6 @@ ESIStreamContextNew (ESIIncludePtr include)
     return rv;
 }
 
-
-
 /* ESIInclude */
 ESIInclude::~ESIInclude()
 {
@@ -302,9 +299,15 @@ ESIInclude::makeUsable(esiTreeParentPtr newParent, ESIVarState &newVarState) con
     return result;
 }
 
-ESIInclude::ESIInclude(ESIInclude const &old) : parent (NULL), started (false), sent (false)
+ESIInclude::ESIInclude(ESIInclude const &old) :
+        varState(NULL),
+        srcurl(NULL),
+        alturl(NULL),
+        parent(NULL),
+        started(false),
+        sent(false)
 {
-    varState = NULL;
+    memset(&flags, 0, sizeof(flags));
     flags.onerrorcontinue = old.flags.onerrorcontinue;
 
     if (old.srcurl)
@@ -320,7 +323,6 @@ ESIInclude::prepareRequestHeaders(HttpHeader &tempheaders, ESIVarState *vars)
     tempheaders.update (&vars->header(), NULL);
     tempheaders.removeHopByHopEntries();
 }
-
 
 void
 ESIInclude::Start (ESIStreamContext::Pointer stream, char const *url, ESIVarState *vars)
@@ -342,18 +344,24 @@ ESIInclude::Start (ESIStreamContext::Pointer stream, char const *url, ESIVarStat
            "'");
 
     if (clientBeginRequest(METHOD_GET, tempUrl, esiBufferRecipient, esiBufferDetach, stream.getRaw(), &tempheaders, stream->localbuffer->buf, HTTP_REQBUF_SZ)) {
-        debugs(86, 0, "starting new ESI subrequest failed");
+        debugs(86, DBG_CRITICAL, "starting new ESI subrequest failed");
     }
 
     tempheaders.clean();
 }
 
-ESIInclude::ESIInclude (esiTreeParentPtr aParent, int attrcount, char const **attr, ESIContext *aContext) : parent (aParent), started (false), sent (false)
+ESIInclude::ESIInclude(esiTreeParentPtr aParent, int attrcount, char const **attr, ESIContext *aContext) :
+        varState(NULL),
+        srcurl(NULL),
+        alturl(NULL),
+        parent(aParent),
+        started(false),
+        sent(false)
 {
-    int i;
     assert (aContext);
+    memset(&flags, 0, sizeof(flags));
 
-    for (i = 0; i < attrcount && attr[i]; i += 2) {
+    for (int i = 0; i < attrcount && attr[i]; i += 2) {
         if (!strcmp(attr[i],"src")) {
             /* Start a request for thisNode url */
             debugs(86, 5, "ESIIncludeNew: Requesting source '" << attr[i+1] << "'");
@@ -379,7 +387,7 @@ ESIInclude::ESIInclude (esiTreeParentPtr aParent, int attrcount, char const **at
                 flags.onerrorcontinue = 1;
             } else {
                 /* ignore mistyped attributes */
-                debugs(86, 1, "invalid value for onerror='" << attr[i+1] << "'");
+                debugs(86, DBG_IMPORTANT, "invalid value for onerror='" << attr[i+1] << "'");
             }
         } else {
             /* ignore mistyped attributes. TODO:? error on these for user feedback - config parameter needed
@@ -407,7 +415,7 @@ ESIInclude::start()
     } else {
         alt = NULL;
 
-        debugs(86, 1, "ESIIncludeNew: esi:include with no src attributes");
+        debugs(86, DBG_IMPORTANT, "ESIIncludeNew: esi:include with no src attributes");
 
         flags.failed = 1;
     }

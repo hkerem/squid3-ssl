@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 46    Access Log - Squid ICAP Logging
  * AUTHOR: Alex Rousskov
  *
@@ -38,9 +36,11 @@
 
 #include "AccessLogEntry.h"
 #include "format/Quoting.h"
+#include "fqdncache.h"
 #include "HttpRequest.h"
 #include "log/File.h"
 #include "log/Formats.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 void
@@ -59,7 +59,10 @@ Log::Format::SquidIcap(const AccessLogEntry::Pointer &al, Logfile * logfile)
             client = al->cache.caddr.NtoA(clientbuf, MAX_IPSTRLEN);
     }
 
-    user = ::Format::QuoteUrlEncodeUsername(al->cache.authuser);
+#if USE_AUTH
+    if (al->request != NULL && al->request->auth_user_request != NULL)
+        user = ::Format::QuoteUrlEncodeUsername(al->request->auth_user_request->username());
+#endif
 
     if (!user)
         user = ::Format::QuoteUrlEncodeUsername(al->cache.extuser);

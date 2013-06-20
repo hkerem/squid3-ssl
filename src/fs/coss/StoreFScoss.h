@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -65,7 +63,6 @@ public:
 
     open, create, close, unlink, read, write, stripe_write;
 };
-
 
 class CacheManager;
 

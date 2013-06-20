@@ -1,6 +1,6 @@
 #define SQUID_UNIT_TEST 1
 
-#include "squid-old.h"
+#include "squid.h"
 
 #if USE_AUTH
 
@@ -13,7 +13,6 @@
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testACLMaxUserIP );
 
-
 void
 testACLMaxUserIP::testDefaults()
 {
@@ -25,7 +24,6 @@ testACLMaxUserIP::testDefaults()
     /* an unparsed acl must not be valid - there is no sane default */
     CPPUNIT_ASSERT(!anACL.valid());
 }
-
 
 void
 testACLMaxUserIP::testParseLine()

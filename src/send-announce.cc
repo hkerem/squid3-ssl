@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 27    Cache Announcer
  * AUTHOR: Duane Wessels
  *
@@ -33,13 +30,18 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm/Connection.h"
+#include "disk.h"
 #include "event.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
 #include "ICP.h"
 #include "ipcache.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "tools.h"
 
 static IPH send_announce;
 
@@ -71,11 +73,11 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
     int fd;
 
     if (ia == NULL) {
-        debugs(27, 1, "send_announce: Unknown host '" << host << "'");
+        debugs(27, DBG_IMPORTANT, "send_announce: Unknown host '" << host << "'");
         return;
     }
 
-    debugs(27, 1, "Sending Announcement to " << host);
+    debugs(27, DBG_IMPORTANT, "Sending Announcement to " << host);
     sndbuf[0] = '\0';
     snprintf(tbuf, 256, "cache_version SQUID/%s\n", version_string);
     strcat(sndbuf, tbuf);
@@ -106,7 +108,7 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
             sndbuf[l] = '\0';
             file_close(fd);
         } else {
-            debugs(50, 1, "send_announce: " << file << ": " << xstrerror());
+            debugs(50, DBG_IMPORTANT, "send_announce: " << file << ": " << xstrerror());
         }
     }
 
@@ -115,5 +117,5 @@ send_announce(const ipcache_addrs *ia, const DnsLookupDetails &, void *junk)
     assert(Comm::IsConnOpen(icpOutgoingConn));
 
     if (comm_udp_sendto(icpOutgoingConn->fd, S, sndbuf, strlen(sndbuf) + 1) < 0)
-        debugs(27, 1, "ERROR: Failed to announce to " << S << " from " << icpOutgoingConn->local << ": " << xstrerror());
+        debugs(27, DBG_IMPORTANT, "ERROR: Failed to announce to " << S << " from " << icpOutgoingConn->local << ": " << xstrerror());
 }

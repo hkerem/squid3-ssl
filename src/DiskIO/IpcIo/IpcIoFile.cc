@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 47    Store Directory Routines
  */
 
@@ -11,15 +9,23 @@
 #include "DiskIO/IpcIo/IpcIoFile.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
+#include "disk.h"
+#include "fd.h"
+#include "globals.h"
+#include "ipc/mem/Pages.h"
 #include "ipc/Messages.h"
 #include "ipc/Port.h"
 #include "ipc/Queue.h"
 #include "ipc/StrandSearch.h"
 #include "ipc/UdsOp.h"
-#include "ipc/mem/Pages.h"
-#include "StatCounters.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "StatCounters.h"
+#include "tools.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 CBDATA_CLASS_INIT(IpcIoFile);
 
 /// shared memory segment path to use for IpcIoFile maps
@@ -56,7 +62,6 @@ operator <<(std::ostream &os, const SipcIo &sio)
     return os << "ipcIo" << sio.worker << '.' << sio.msg.requestId <<
            (sio.msg.command == IpcIo::cmdRead ? 'r' : 'w') << sio.disker;
 }
-
 
 IpcIoFile::IpcIoFile(char const *aDb):
         dbName(aDb), diskId(-1), error_(false), lastRequestId(0),
@@ -135,7 +140,7 @@ IpcIoFile::openCompleted(const Ipc::StrandSearchResponse *const response)
     Must(diskId < 0); // we do not know our disker yet
 
     if (!response) {
-        debugs(79,1, HERE << "error: timeout");
+        debugs(79, DBG_IMPORTANT, HERE << "error: timeout");
         error_ = true;
     } else {
         diskId = response->strand.kidId;
@@ -145,7 +150,7 @@ IpcIoFile::openCompleted(const Ipc::StrandSearchResponse *const response)
             Must(inserted);
         } else {
             error_ = true;
-            debugs(79,1, HERE << "error: no disker claimed " << dbName);
+            debugs(79, DBG_IMPORTANT, HERE << "error: no disker claimed " << dbName);
         }
     }
 
@@ -222,10 +227,10 @@ IpcIoFile::readCompleted(ReadRequest *readRequest,
         ioError = true; // I/O timeout does not warrant setting error_?
     } else {
         if (response->xerrno) {
-            debugs(79,1, HERE << "error: " << xstrerr(response->xerrno));
+            debugs(79, DBG_IMPORTANT, HERE << "error: " << xstrerr(response->xerrno));
             ioError = error_ = true;
         } else if (!response->page) {
-            debugs(79,1, HERE << "error: run out of shared memory pages");
+            debugs(79, DBG_IMPORTANT, HERE << "error: run out of shared memory pages");
             ioError = true;
         } else {
             const char *const buf = Ipc::Mem::PagePointer(response->page);
@@ -268,10 +273,10 @@ IpcIoFile::writeCompleted(WriteRequest *writeRequest,
         debugs(79, 3, HERE << "error: timeout");
         ioError = true; // I/O timeout does not warrant setting error_?
     } else if (response->xerrno) {
-        debugs(79,1, HERE << "error: " << xstrerr(response->xerrno));
+        debugs(79, DBG_IMPORTANT, HERE << "error: " << xstrerr(response->xerrno));
         ioError = error_ = true;
     } else if (response->len != writeRequest->len) {
-        debugs(79,1, HERE << "problem: " << response->len << " < " << writeRequest->len);
+        debugs(79, DBG_IMPORTANT, HERE << "problem: " << response->len << " < " << writeRequest->len);
         error_ = true;
     }
 
@@ -580,7 +585,6 @@ IpcIoFile::getFD() const
     return -1;
 }
 
-
 /* IpcIoMsg */
 
 IpcIoMsg::IpcIoMsg():
@@ -616,8 +620,6 @@ IpcIoPendingRequest::completeIo(IpcIoMsg *const response)
         file->openCompleted(NULL);
     }
 }
-
-
 
 /* XXX: disker code that should probably be moved elsewhere */
 
@@ -674,7 +676,6 @@ diskerWrite(IpcIoMsg &ipcIo)
 
     Ipc::Mem::PutPage(ipcIo.page);
 }
-
 
 void
 IpcIoFile::DiskerHandleMoreRequests(void *source)
@@ -793,7 +794,7 @@ void
 IpcIoFile::DiskerHandleRequest(const int workerId, IpcIoMsg &ipcIo)
 {
     if (ipcIo.command != IpcIo::cmdRead && ipcIo.command != IpcIo::cmdWrite) {
-        debugs(0,0, HERE << "disker" << KidIdentifier <<
+        debugs(0, DBG_CRITICAL, HERE << "disker" << KidIdentifier <<
                " should not receive " << ipcIo.command <<
                " ipcIo" << workerId << '.' << ipcIo.requestId);
         return;
@@ -835,7 +836,7 @@ DiskerOpen(const String &path, int flags, mode_t mode)
 
     if (TheFile < 0) {
         const int xerrno = errno;
-        debugs(47,0, HERE << "rock db error opening " << path << ": " <<
+        debugs(47, DBG_CRITICAL, HERE << "rock db error opening " << path << ": " <<
                xstrerr(xerrno));
         return false;
     }
@@ -856,7 +857,6 @@ DiskerClose(const String &path)
     }
 }
 
-
 /// reports our needs for shared memory pages to Ipc::Mem::Pages
 class IpcIoClaimMemoryNeedsRr: public RegisteredRunner
 {
@@ -866,7 +866,6 @@ public:
 };
 
 RunnerRegistrationEntry(rrClaimMemoryNeeds, IpcIoClaimMemoryNeedsRr);
-
 
 void
 IpcIoClaimMemoryNeedsRr::run(const RunnerRegistry &)
@@ -880,7 +879,6 @@ IpcIoClaimMemoryNeedsRr::run(const RunnerRegistry &)
     Ipc::Mem::NotePageNeed(Ipc::Mem::PageId::ioPage,
                            static_cast<int>(itemsCount * 1.1));
 }
-
 
 /// initializes shared memory segments used by IpcIoFile
 class IpcIoRr: public Ipc::Mem::RegisteredRunner
@@ -898,7 +896,6 @@ private:
 };
 
 RunnerRegistrationEntry(rrAfterConfig, IpcIoRr);
-
 
 void IpcIoRr::create(const RunnerRegistry &)
 {

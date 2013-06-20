@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -31,7 +29,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "BlockingDiskIOModule.h"
 #include "BlockingIOStrategy.h"
 
@@ -53,7 +51,6 @@ BlockingDiskIOModule::init()
 void
 BlockingDiskIOModule::shutdown()
 {}
-
 
 DiskIOStrategy*
 BlockingDiskIOModule::createStrategy()

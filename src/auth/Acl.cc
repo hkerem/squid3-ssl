@@ -1,15 +1,20 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/Acl.h"
 #include "acl/FilledChecklist.h"
 #include "auth/UserRequest.h"
 #include "auth/Acl.h"
 #include "auth/AclProxyAuth.h"
+#include "client_side.h"
 #include "HttpRequest.h"
 
-/** retval -1 user not authenticated (authentication error?)
-    retval  0 user not authorized OR user authentication is in pgrogress
-    retval +1 user authenticated and authorized */
-int
+/**
+ * \retval ACCESS_AUTH_REQUIRED credentials missing. challenge required.
+ * \retval ACCESS_DENIED        user not authenticated (authentication error?)
+ * \retval ACCESS_DUNNO         user authentication is in progress
+ * \retval ACCESS_DENIED        user not authorized
+ * \retval ACCESS_ALLOWED       user authenticated and authorized
+ */
+allow_t
 AuthenticateAcl(ACLChecklist *ch)
 {
     ACLFilledChecklist *checklist = Filled(ch);
@@ -18,20 +23,20 @@ AuthenticateAcl(ACLChecklist *ch)
 
     if (NULL == request) {
         fatal ("requiresRequest SHOULD have been true for this ACL!!");
-        return 0;
+        return ACCESS_DENIED;
     } else if (request->flags.sslBumped) {
         debugs(28, 5, "SslBumped request: It is an encapsulated request do not authenticate");
         checklist->auth_user_request = checklist->conn() != NULL ? checklist->conn()->auth_user_request : request->auth_user_request;
         if (checklist->auth_user_request != NULL)
-            return 1;
+            return ACCESS_ALLOWED;
         else
-            return 0;
+            return ACCESS_DENIED;
     } else if (request->flags.accelerated) {
         /* WWW authorization on accelerated requests */
         headertype = HDR_AUTHORIZATION;
-    } else if (request->flags.intercepted || request->flags.spoof_client_ip) {
-        debugs(28, DBG_IMPORTANT, HERE << " authentication not applicable on intercepted requests.");
-        return -1;
+    } else if (request->flags.intercepted || request->flags.spoofClientIp) {
+        debugs(28, DBG_IMPORTANT, "NOTICE: Authentication not applicable on intercepted requests.");
+        return ACCESS_DENIED;
     } else {
         /* Proxy authorization on proxy requests */
         headertype = HDR_PROXY_AUTHORIZATION;
@@ -45,25 +50,28 @@ AuthenticateAcl(ACLChecklist *ch)
     switch (result) {
 
     case AUTH_ACL_CANNOT_AUTHENTICATE:
-        debugs(28, 4, HERE << "returning  0 user authenticated but not authorised.");
-        return 0;
+        debugs(28, 4, HERE << "returning " << ACCESS_DENIED << " user authenticated but not authorised.");
+        return ACCESS_DENIED;
 
     case AUTH_AUTHENTICATED:
-        return 1;
+        return ACCESS_ALLOWED;
         break;
 
     case AUTH_ACL_HELPER:
-        debugs(28, 4, HERE << "returning 0 sending credentials to helper.");
+        debugs(28, 4, HERE << "returning " << ACCESS_DUNNO << " sending credentials to helper.");
         checklist->changeState(ProxyAuthLookup::Instance());
-        return 0;
+        return ACCESS_DUNNO; // XXX: break this down into DUNNO, EXPIRED_OK, EXPIRED_BAD states
 
     case AUTH_ACL_CHALLENGE:
-        debugs(28, 4, HERE << "returning 0 sending authentication challenge.");
-        checklist->changeState (ProxyAuthNeeded::Instance());
-        return 0;
+        debugs(28, 4, HERE << "returning " << ACCESS_AUTH_REQUIRED << " sending authentication challenge.");
+        /* Client is required to resend the request with correct authentication
+         * credentials. (This may be part of a stateful auth protocol.)
+         * The request is denied.
+         */
+        return ACCESS_AUTH_REQUIRED;
 
     default:
         fatal("unexpected authenticateAuthenticate reply\n");
-        return 0;
+        return ACCESS_DENIED;
     }
 }

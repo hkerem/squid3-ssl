@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -15,7 +13,6 @@
 #include "ipc/Response.h"
 #include "ipc/StrandCoords.h"
 #include <map>
-
 
 namespace Ipc
 {

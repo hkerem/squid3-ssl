@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -9,15 +7,14 @@
 #include "base/TextException.h"
 #include "CommCalls.h"
 #include "comm.h"
+#include "globals.h"
 #include "ipc/Port.h"
 #include "snmp_core.h"
 #include "snmp/Forwarder.h"
 #include "snmp/Request.h"
 #include "snmp/Response.h"
 
-
 CBDATA_NAMESPACED_CLASS_INIT(Snmp, Forwarder);
-
 
 Snmp::Forwarder::Forwarder(const Pdu& aPdu, const Session& aSession, int aFd,
                            const Ip::Address& anAddress):

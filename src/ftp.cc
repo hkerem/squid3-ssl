@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 09    File Transfer Protocol (FTP)
  * AUTHOR: Harvest Derived
  *
@@ -32,36 +30,46 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm.h"
 #include "comm/ConnOpener.h"
-#include "CommCalls.h"
 #include "comm/TcpAcceptor.h"
 #include "comm/Write.h"
+#include "CommCalls.h"
 #include "compat/strtoll.h"
 #include "errorpage.h"
+#include "fd.h"
 #include "fde.h"
 #include "forward.h"
 #include "html_quote.h"
 #include "HttpHdrContRange.h"
-#include "HttpHeaderRange.h"
 #include "HttpHeader.h"
-#include "HttpRequest.h"
+#include "HttpHeaderRange.h"
 #include "HttpReply.h"
+#include "HttpRequest.h"
 #include "ip/tools.h"
+#include "Mem.h"
 #include "MemBuf.h"
+#include "mime.h"
 #include "rfc1738.h"
 #include "Server.h"
+#include "SquidConfig.h"
 #include "SquidString.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "tools.h"
+#include "URL.h"
 #include "URLScheme.h"
 #include "wordlist.h"
 
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #include "MemObject.h"
+#endif
+
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 /**
@@ -1953,7 +1961,6 @@ FtpStateData::loginFailed()
     if (reply)
         err->ftp.reply = xstrdup(reply);
 
-
     HttpReply *newrep = err->BuildHttpReply();
     delete err;
 
@@ -3298,7 +3305,6 @@ FtpStateData::completedListing()
     entry->unlock();
 }
 
-
 /// \ingroup ServerProtocolFTPInternal
 static void
 ftpReadTransferDone(FtpStateData * ftpState)
@@ -3597,9 +3603,6 @@ ftpSendReply(FtpStateData * ftpState)
         http_code = HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ftpState->request)
-        ftpState->request->detailError(err_code, code);
-
     ErrorState err(err_code, http_code, ftpState->request);
 
     if (ftpState->old_request)
@@ -3613,6 +3616,9 @@ ftpSendReply(FtpStateData * ftpState)
         err.ftp.reply = xstrdup(ftpState->ctrl.last_reply);
     else
         err.ftp.reply = xstrdup("");
+
+    // TODO: interpret as FTP-specific error code
+    err.detailError(code);
 
     ftpState->entry->replaceHttpReply( err.BuildHttpReply() );
 

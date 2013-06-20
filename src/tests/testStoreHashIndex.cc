@@ -1,7 +1,6 @@
 #define SQUID_UNIT_TEST 1
 
-#include "squid-old.h"
-
+#include "squid.h"
 #include "testStoreHashIndex.h"
 #include "Store.h"
 #include "SwapDir.h"
@@ -9,6 +8,7 @@
 #include "StoreHashIndex.h"
 #include "Mem.h"
 #include "StoreSearch.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testStoreHashIndex );
@@ -20,7 +20,6 @@ addSwapDir(TestSwapDirPointer aStore)
     Config.cacheSwap.swapDirs[Config.cacheSwap.n_configured] = aStore.getRaw();
     ++Config.cacheSwap.n_configured;
 }
-
 
 void
 testStoreHashIndex::testStats()

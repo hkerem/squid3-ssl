@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,7 +32,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/Referer.h"
 #include "acl/Checklist.h"
 #include "acl/RegexData.h"
@@ -42,5 +40,4 @@
 /* explicit template instantiation required for some systems */
 
 template class ACLRequestHeaderStrategy<HDR_REFERER>;
-
 

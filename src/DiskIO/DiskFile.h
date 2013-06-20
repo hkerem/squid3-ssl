@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -33,7 +31,7 @@
 #ifndef SQUID_DISKFILE_H
 #define SQUID_DISKFILE_H
 
-#include "squid-old.h"
+#include "typedefs.h"
 
 #include "RefCount.h"
 

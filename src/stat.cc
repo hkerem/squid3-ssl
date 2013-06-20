@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 18    Cache Manager Statistics
  * AUTHOR: Harvest Derived
  *
@@ -32,36 +30,46 @@
  *
  */
 
-#include "squid-old.h"
-#include "comm/Loops.h"
-#include "event.h"
-#include "format/Token.h"
-#include "StoreClient.h"
-#if USE_AUTH
-#include "auth/UserRequest.h"
-#endif
-#include "comm/Connection.h"
-#include "mgr/Registration.h"
-#include "Store.h"
-#include "HttpRequest.h"
-#include "MemObject.h"
-#include "fde.h"
-#include "mem_node.h"
-#if USE_DELAY_POOLS
-#include "DelayId.h"
-#endif
+#include "squid.h"
+#include "CacheDigest.h"
+#include "CachePeer.h"
 #include "client_side_request.h"
 #include "client_side.h"
+#include "comm/Connection.h"
+#include "comm/Loops.h"
+#include "event.h"
+#include "fde.h"
+#include "format/Token.h"
+#include "globals.h"
+#include "HttpRequest.h"
+#include "IoStats.h"
+#include "MemObject.h"
+#include "mem_node.h"
 #include "MemBuf.h"
-#include "SquidMath.h"
-#include "SquidTime.h"
-#include "StatCounters.h"
 #include "mgr/CountersAction.h"
 #include "mgr/FunAction.h"
 #include "mgr/InfoAction.h"
 #include "mgr/IntervalAction.h"
 #include "mgr/IoAction.h"
+#include "mgr/Registration.h"
 #include "mgr/ServiceTimesAction.h"
+#include "neighbors.h"
+#include "PeerDigest.h"
+#include "SquidConfig.h"
+#include "SquidMath.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+#include "stat.h"
+#include "StoreClient.h"
+#include "Store.h"
+#include "store_digest.h"
+#include "tools.h"
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
+#if USE_DELAY_POOLS
+#include "DelayId.h"
+#endif
 #if USE_SSL
 #include "ssl/support.h"
 #endif
@@ -88,7 +96,6 @@ public:
 private:
     CBDATA_CLASS2(StatObjectsState);
 };
-
 
 /* LOCALS */
 static const char *describeStatuses(const StoreEntry *);
@@ -215,19 +222,19 @@ GetIoStats(Mgr::IoActionData& stats)
 
     stats.http_reads = IOStats.Http.reads;
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         stats.http_read_hist[i] = IOStats.Http.read_hist[i];
     }
 
     stats.ftp_reads = IOStats.Ftp.reads;
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         stats.ftp_read_hist[i] = IOStats.Ftp.read_hist[i];
     }
 
     stats.gopher_reads = IOStats.Gopher.reads;
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         stats.gopher_read_hist[i] = IOStats.Gopher.read_hist[i];
     }
 }
@@ -241,7 +248,7 @@ DumpIoStats(Mgr::IoActionData& stats, StoreEntry* sentry)
     storeAppendPrintf(sentry, "number of reads: %.0f\n", stats.http_reads);
     storeAppendPrintf(sentry, "Read Histogram:\n");
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         storeAppendPrintf(sentry, "%5d-%5d: %9.0f %2.0f%%\n",
                           i ? (1 << (i - 1)) + 1 : 1,
                           1 << i,
@@ -254,7 +261,7 @@ DumpIoStats(Mgr::IoActionData& stats, StoreEntry* sentry)
     storeAppendPrintf(sentry, "number of reads: %.0f\n", stats.ftp_reads);
     storeAppendPrintf(sentry, "Read Histogram:\n");
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         storeAppendPrintf(sentry, "%5d-%5d: %9.0f %2.0f%%\n",
                           i ? (1 << (i - 1)) + 1 : 1,
                           1 << i,
@@ -267,7 +274,7 @@ DumpIoStats(Mgr::IoActionData& stats, StoreEntry* sentry)
     storeAppendPrintf(sentry, "number of reads: %.0f\n", stats.gopher_reads);
     storeAppendPrintf(sentry, "Read Histogram:\n");
 
-    for (i = 0; i < _iostats::histSize; ++i) {
+    for (i = 0; i < IoStats::histSize; ++i) {
         storeAppendPrintf(sentry, "%5d-%5d: %9.0f %2.0f%%\n",
                           i ? (1 << (i - 1)) + 1 : 1,
                           1 << i,
@@ -1076,7 +1083,7 @@ GetAvgStat(Mgr::IntervalActionData& stats, int minutes, int hours)
 
         l = &CountHourHist[hours];
     } else {
-        debugs(18, 1, "statAvgDump: Invalid args, minutes=" << minutes << ", hours=" << hours);
+        debugs(18, DBG_IMPORTANT, "statAvgDump: Invalid args, minutes=" << minutes << ", hours=" << hours);
         return;
     }
 
@@ -1378,7 +1385,6 @@ statRegisterWithCacheManager(void)
 #endif
 }
 
-
 void
 statInit(void)
 {
@@ -1436,7 +1442,7 @@ statAvgTick(void *notused)
         int i = (int) statPctileSvc(0.5, 20, PCTILE_HTTP);
 
         if (Config.warnings.high_rptm < i)
-            debugs(18, 0, "WARNING: Median response time is " << i << " milliseconds");
+            debugs(18, DBG_CRITICAL, "WARNING: Median response time is " << i << " milliseconds");
     }
 
     if (Config.warnings.high_pf) {
@@ -1447,7 +1453,7 @@ statAvgTick(void *notused)
             i /= (int) dt;
 
             if (Config.warnings.high_pf < i)
-                debugs(18, 0, "WARNING: Page faults occuring at " << i << "/sec");
+                debugs(18, DBG_CRITICAL, "WARNING: Page faults occuring at " << i << "/sec");
         }
     }
 
@@ -1467,7 +1473,7 @@ statAvgTick(void *notused)
 #endif
 
         if (Config.warnings.high_memory < i)
-            debugs(18, 0, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
+            debugs(18, DBG_CRITICAL, "WARNING: Memory usage at " << ((unsigned long int)(i >> 20)) << " MB");
     }
 }
 
@@ -1807,7 +1813,7 @@ statPeerSelect(StoreEntry * sentry)
 {
 #if USE_CACHE_DIGESTS
     StatCounters *f = &statCounter;
-    peer *peer;
+    CachePeer *peer;
     const int tot_used = f->cd.times_used + f->icp.times_used;
 
     /* totals */
@@ -1930,7 +1936,7 @@ statCPUUsage(int minutes)
                                tvSubDsec(CountHist[minutes].timestamp, CountHist[0].timestamp));
 }
 
-extern double
+double
 statRequestHitRatio(int minutes)
 {
     assert(minutes < N_COUNT_HIST);
@@ -1940,7 +1946,7 @@ statRequestHitRatio(int minutes)
                                CountHist[minutes].client_http.requests);
 }
 
-extern double
+double
 statRequestHitMemoryRatio(int minutes)
 {
     assert(minutes < N_COUNT_HIST);
@@ -1950,7 +1956,7 @@ statRequestHitMemoryRatio(int minutes)
                                CountHist[minutes].client_http.hits);
 }
 
-extern double
+double
 statRequestHitDiskRatio(int minutes)
 {
     assert(minutes < N_COUNT_HIST);
@@ -1960,7 +1966,7 @@ statRequestHitDiskRatio(int minutes)
                                CountHist[minutes].client_http.hits);
 }
 
-extern double
+double
 statByteHitRatio(int minutes)
 {
     size_t s;
@@ -1984,7 +1990,7 @@ statByteHitRatio(int minutes)
     cd = CountHist[0].cd.kbytes_recv.kb - CountHist[minutes].cd.kbytes_recv.kb;
 
     if (s < cd)
-        debugs(18, 1, "STRANGE: srv_kbytes=" << s << ", cd_kbytes=" << cd);
+        debugs(18, DBG_IMPORTANT, "STRANGE: srv_kbytes=" << s << ", cd_kbytes=" << cd);
 
     s -= cd;
 

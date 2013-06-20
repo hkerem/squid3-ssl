@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -11,7 +9,11 @@
 #include "comm/Connection.h"
 #include "ipc/SharedListen.h"
 #include "ipc/StartListening.h"
+#include "tools.h"
 
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 Ipc::StartListeningCb::StartListeningCb(): conn(NULL), errNo(0)
 {

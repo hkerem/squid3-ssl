@@ -1,8 +1,3 @@
-
-/*
- * $Id$
- */
-
 #ifndef SQUID_ACLSSL_ERRORDATA_H
 #define SQUID_ACLSSL_ERRORDATA_H
 #include "acl/Acl.h"
@@ -10,8 +5,9 @@
 #include "CbDataList.h"
 #include "ssl/support.h"
 #include "ssl/ErrorDetail.h"
+#include <vector>
 
-class ACLSslErrorData : public ACLData<Ssl::ssl_error_t>
+class ACLSslErrorData : public ACLData<const Ssl::Errors *>
 {
 
 public:
@@ -21,13 +17,13 @@ public:
     ACLSslErrorData(ACLSslErrorData const &);
     ACLSslErrorData &operator= (ACLSslErrorData const &);
     virtual ~ACLSslErrorData();
-    bool match(Ssl::ssl_error_t);
+    bool match(const Ssl::Errors *);
     wordlist *dump();
     void parse();
     bool empty() const;
-    virtual ACLData<Ssl::ssl_error_t> *clone() const;
+    virtual  ACLSslErrorData *clone() const;
 
-    CbDataList<Ssl::ssl_error_t> *values;
+    Ssl::Errors *values;
 };
 
 MEMPROXY_CLASS_INLINE(ACLSslErrorData);

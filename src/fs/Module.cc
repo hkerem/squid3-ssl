@@ -1,8 +1,8 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "Module.h"
 #if defined(HAVE_FS_UFS) || defined(HAVE_FS_AUFS) || defined(HAVE_FS_DISKD)
 #include "fs/ufs/StoreFSufs.h"
-#include "fs/ufs/ufscommon.h"
+#include "fs/ufs/UFSSwapDir.h"
 #endif
 
 #if HAVE_FS_COSS
@@ -10,23 +10,21 @@
 #endif
 
 #if HAVE_FS_UFS
-static StoreFSufs<UFSSwapDir> *UfsInstance;
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *UfsInstance;
 #endif
 
 #if HAVE_FS_AUFS
-static StoreFSufs<UFSSwapDir> *AufsInstance;
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *AufsInstance;
 #endif
 
-
 #if HAVE_FS_DISKD
-static StoreFSufs<UFSSwapDir> *DiskdInstance;
+static Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir> *DiskdInstance;
 #endif
 
 #if HAVE_FS_ROCK
 #include "fs/rock/RockStoreFileSystem.h"
 static Rock::StoreFileSystem *RockInstance = NULL;
 #endif
-
 
 /* TODO: Modify coss code to:
  * (a) remove the StoreFScoss::GetInstance method,
@@ -37,21 +35,19 @@ static Rock::StoreFileSystem *RockInstance = NULL;
 StoreFScoss &CossInstance = StoreFScoss::GetInstance();
 #endif
 
-
 void Fs::Init()
 {
 
 #if HAVE_FS_UFS
-    UfsInstance = new StoreFSufs<UFSSwapDir>("Blocking", "ufs");
+    UfsInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("Blocking", "ufs");
 #endif
 
 #if HAVE_FS_AUFS
-    AufsInstance = new StoreFSufs<UFSSwapDir>("DiskThreads", "aufs");;
+    AufsInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("DiskThreads", "aufs");;
 #endif
 
-
 #if HAVE_FS_DISKD
-    DiskdInstance = new StoreFSufs<UFSSwapDir>("DiskDaemon", "diskd");;
+    DiskdInstance = new Fs::Ufs::StoreFSufs<Fs::Ufs::UFSSwapDir>("DiskDaemon", "diskd");;
 #endif
 
 #if HAVE_FS_ROCK
@@ -59,7 +55,6 @@ void Fs::Init()
 #endif
 
 }
-
 
 void Fs::Clean()
 {
@@ -70,7 +65,6 @@ void Fs::Clean()
 #if HAVE_FS_AUFS
     delete AufsInstance;
 #endif
-
 
 #if HAVE_FS_DISKD
     delete DiskdInstance;

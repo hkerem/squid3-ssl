@@ -1,15 +1,19 @@
 #define SQUID_UNIT_TEST 1
 #include "squid.h"
-#include "testUfs.h"
-#include "Store.h"
-#include "SwapDir.h"
+
 #include "DiskIO/DiskIOModule.h"
-#include "fs/ufs/ufscommon.h"
-#include "Mem.h"
-#include "MemObject.h"
+#include "fs/ufs/UFSSwapDir.h"
+#include "globals.h"
 #include "HttpHeader.h"
 #include "HttpReply.h"
+#include "Mem.h"
+#include "MemObject.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "SwapDir.h"
 #include "testStoreSupport.h"
+#include "testUfs.h"
 
 #if HAVE_STDEXCEPT
 #include <stdexcept>
@@ -19,7 +23,7 @@
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testUfs );
 
-typedef RefCount<UFSSwapDir> SwapDirPointer;
+typedef RefCount<Fs::Ufs::UFSSwapDir> SwapDirPointer;
 extern REMOVALPOLICYCREATE createRemovalPolicy_lru;	/* XXX fails with --enable-removal-policies=heap */
 
 static void
@@ -89,15 +93,14 @@ testUfs::testUfsSearch()
 
     Store::Root(new StoreController);
 
-    SwapDirPointer aStore (new UFSSwapDir("ufs", "Blocking"));
+    SwapDirPointer aStore (new Fs::Ufs::UFSSwapDir("ufs", "Blocking"));
 
-    aStore->IO = new UFSStrategy(DiskIOModule::Find("Blocking")->createStrategy());
+    aStore->IO = new Fs::Ufs::UFSStrategy(DiskIOModule::Find("Blocking")->createStrategy());
 
     addSwapDir(aStore);
 
     commonInit();
     mem_policy = createRemovalPolicy(Config.replPolicy);
-
 
     char *path=xstrdup(TESTDIR);
 
@@ -139,7 +142,7 @@ testUfs::testUfsSearch()
     /* add an entry */
     {
         /* Create "vary" base object */
-        request_flags flags;
+        RequestFlags flags;
         flags.cachable = 1;
         StoreEntry *pe = storeCreateEntry("dummy url", "dummy log url", flags, METHOD_GET);
         HttpReply *rep = (HttpReply *) pe->getReply();	// bypass const
@@ -233,7 +236,7 @@ testUfs::testUfsDefaultEngine()
     CPPUNIT_ASSERT(!store_table); // or StoreHashIndex ctor will abort below
 
     Store::Root(new StoreController);
-    SwapDirPointer aStore (new UFSSwapDir("ufs", "Blocking"));
+    SwapDirPointer aStore (new Fs::Ufs::UFSSwapDir("ufs", "Blocking"));
     addSwapDir(aStore);
     commonInit();
     Config.replPolicy = new RemovalPolicySettings;

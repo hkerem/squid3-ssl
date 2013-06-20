@@ -32,12 +32,14 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 
 #if USE_SQUID_EUI
 
 #include "acl/Arp.h"
 #include "acl/FilledChecklist.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "eui/Eui48.h"
 #include "ip/Address.h"
 #include "wordlist.h"
@@ -46,7 +48,6 @@ static void aclParseArpList(SplayNode<Eui::Eui48 *> **curlist);
 static int aclMatchArp(SplayNode<Eui::Eui48 *> **dataptr, Ip::Address &c);
 static SplayNode<Eui::Eui48 *>::SPLAYCMP aclArpCompare;
 static SplayNode<Eui::Eui48 *>::SPLAYWALKEE aclDumpArpListWalkee;
-
 
 ACL *
 ACLARP::clone() const
@@ -115,21 +116,20 @@ aclParseArpData(const char *t)
     debugs(28, 5, "aclParseArpData: " << t);
 
     if (sscanf(t, "%[0-9a-fA-F:]", buf) != 1) {
-        debugs(28, 0, "aclParseArpData: Bad ethernet address: '" << t << "'");
+        debugs(28, DBG_CRITICAL, "aclParseArpData: Bad ethernet address: '" << t << "'");
         safe_free(q);
         return NULL;
     }
 
     if (!q->decode(buf)) {
-        debugs(28, 0, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
-        debugs(28, 0, "aclParseArpData: Ignoring invalid ARP acl entry: can't parse '" << buf << "'");
+        debugs(28, DBG_CRITICAL, "" << cfg_filename << " line " << config_lineno << ": " << config_input_line);
+        debugs(28, DBG_CRITICAL, "aclParseArpData: Ignoring invalid ARP acl entry: can't parse '" << buf << "'");
         safe_free(q);
         return NULL;
     }
 
     return q;
 }
-
 
 /*******************/
 /* aclParseArpList */

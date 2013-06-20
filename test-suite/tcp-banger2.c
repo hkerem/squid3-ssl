@@ -1,7 +1,5 @@
 #include "squid.h"
 
-/* $Id$
-
 /*
  * On some systems, FD_SETSIZE is set to something lower than the
  * actual number of files which can be opened.  IRIX is one case,
@@ -125,7 +123,6 @@ struct _request {
 struct _f FD[SQUID_MAXFD];
 int nfds = 0;
 int maxfd = 0;
-
 
 static void
 free_request(struct _request *r)

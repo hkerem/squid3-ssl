@@ -1,5 +1,4 @@
 /*
- * $Id$
  * DEBUG: section 93    eCAP Interface
  */
 
@@ -28,7 +27,6 @@ public:
     typedef std::list<Extension> Extensions;
     Extensions extensions;
 };
-
 
 /// General eCAP configuration
 class Config: public Adaptation::Config

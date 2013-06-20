@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -34,7 +32,6 @@
 #ifndef SQUID_DISKIOMODULE_H
 #define SQUID_DISKIOMODULE_H
 
-#include "squid-old.h"
 #include "Array.h"
 
 /* forward decls */
@@ -84,6 +81,5 @@ private:
     static Vector<DiskIOModule*> &GetModules();
     static Vector<DiskIOModule*> *_Modules;
 };
-
 
 #endif /* SQUID_DISKIOMODULE_H */

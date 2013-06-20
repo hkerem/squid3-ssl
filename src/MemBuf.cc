@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 59    auto-growing Memory Buffer with printf
  * AUTHOR: Alex Rousskov
  *
@@ -99,10 +97,10 @@
  \endverbatim
  */
 
-/* if you have configure you can use this */
-#if defined(HAVE_CONFIG_H)
 #include "squid.h"
-#endif
+#include "Mem.h"
+#include "MemBuf.h"
+#include "profiler/Profiler.h"
 
 #ifdef VA_COPY
 #undef VA_COPY
@@ -112,9 +110,6 @@
 #elif defined HAVE___VA_COPY
 #define VA_COPY __va_copy
 #endif
-
-#include "squid-old.h"
-#include "MemBuf.h"
 
 /* local constants */
 
@@ -130,7 +125,6 @@ MemBuf::init()
 {
     init(MEM_BUF_INIT_SIZE, MEM_BUF_MAX_SIZE);
 }
-
 
 /** init with specific sizes */
 void
@@ -289,7 +283,6 @@ MemBuf::Printf(const char *fmt,...)
     va_end(args);
 }
 
-
 /**
  * vPrintf for other printf()'s to use; calls vsnprintf, extends buf if needed
  */
@@ -405,7 +398,6 @@ MemBuf::grow(mb_size_t min_cap)
     capacity = (mb_size_t) buf_cap;
     PROF_stop(MemBuf_grow);
 }
-
 
 /* Reports */
 

@@ -2,6 +2,7 @@
 #include "adaptation/Config.h"
 #include "adaptation/History.h"
 #include "base/TextException.h"
+#include "Debug.h"
 #include "globals.h"
 #include "SquidTime.h"
 
@@ -30,7 +31,6 @@ int Adaptation::History::Entry::rptm()
         theRptm = tvSubMsec(start, current_time);
     return theRptm;
 }
-
 
 Adaptation::History::History():
         lastMeta(hoReply),

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,6 +31,7 @@
 #include "squid.h"
 #include "auth/ntlm/auth_ntlm.h"
 #include "auth/ntlm/Scheme.h"
+#include "Debug.h"
 #include "helper.h"
 
 Auth::Scheme::Pointer Auth::Ntlm::Scheme::_instance = NULL;

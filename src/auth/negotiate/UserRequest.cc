@@ -3,7 +3,10 @@
 #include "auth/negotiate/UserRequest.h"
 #include "auth/State.h"
 #include "auth/User.h"
+#include "client_side.h"
+#include "globals.h"
 #include "helper.h"
+#include "HttpHeaderTools.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
 #include "SquidTime.h"
@@ -179,13 +182,13 @@ Auth::Negotiate::UserRequest::authenticate(HttpRequest * aRequest, ConnStateData
 
     if (blob) {
         while (xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
 
         while (!xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
 
         while (xisspace(*blob) && *blob)
-            blob++;
+            ++blob;
     }
 
     switch (user()->credentials()) {
@@ -203,7 +206,7 @@ Auth::Negotiate::UserRequest::authenticate(HttpRequest * aRequest, ConnStateData
         break;
 
     case Auth::Pending:
-        debugs(29, 1, HERE << "need to ask helper");
+        debugs(29, DBG_IMPORTANT, HERE << "need to ask helper");
         break;
 
     case Auth::Handshake:
@@ -283,8 +286,8 @@ Auth::Negotiate::UserRequest::HandleReply(void *data, void *lastserver, char *re
             ++arg;
         }
         safe_free(lm_request->server_blob);
-        lm_request->request->flags.must_keepalive = 1;
-        if (lm_request->request->flags.proxy_keepalive) {
+        lm_request->request->flags.mustKeepalive = 1;
+        if (lm_request->request->flags.proxyKeepalive) {
             lm_request->server_blob = xstrdup(blob);
             auth_user_request->user()->credentials(Auth::Handshake);
             auth_user_request->denyMessage("Authentication in progress");

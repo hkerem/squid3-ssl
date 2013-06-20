@@ -1,8 +1,5 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
- *
  */
 
 #include "squid.h"
@@ -10,12 +7,14 @@
 #include "CpuAffinity.h"
 #include "CpuAffinityMap.h"
 #include "CpuAffinitySet.h"
-#include "structs.h"
+#include "Debug.h"
+#include "globals.h"
+#include "SquidConfig.h"
+#include "tools.h"
 
 #include <algorithm>
 
 static CpuAffinitySet *TheCpuAffinitySet = NULL;
-
 
 void
 CpuAffinityInit()

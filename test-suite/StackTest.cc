@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Robert Collins
  *
@@ -34,7 +32,7 @@
  * Copyright (c) 2003  Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "Stack.h"
 
 int

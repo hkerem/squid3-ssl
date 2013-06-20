@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 10    Gopher
  * AUTHOR: Harvest Derived
  *
@@ -30,26 +27,32 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111, USA.
- *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "comm.h"
 #include "comm/Write.h"
 #include "errorpage.h"
-#include "Store.h"
+#include "fd.h"
+#include "forward.h"
+#include "globals.h"
 #include "html_quote.h"
-#include "HttpRequest.h"
 #include "HttpReply.h"
-#include "comm.h"
+#include "HttpRequest.h"
+#include "Mem.h"
+#include "MemBuf.h"
+#include "mime.h"
+#include "rfc1738.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "StatCounters.h"
+#include "Store.h"
+#include "tools.h"
+
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #include "MemObject.h"
 #endif
-#include "MemBuf.h"
-#include "forward.h"
-#include "rfc1738.h"
-#include "StatCounters.h"
-#include "SquidTime.h"
 
 /**
  \defgroup ServerProtocolGopherInternal Server-Side Gopher Internals
@@ -454,7 +457,7 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
             llen = left;
         }
         if (gopherState->len + llen >= TEMP_BUF_SIZE) {
-            debugs(10, 1, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
+            debugs(10, DBG_IMPORTANT, "GopherHTML: Buffer overflow. Lost some data on URL: " << entry->url()  );
             llen = TEMP_BUF_SIZE - gopherState->len - 1;
         }
         if (!lpos) {
@@ -635,7 +638,6 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
             break;
         }			/* HTML_DIR, HTML_INDEX_RESULT */
 
-
         case gopher_ds::HTML_CSO_RESULT: {
             if (line[0] == '-') {
                 int code, recno;
@@ -694,7 +696,6 @@ gopherToHTML(GopherStateData * gopherState, char *inbuf, int len)
                     outbuf.append(tmpbuf);
                     break;
                 }
-
 
                 }
             }
@@ -761,7 +762,6 @@ gopherReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, comm
         return;
     }
 
-    errno = 0;
 #if USE_DELAY_POOLS
     read_sz = delayId.bytesWanted(1, read_sz);
 #endif
@@ -797,15 +797,15 @@ gopherReadReply(const Comm::ConnectionPointer &conn, char *buf, size_t len, comm
     }
 
     if (flag != COMM_OK) {
-        debugs(50, 1, "gopherReadReply: error reading: " << xstrerror());
+        debugs(50, DBG_IMPORTANT, "gopherReadReply: error reading: " << xstrerror());
 
-        if (ignoreErrno(errno)) {
+        if (ignoreErrno(xerrno)) {
             AsyncCall::Pointer call = commCbCall(5,4, "gopherReadReply",
                                                  CommIoCbPtrFun(gopherReadReply, gopherState));
             comm_read(conn, buf, read_sz, call);
         } else {
             ErrorState *err = new ErrorState(ERR_READ_ERROR, HTTP_INTERNAL_SERVER_ERROR, gopherState->fwd->request);
-            err->xerrno = errno;
+            err->xerrno = xerrno;
             gopherState->fwd->fail(err);
             gopherState->serverConn->close();
         }
@@ -855,7 +855,7 @@ gopherSendComplete(const Comm::ConnectionPointer &conn, char *buf, size_t size, 
     if (errflag) {
         ErrorState *err;
         err = new ErrorState(ERR_WRITE_ERROR, HTTP_SERVICE_UNAVAILABLE, gopherState->fwd->request);
-        err->xerrno = errno;
+        err->xerrno = xerrno;
         err->port = gopherState->fwd->request->port;
         err->url = xstrdup(entry->url());
         gopherState->fwd->fail(err);

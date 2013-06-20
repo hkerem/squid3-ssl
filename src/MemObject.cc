@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 19    Store Memory Primitives
  * AUTHOR: Robert Collins
  *
@@ -33,18 +31,22 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "comm/Connection.h"
-#include "MemObject.h"
-#include "HttpRequest.h"
+#include "Generic.h"
+#include "globals.h"
 #include "HttpReply.h"
+#include "HttpRequest.h"
+#include "MemBuf.h"
+#include "MemObject.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 #include "Store.h"
 #include "StoreClient.h"
-#include "Generic.h"
+
 #if USE_DELAY_POOLS
 #include "DelayPools.h"
 #endif
-#include "MemBuf.h"
 
 /* TODO: make this global or private */
 #if URL_CHECKSUM_DEBUG
@@ -171,16 +173,16 @@ MemObject::dump() const
     data_hdr.dump();
 #if 0
     /* do we want this one? */
-    debugs(20, 1, "MemObject->data.origin_offset: " << (data_hdr.head ? data_hdr.head->nodeBuffer.offset : 0));
+    debugs(20, DBG_IMPORTANT, "MemObject->data.origin_offset: " << (data_hdr.head ? data_hdr.head->nodeBuffer.offset : 0));
 #endif
 
-    debugs(20, 1, "MemObject->start_ping: " << start_ping.tv_sec  << "."<< std::setfill('0') << std::setw(6) << start_ping.tv_usec);
-    debugs(20, 1, "MemObject->inmem_hi: " << data_hdr.endOffset());
-    debugs(20, 1, "MemObject->inmem_lo: " << inmem_lo);
-    debugs(20, 1, "MemObject->nclients: " << nclients);
-    debugs(20, 1, "MemObject->reply: " << _reply);
-    debugs(20, 1, "MemObject->request: " << request);
-    debugs(20, 1, "MemObject->log_url: " << log_url << " " << checkNullString(log_url));
+    debugs(20, DBG_IMPORTANT, "MemObject->start_ping: " << start_ping.tv_sec  << "."<< std::setfill('0') << std::setw(6) << start_ping.tv_usec);
+    debugs(20, DBG_IMPORTANT, "MemObject->inmem_hi: " << data_hdr.endOffset());
+    debugs(20, DBG_IMPORTANT, "MemObject->inmem_lo: " << inmem_lo);
+    debugs(20, DBG_IMPORTANT, "MemObject->nclients: " << nclients);
+    debugs(20, DBG_IMPORTANT, "MemObject->reply: " << _reply);
+    debugs(20, DBG_IMPORTANT, "MemObject->request: " << request);
+    debugs(20, DBG_IMPORTANT, "MemObject->log_url: " << checkNullString(log_url));
 }
 
 HttpReply const *
@@ -289,7 +291,6 @@ MemObject::reset()
     inmem_lo = 0;
     /* Should we check for clients? */
 }
-
 
 int64_t
 MemObject::lowestMemReaderOffset() const
@@ -404,7 +405,6 @@ MemObject::trimUnSwappable()
     data_hdr.freeDataUpto(new_mem_lo);
     inmem_lo = new_mem_lo;
 }
-
 
 bool
 MemObject::isContiguous() const

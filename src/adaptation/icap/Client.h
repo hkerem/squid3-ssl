@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -36,15 +34,13 @@
 
 // ICAP-related things needed by code unaware of ICAP internals.
 
-
 namespace Adaptation
 {
 namespace Icap
 {
 
-extern void InitModule();
-extern void CleanModule();
-
+void InitModule();
+void CleanModule();
 
 } // namespace Icap
 } // namespace Adaptation

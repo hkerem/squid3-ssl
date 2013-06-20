@@ -1,13 +1,9 @@
-
-/*
- * $Id$
- */
-
 #ifndef SQUID_ASYNCJOBCALLS_H
 #define SQUID_ASYNCJOBCALLS_H
 
 #include "base/AsyncJob.h"
 #include "base/CbcPointer.h"
+#include "Debug.h"
 
 /**
  \ingroup AsyncJobAPI
@@ -50,7 +46,6 @@ CallJob(int debugSection, int debugLevel, const char *fileName, int fileLine,
     return ScheduleCall(fileName, fileLine, call);
 }
 
-
 #define CallJobHere(debugSection, debugLevel, job, Class, method) \
     CallJob((debugSection), (debugLevel), __FILE__, __LINE__, \
         (#Class "::" #method), \
@@ -61,12 +56,10 @@ CallJob(int debugSection, int debugLevel, const char *fileName, int fileLine,
         (#Class "::" #method), \
         JobMemFun((job), &Class::method, (arg1)))
 
-
 /// Convenience macro to create a Dialer-based job callback
 #define JobCallback(dbgSection, dbgLevel, Dialer, job, method) \
     asyncCall((dbgSection), (dbgLevel), #method, \
         Dialer(CbcPointer<Dialer::DestClass>(job), &method))
-
 
 /*
  * *MemFunT are member function (i.e., class method) wrappers. They store
@@ -122,7 +115,6 @@ protected:
 
 // ... add more as needed
 
-
 // Now we add global templated functions that create the member function
 // wrappers above. These are for convenience: it is often easier to
 // call a templated function than to create a templated object.
@@ -141,7 +133,6 @@ JobMemFun(const CbcPointer<C> &job, typename UnaryMemFunT<C, Argument1>::Method 
 {
     return UnaryMemFunT<C, Argument1>(job, method, arg1);
 }
-
 
 // inlined methods
 

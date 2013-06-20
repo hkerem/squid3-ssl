@@ -1,13 +1,10 @@
 /*
- * $Id$
- *
  * DEBUG: section 92    Storage File System
  */
 
 #include "squid.h"
 #include "fs/rock/RockStoreFileSystem.h"
 #include "fs/rock/RockSwapDir.h"
-
 
 Rock::StoreFileSystem::StoreFileSystem()
 {

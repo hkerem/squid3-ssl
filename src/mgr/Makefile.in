@@ -47,6 +47,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -56,9 +58,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libmgr_la_LIBADD =
-am_libmgr_la_OBJECTS = Action.lo ActionParams.lo ActionWriter.lo \
-	BasicActions.lo Command.lo CountersAction.lo Filler.lo \
-	Forwarder.lo FunAction.lo InfoAction.lo Inquirer.lo \
+am_libmgr_la_OBJECTS = Action.lo ActionParams.lo ActionPasswordList.lo \
+	ActionWriter.lo BasicActions.lo Command.lo CountersAction.lo \
+	Filler.lo Forwarder.lo FunAction.lo InfoAction.lo Inquirer.lo \
 	IntervalAction.lo IoAction.lo Registration.lo Request.lo \
 	Response.lo ServiceTimesAction.lo StoreIoAction.lo \
 	StoreToCommWriter.lo QueryParams.lo IntParam.lo StringParam.lo
@@ -320,6 +322,8 @@ libmgr_la_SOURCES = \
 	Action.h \
 	ActionParams.cc \
 	ActionParams.h \
+	ActionPasswordList.h \
+	ActionPasswordList.cc \
 	ActionProfile.h \
 	ActionWriter.cc \
 	ActionWriter.h \
@@ -427,6 +431,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Action.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ActionParams.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ActionPasswordList.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ActionWriter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BasicActions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Command.Plo@am__quote@

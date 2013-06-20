@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -32,6 +30,8 @@
 
 #include "squid.h"
 #include "auth/digest/Scheme.h"
+#include "Debug.h"
+#include "globals.h"
 #include "helper.h"
 
 Auth::Scheme::Pointer Auth::Digest::Scheme::_instance = NULL;

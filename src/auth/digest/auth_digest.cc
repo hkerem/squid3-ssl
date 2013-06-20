@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
  *
@@ -36,8 +34,8 @@
  * They DO NOT perform access control or auditing.
  * See acl.c for access control and client_side.c for auditing */
 
-
-#include "squid-old.h"
+#include "squid.h"
+#include "cache_cf.h"
 #include "rfc2617.h"
 #include "auth/digest/auth_digest.h"
 #include "auth/digest/Scheme.h"
@@ -48,12 +46,14 @@
 #include "base64.h"
 #include "base/StringArea.h"
 #include "event.h"
+#include "HttpHeaderTools.h"
 #include "mgr/Registration.h"
 #include "Store.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
 #include "wordlist.h"
 #include "SquidTime.h"
+#include "StrList.h"
 
 /* Digest Scheme */
 
@@ -91,6 +91,7 @@ static const HttpHeaderFieldAttrs DigestAttrs[DIGEST_ENUM_END] = {
     {"response", (http_hdr_type)DIGEST_RESPONSE},
 };
 
+class HttpHeaderFieldInfo;
 static HttpHeaderFieldInfo *DigestFieldsInfo = NULL;
 
 /*
@@ -186,7 +187,7 @@ authenticateDigestNonceNew(void)
         /* create a new nonce */
         newnonce->noncedata.randomdata = squid_random();
         /* Bug 3526 high performance fix: add 1 second to creationtime to avoid duplication */
-        newnonce->noncedata.creationtime++;
+        ++newnonce->noncedata.creationtime;
         authDigestNonceEncode(newnonce);
     }
 
@@ -298,7 +299,7 @@ static void
 authDigestNonceLink(digest_nonce_h * nonce)
 {
     assert(nonce != NULL);
-    nonce->references++;
+    ++nonce->references;
     debugs(29, 9, "authDigestNonceLink: nonce '" << nonce << "' now at '" << nonce->references << "'.");
 }
 
@@ -322,7 +323,7 @@ authDigestNonceUnlink(digest_nonce_h * nonce)
     if (nonce->references > 0) {
         -- nonce->references;
     } else {
-        debugs(29, 1, "authDigestNonceUnlink; Attempt to lower nonce " << nonce << " refcount below 0!");
+        debugs(29, DBG_IMPORTANT, "authDigestNonceUnlink; Attempt to lower nonce " << nonce << " refcount below 0!");
     }
 
     debugs(29, 9, "authDigestNonceUnlink: nonce '" << nonce << "' now at '" << nonce->references << "'.");
@@ -379,7 +380,7 @@ authDigestNonceIsValid(digest_nonce_h * nonce, char nc[9])
 
     /* is the nonce-count ok ? */
     if (!static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest"))->CheckNonceCount) {
-        nonce->nc++;
+        ++nonce->nc;
         return -1;              /* forced OK by configuration */
     }
 
@@ -667,7 +668,7 @@ Auth::Digest::Config::parse(Auth::Config * scheme, int n_configured, char *param
     } else if (strcasecmp(param_str, "utf8") == 0) {
         parse_onoff(&utf8);
     } else {
-        debugs(29, 0, "unrecognised digest auth scheme parameter '" << param_str << "'");
+        debugs(29, DBG_CRITICAL, "unrecognised digest auth scheme parameter '" << param_str << "'");
     }
 }
 
@@ -676,7 +677,6 @@ Auth::Digest::Config::type() const
 {
     return Auth::Digest::Scheme::GetInstance()->type();
 }
-
 
 static void
 authenticateDigestStats(StoreEntry * sentry)
@@ -764,7 +764,7 @@ authDigestLogUsername(char *username, Auth::UserRequest::Pointer auth_user_reque
     assert(auth_user_request != NULL);
 
     /* log the username */
-    debugs(29, 9, "authDigestLogUsername: Creating new user for logging '" << username << "'");
+    debugs(29, 9, "Creating new user for logging '" << (username?username:"[no username]") << "'");
     Auth::User::Pointer digest_user = new Auth::Digest::User(static_cast<Auth::Digest::Config*>(Auth::Config::Find("digest")));
     /* save the credentials */
     digest_user->username(username);
@@ -796,11 +796,11 @@ Auth::Digest::Config::decode(char const *proxy_auth)
     /* trim DIGEST from string */
 
     while (xisgraph(*proxy_auth))
-        proxy_auth++;
+        ++proxy_auth;
 
     /* Trim leading whitespace before decoding */
     while (xisspace(*proxy_auth))
-        proxy_auth++;
+        ++proxy_auth;
 
     String temp(proxy_auth);
 
@@ -919,7 +919,6 @@ Auth::Digest::Config::decode(char const *proxy_auth)
 
     temp.clean();
 
-
     /* now we validate the data given to us */
 
     /*
@@ -1027,7 +1026,7 @@ Auth::Digest::Config::decode(char const *proxy_auth)
         }
     } else {
         /* cnonce and nc both require qop */
-        if (digest_request->cnonce || digest_request->nc) {
+        if (digest_request->cnonce || digest_request->nc[0] != '\0') {
             debugs(29, 2, "missing qop!");
             rv = authDigestLogUsername(username, digest_request);
             safe_free(username);
@@ -1061,7 +1060,6 @@ Auth::Digest::Config::decode(char const *proxy_auth)
     }
 
     /* the method we'll check at the authenticate step as well */
-
 
     /* we don't send or parse opaques. Ok so we're flexable ... */
 

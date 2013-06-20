@@ -9,7 +9,6 @@
  *--------------------------------------------------------------------------*
  ****************************************************************************/
 
-
 /*
  * Don't allow inclusion of malloc.h
  */
@@ -41,6 +40,10 @@
 #endif
 #undef HAVE_NETDB_H
 #define HAVE_NETDB_H 0
+
+#if !defined(S_ISDIR)
+#define S_ISDIR(mode) (((mode) & (_S_IFMT)) == (_S_IFDIR))
+#endif
 
 #endif /* _SQUID_NEXT_ */
 #endif /* SQUID_OS_NEXT_H */

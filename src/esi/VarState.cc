@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -34,9 +32,10 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "esi/VarState.h"
 #include "HttpReply.h"
+#include "Mem.h"
 
 CBDATA_TYPE (ESIVarState);
 FREE ESIVarStateFree;
@@ -52,7 +51,6 @@ char const * esiBrowsers[]= {"MSIE",
                              "MOZILLA",
                              "OTHER"
                             };
-
 
 void
 ESIVarState::Variable::eval (ESIVarState &state, char const *subref, char const *found_default) const
@@ -293,9 +291,12 @@ ESIVariableQuery::~ESIVariableQuery()
     safe_free (query_string);
 }
 
-ESIVarState::ESIVarState (HttpHeader const *aHeader, char const *uri)
-        : output (NULL), hdr(hoReply)
+ESIVarState::ESIVarState(HttpHeader const *aHeader, char const *uri) :
+        output(NULL),
+        hdr(hoReply)
 {
+    memset(&flags, 0, sizeof(flags));
+
     /* TODO: only grab the needed headers */
     /* Note that as we pass these through to included requests, we
      * cannot trim them */
@@ -855,7 +856,6 @@ ESIVariableProcessor::~ESIVariableProcessor()
 {
     delete currentFunction;
 }
-
 
 /* XXX FIXME: this should be comma delimited, no? */
 void

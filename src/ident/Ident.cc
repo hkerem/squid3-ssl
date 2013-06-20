@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 30    Ident (RFC 931)
  * AUTHOR: Duane Wessels
  *
@@ -34,12 +32,12 @@
 #include "squid.h"
 
 #if USE_IDENT
-#include "squid-old.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
 #include "CommCalls.h"
 #include "comm/Write.h"
+#include "globals.h"
 #include "ident/Config.h"
 #include "ident/Ident.h"
 #include "MemBuf.h"

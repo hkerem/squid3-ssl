@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 37    ICMP Routines
  * AUTHOR: Duane Wessels, Amos Jeffries
  *
@@ -76,7 +74,6 @@
 #define ip_src saddr
 #define ip_dst daddr
 #endif
-
 
 /* Native Windows port doesn't have netinet support, so we emulate it.
    At this time, Cygwin lacks icmp support in its include files, so we need
@@ -171,7 +168,7 @@ public:
 #if USE_ICMP
 
 /// pinger helper contains one of these as a global object.
-SQUIDCEXTERN Icmp4 icmp4;
+extern Icmp4 icmp4;
 
 #endif /* USE_ICMP && SQUID_HELPER */
 

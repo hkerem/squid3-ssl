@@ -1,4 +1,4 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "adaptation/Elements.h"
 
 const char *Adaptation::crlf = "\r\n";
@@ -27,7 +27,6 @@ Adaptation::methodStr(Adaptation::Method method)
     return "NONE";
 }
 
-
 const char *
 Adaptation::vectPointStr(Adaptation::VectPoint point)
 {
@@ -47,5 +46,4 @@ Adaptation::vectPointStr(Adaptation::VectPoint point)
 
     return "NONE";
 }
-
 

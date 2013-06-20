@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 61    Redirector
  * AUTHOR: Duane Wessels
  *
@@ -33,21 +30,25 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "acl/Checklist.h"
+#include "client_side.h"
+#include "client_side_reply.h"
+#include "client_side_request.h"
+#include "comm/Connection.h"
+#include "fde.h"
+#include "fqdncache.h"
+#include "globals.h"
+#include "HttpRequest.h"
+#include "helper.h"
+#include "mgr/Registration.h"
+#include "redirect.h"
+#include "rfc1738.h"
+#include "SquidConfig.h"
+#include "Store.h"
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
-#include "comm/Connection.h"
-#include "mgr/Registration.h"
-#include "Store.h"
-#include "fde.h"
-#include "client_side_request.h"
-#include "acl/Checklist.h"
-#include "HttpRequest.h"
-#include "client_side.h"
-#include "client_side_reply.h"
-#include "helper.h"
-#include "rfc1738.h"
 #if USE_SSL
 #include "ssl/support.h"
 #endif

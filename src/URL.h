@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,6 +31,7 @@
 #ifndef SQUID_SRC_URL_H
 #define SQUID_SRC_URL_H
 
+#include "anyp/ProtocolType.h"
 #include "MemPool.h"
 #include "URLScheme.h"
 
@@ -76,5 +75,24 @@ private:
 };
 
 MEMPROXY_CLASS_INLINE(URL);
+
+class HttpRequest;
+class HttpRequestMethod;
+
+AnyP::ProtocolType urlParseProtocol(const char *, const char *e = NULL);
+void urlInitialize(void);
+HttpRequest *urlParse(const HttpRequestMethod&, char *, HttpRequest *request = NULL);
+const char *urlCanonical(HttpRequest *);
+char *urlCanonicalClean(const HttpRequest *);
+const char *urlCanonicalFakeHttps(const HttpRequest * request);
+bool urlIsRelative(const char *);
+char *urlMakeAbsolute(const HttpRequest *, const char *);
+char *urlRInternal(const char *host, unsigned short port, const char *dir, const char *name);
+char *urlInternal(const char *dir, const char *name);
+int matchDomainName(const char *host, const char *domain);
+int urlCheckRequest(const HttpRequest *);
+int urlDefaultPort(AnyP::ProtocolType p);
+char *urlHostname(const char *url);
+void urlExtMethodConfigure(void);
 
 #endif /* SQUID_SRC_URL_H_H */

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 78    DNS lookups; interacts with lib/rfc1035.c
  * AUTHOR: Duane Wessels
  *
@@ -32,28 +30,40 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "base/InstanceId.h"
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
 #include "comm.h"
 #include "comm/Loops.h"
 #include "comm/Write.h"
 #include "event.h"
-#include "SquidTime.h"
-#include "Store.h"
+#include "fd.h"
 #include "fde.h"
 #include "ip/tools.h"
+#include "Mem.h"
 #include "MemBuf.h"
 #include "mgr/Registration.h"
+#include "rfc3596.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
+#include "Store.h"
+#include "tools.h"
 #include "util.h"
 #include "wordlist.h"
-#include "base/InstanceId.h"
+
+#if SQUID_SNMP
+#include "snmp_core.h"
+#endif
 
 #if HAVE_ARPA_NAMESER_H
 #include <arpa/nameser.h>
 #endif
 #if HAVE_RESOLV_H
 #include <resolv.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 
 /* MS Visual Studio Projects are monolithic, so we need the following
@@ -258,14 +268,14 @@ idnsAddNameserver(const char *buf)
     Ip::Address A;
 
     if (!(A = buf)) {
-        debugs(78, 0, "WARNING: rejecting '" << buf << "' as a name server, because it is not a numeric IP address");
+        debugs(78, DBG_CRITICAL, "WARNING: rejecting '" << buf << "' as a name server, because it is not a numeric IP address");
         return;
     }
 
     if (A.IsAnyAddr()) {
-        debugs(78, 0, "WARNING: Squid does not accept " << A << " in DNS server specifications.");
+        debugs(78, DBG_CRITICAL, "WARNING: Squid does not accept " << A << " in DNS server specifications.");
         A.SetLocalhost();
-        debugs(78, 0, "Will be using " << A << " instead, assuming you meant that DNS is running on the same machine");
+        debugs(78, DBG_CRITICAL, "Will be using " << A << " instead, assuming you meant that DNS is running on the same machine");
     }
 
     if (!Ip::EnableIpv6 && !A.SetIPv4()) {
@@ -331,7 +341,6 @@ idnsAddPathComponent(const char *buf)
     ++npc;
 }
 
-
 static void
 idnsFreeNameservers(void)
 {
@@ -346,15 +355,13 @@ idnsFreeSearchpath(void)
     npc = npc_alloc = 0;
 }
 
-
-
 static void
 idnsParseNameservers(void)
 {
     wordlist *w;
 
     for (w = Config.dns_nameservers; w; w = w->next) {
-        debugs(78, 1, "Adding nameserver " << w->key << " from squid.conf");
+        debugs(78, DBG_IMPORTANT, "Adding nameserver " << w->key << " from squid.conf");
         idnsAddNameserver(w->key);
     }
 }
@@ -369,7 +376,7 @@ idnsParseResolvConf(void)
     fp = fopen(_PATH_RESCONF, "r");
 
     if (fp == NULL) {
-        debugs(78, 1, "" << _PATH_RESCONF << ": " << xstrerror());
+        debugs(78, DBG_IMPORTANT, "" << _PATH_RESCONF << ": " << xstrerror());
         return;
     }
 
@@ -388,7 +395,7 @@ idnsParseResolvConf(void)
             if (NULL == t)
                 continue;
 
-            debugs(78, 1, "Adding nameserver " << t << " from " << _PATH_RESCONF);
+            debugs(78, DBG_IMPORTANT, "Adding nameserver " << t << " from " << _PATH_RESCONF);
 
             idnsAddNameserver(t);
         } else if (strcasecmp(t, "domain") == 0) {
@@ -398,7 +405,7 @@ idnsParseResolvConf(void)
             if (NULL == t)
                 continue;
 
-            debugs(78, 1, "Adding domain " << t << " from " << _PATH_RESCONF);
+            debugs(78, DBG_IMPORTANT, "Adding domain " << t << " from " << _PATH_RESCONF);
 
             idnsAddPathComponent(t);
         } else if (strcasecmp(t, "search") == 0) {
@@ -409,7 +416,7 @@ idnsParseResolvConf(void)
                 if (NULL == t)
                     continue;
 
-                debugs(78, 1, "Adding domain " << t << " from " << _PATH_RESCONF);
+                debugs(78, DBG_IMPORTANT, "Adding domain " << t << " from " << _PATH_RESCONF);
 
                 idnsAddPathComponent(t);
             }
@@ -426,7 +433,7 @@ idnsParseResolvConf(void)
                     if (ndots < 1)
                         ndots = 1;
 
-                    debugs(78, 1, "Adding ndots " << ndots << " from " << _PATH_RESCONF);
+                    debugs(78, DBG_IMPORTANT, "Adding ndots " << ndots << " from " << _PATH_RESCONF);
                 }
             }
         }
@@ -459,7 +466,7 @@ idnsParseWIN32SearchList(const char * Separator)
         if (Result == ERROR_SUCCESS && Size) {
             t = (char *) xmalloc(Size);
             RegQueryValueEx(hndKey, "Domain", NULL, &Type, (LPBYTE) t, &Size);
-            debugs(78, 1, "Adding domain " << t << " from Registry");
+            debugs(78, DBG_IMPORTANT, "Adding domain " << t << " from Registry");
             idnsAddPathComponent(t);
             xfree(t);
         }
@@ -472,7 +479,7 @@ idnsParseWIN32SearchList(const char * Separator)
 
             while (token) {
                 idnsAddPathComponent(token);
-                debugs(78, 1, "Adding domain " << token << " from Registry");
+                debugs(78, DBG_IMPORTANT, "Adding domain " << token << " from Registry");
                 token = strtok(NULL, Separator);
             }
             xfree(t);
@@ -512,7 +519,7 @@ idnsParseWIN32Registry(void)
 
                 while (token) {
                     idnsAddNameserver(token);
-                    debugs(78, 1, "Adding DHCP nameserver " << token << " from Registry");
+                    debugs(78, DBG_IMPORTANT, "Adding DHCP nameserver " << token << " from Registry");
                     token = strtok(NULL, ",");
                 }
                 xfree(t);
@@ -526,7 +533,7 @@ idnsParseWIN32Registry(void)
                 token = strtok(t, ", ");
 
                 while (token) {
-                    debugs(78, 1, "Adding nameserver " << token << " from Registry");
+                    debugs(78, DBG_IMPORTANT, "Adding nameserver " << token << " from Registry");
                     idnsAddNameserver(token);
                     token = strtok(NULL, ", ");
                 }
@@ -579,7 +586,7 @@ idnsParseWIN32Registry(void)
                                 RegQueryValueEx(hndKey2, "DhcpNameServer", NULL, &Type, (LPBYTE)t, &Size);
                                 token = strtok(t, ", ");
                                 while (token) {
-                                    debugs(78, 1, "Adding DHCP nameserver " << token << " from Registry");
+                                    debugs(78, DBG_IMPORTANT, "Adding DHCP nameserver " << token << " from Registry");
                                     idnsAddNameserver(token);
                                     token = strtok(NULL, ", ");
                                 }
@@ -592,7 +599,7 @@ idnsParseWIN32Registry(void)
                                 RegQueryValueEx(hndKey2, "NameServer", NULL, &Type, (LPBYTE)t, &Size);
                                 token = strtok(t, ", ");
                                 while (token) {
-                                    debugs(78, 1, "Adding nameserver " << token << " from Registry");
+                                    debugs(78, DBG_IMPORTANT, "Adding nameserver " << token << " from Registry");
                                     idnsAddNameserver(token);
                                     token = strtok(NULL, ", ");
                                 }
@@ -636,7 +643,7 @@ idnsParseWIN32Registry(void)
                 token = strtok(t, ", ");
 
                 while (token) {
-                    debugs(78, 1, "Adding nameserver " << token << " from Registry");
+                    debugs(78, DBG_IMPORTANT, "Adding nameserver " << token << " from Registry");
                     idnsAddNameserver(token);
                     token = strtok(NULL, ", ");
                 }
@@ -649,7 +656,7 @@ idnsParseWIN32Registry(void)
         break;
 
     default:
-        debugs(78, 1, "Failed to read nameserver from Registry: Unknown System Type.");
+        debugs(78, DBG_IMPORTANT, "Failed to read nameserver from Registry: Unknown System Type.");
         return;
     }
 }
@@ -803,7 +810,7 @@ idnsInitVCConnected(const Comm::ConnectionPointer &conn, comm_err_t status, int 
         char buf[MAX_IPSTRLEN] = "";
         if (vc->ns < nns)
             nameservers[vc->ns].S.NtoA(buf,MAX_IPSTRLEN);
-        debugs(78, 1, HERE << "Failed to connect to nameserver " << buf << " using TCP.");
+        debugs(78, DBG_IMPORTANT, HERE << "Failed to connect to nameserver " << buf << " using TCP.");
         return;
     }
 
@@ -872,7 +879,7 @@ idnsSendQueryVC(idns_query * q, int ns)
 
     if (!vc) {
         char buf[MAX_IPSTRLEN];
-        debugs(78, 1, "idnsSendQuery: Failed to initiate TCP connection to nameserver " << nameservers[ns].S.NtoA(buf,MAX_IPSTRLEN) << "!");
+        debugs(78, DBG_IMPORTANT, "idnsSendQuery: Failed to initiate TCP connection to nameserver " << nameservers[ns].S.NtoA(buf,MAX_IPSTRLEN) << "!");
 
         return;
     }
@@ -892,12 +899,12 @@ static void
 idnsSendQuery(idns_query * q)
 {
     if (DnsSocketA < 0 && DnsSocketB < 0) {
-        debugs(78, 1, "WARNING: idnsSendQuery: Can't send query, no DNS socket!");
+        debugs(78, DBG_IMPORTANT, "WARNING: idnsSendQuery: Can't send query, no DNS socket!");
         return;
     }
 
     if (nns <= 0) {
-        debugs(78, 1, "WARNING: idnsSendQuery: Can't send query, no DNS nameservers known!");
+        debugs(78, DBG_IMPORTANT, "WARNING: idnsSendQuery: Can't send query, no DNS nameservers known!");
         return;
     }
 
@@ -926,9 +933,9 @@ idnsSendQuery(idns_query * q)
         q->sent_t = current_time;
 
         if (y < 0 && nameservers[ns].S.IsIPv6())
-            debugs(50, 1, "idnsSendQuery: FD " << DnsSocketB << ": sendto: " << xstrerror());
+            debugs(50, DBG_IMPORTANT, "idnsSendQuery: FD " << DnsSocketB << ": sendto: " << xstrerror());
         if (x < 0 && nameservers[ns].S.IsIPv4())
-            debugs(50, 1, "idnsSendQuery: FD " << DnsSocketA << ": sendto: " << xstrerror());
+            debugs(50, DBG_IMPORTANT, "idnsSendQuery: FD " << DnsSocketA << ": sendto: " << xstrerror());
 
     } while ( (x<0 && y<0) && q->nsends % nns != 0);
 
@@ -990,7 +997,7 @@ idnsQueryID(void)
         ++id;
 
         if (id == first_id) {
-            debugs(78, 1, "idnsQueryID: Warning, too many pending DNS requests");
+            debugs(78, DBG_IMPORTANT, "idnsQueryID: Warning, too many pending DNS requests");
             break;
         }
     }
@@ -1098,7 +1105,7 @@ idnsGrokReply(const char *buf, size_t sz, int from_ns)
     n = rfc1035MessageUnpack(buf, sz, &message);
 
     if (message == NULL) {
-        debugs(78, 1, "idnsGrokReply: Malformed DNS response");
+        debugs(78, DBG_IMPORTANT, "idnsGrokReply: Malformed DNS response");
         return;
     }
 
@@ -1285,7 +1292,7 @@ idnsRead(int fd, void *data)
             if (errno != ECONNREFUSED && errno != EHOSTUNREACH)
 #endif
 
-                debugs(50, 1, "idnsRead: FD " << fd << " recvfrom: " << xstrerror());
+                debugs(50, DBG_IMPORTANT, "idnsRead: FD " << fd << " recvfrom: " << xstrerror());
 
             break;
         }
@@ -1313,10 +1320,10 @@ idnsRead(int fd, void *data)
             static time_t last_warning = 0;
 
             if (squid_curtime - last_warning > 60) {
-                debugs(78, 1, "WARNING: Reply from unknown nameserver " << from);
+                debugs(78, DBG_IMPORTANT, "WARNING: Reply from unknown nameserver " << from);
                 last_warning = squid_curtime;
             } else {
-                debugs(78, 1, "WARNING: Reply from unknown nameserver " << from << " (retrying..." <<  (squid_curtime-last_warning) << "<=60)" );
+                debugs(78, DBG_IMPORTANT, "WARNING: Reply from unknown nameserver " << from << " (retrying..." <<  (squid_curtime-last_warning) << "<=60)" );
             }
             continue;
         }
@@ -1516,12 +1523,12 @@ dnsInit(void)
          */
         if (DnsSocketB >= 0) {
             comm_local_port(DnsSocketB);
-            debugs(78, 1, "DNS Socket created at " << addrV6 << ", FD " << DnsSocketB);
+            debugs(78, DBG_IMPORTANT, "DNS Socket created at " << addrV6 << ", FD " << DnsSocketB);
             Comm::SetSelect(DnsSocketB, COMM_SELECT_READ, idnsRead, NULL, 0);
         }
         if (DnsSocketA >= 0) {
             comm_local_port(DnsSocketA);
-            debugs(78, 1, "DNS Socket created at " << addrV4 << ", FD " << DnsSocketA);
+            debugs(78, DBG_IMPORTANT, "DNS Socket created at " << addrV4 << ", FD " << DnsSocketA);
             Comm::SetSelect(DnsSocketA, COMM_SELECT_READ, idnsRead, NULL, 0);
         }
     }
@@ -1540,14 +1547,14 @@ dnsInit(void)
 #endif
 
     if (0 == nns) {
-        debugs(78, 1, "Warning: Could not find any nameservers. Trying to use localhost");
+        debugs(78, DBG_IMPORTANT, "Warning: Could not find any nameservers. Trying to use localhost");
 #if _SQUID_WINDOWS_
-        debugs(78, 1, "Please check your TCP-IP settings or /etc/resolv.conf file");
+        debugs(78, DBG_IMPORTANT, "Please check your TCP-IP settings or /etc/resolv.conf file");
 #else
-        debugs(78, 1, "Please check your /etc/resolv.conf file");
+        debugs(78, DBG_IMPORTANT, "Please check your /etc/resolv.conf file");
 #endif
 
-        debugs(78, 1, "or use the 'dns_nameservers' option in squid.conf.");
+        debugs(78, DBG_IMPORTANT, "or use the 'dns_nameservers' option in squid.conf.");
         idnsAddNameserver("127.0.0.1");
     }
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  * AUTHOR: Kostas Anagnostakis
  *
@@ -32,14 +30,22 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "CachePeer.h"
 #include "cache_snmp.h"
-#include "Store.h"
+#include "globals.h"
 #include "mem_node.h"
+#include "neighbors.h"
+#include "snmp_agent.h"
+#include "snmp_core.h"
 #include "StatCounters.h"
 #include "StatHist.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
+#include "stat.h"
+#include "Store.h"
+#include "tools.h"
 
 /************************************************************************
 
@@ -192,7 +198,6 @@ snmp_confFn(variable_list * Var, snint * ErrP)
     return Answer;
 }
 
-
 /*
  * cacheMesh group
  *   - cachePeerTable
@@ -204,7 +209,7 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
 
     Ip::Address laddr;
     char *cp = NULL;
-    peer *p = NULL;
+    CachePeer *p = NULL;
     int cnt = 0;
     debugs(49, 5, "snmp_meshPtblFn: peer " << Var->name[LEN_SQ_MESH + 3] << " requested!");
     *ErrP = SNMP_ERR_NOERROR;
@@ -222,14 +227,12 @@ snmp_meshPtblFn(variable_list * Var, snint * ErrP)
         return NULL;
     }
 
-
     switch (Var->name[LEN_SQ_MESH + 2]) {
     case MESH_PTBL_INDEX: { // FIXME INET6: Should be visible?
         Answer = snmp_var_new_integer(Var->name, Var->name_length,
                                       (snint)p->index, SMI_INTEGER);
     }
     break;
-
 
     case MESH_PTBL_NAME:
         cp = p->host;

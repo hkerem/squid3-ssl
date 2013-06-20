@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -35,8 +33,6 @@
 
 #ifndef SQUID_ESIEXPRESSION_H
 #define SQUID_ESIEXPRESSION_H
-
-#include "squid-old.h"
 
 class ESIExpression
 {

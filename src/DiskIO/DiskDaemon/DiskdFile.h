@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
  *
@@ -74,7 +72,6 @@ private:
     bool errorOccured;
     DiskdIOStrategy *IO;
     RefCount<IORequestor> ioRequestor;
-    CBDATA_CLASS(DiskdFile);
     void openDone(diomsg *);
     void createDone (diomsg *);
     void readDone (diomsg *);
@@ -86,6 +83,8 @@ private:
     void ioAway();
     void ioCompleted();
     size_t inProgressIOs;
+
+    CBDATA_CLASS(DiskdFile);
 };
 
 #endif

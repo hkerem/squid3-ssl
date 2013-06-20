@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 84    Helper process maintenance
  * AUTHOR: Harvest Derived?
  *
@@ -32,21 +30,24 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/AsyncCbdataCalls.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/Write.h"
-#include "helper.h"
+#include "fd.h"
+#include "fde.h"
 #include "format/Quoting.h"
+#include "helper.h"
+#include "Mem.h"
 #include "MemBuf.h"
+#include "SquidIpc.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "wordlist.h"
 
 #define HELPER_MAX_ARGS 64
-
 
 /** Initial Squid input buffer size. Helper responses may exceed this, and
  * Squid will grow the input buffer as needed, up to ReadBufMaxSize.
@@ -79,11 +80,19 @@ static void helperStatefulRequestFree(helper_stateful_request * r);
 static void StatefulEnqueue(statefulhelper * hlp, helper_stateful_request * r);
 static bool helperStartStats(StoreEntry *sentry, void *hlp, const char *label);
 
-
 CBDATA_CLASS_INIT(helper);
 CBDATA_TYPE(helper_server);
 CBDATA_CLASS_INIT(statefulhelper);
 CBDATA_TYPE(helper_stateful_server);
+
+void
+HelperServerBase::initStats()
+{
+    stats.uses=0;
+    stats.replies=0;
+    stats.pending=0;
+    stats.releases=0;
+}
 
 void
 HelperServerBase::closePipesSafely()
@@ -172,10 +181,10 @@ helperOpenServers(helper * hlp)
     /* figure out how many new child are actually needed. */
     int need_new = hlp->childs.needNew();
 
-    debugs(84, 1, "helperOpenServers: Starting " << need_new << "/" << hlp->childs.n_max << " '" << shortname << "' processes");
+    debugs(84, DBG_IMPORTANT, "helperOpenServers: Starting " << need_new << "/" << hlp->childs.n_max << " '" << shortname << "' processes");
 
     if (need_new < 1) {
-        debugs(84, 1, "helperOpenServers: No '" << shortname << "' processes needed.");
+        debugs(84, DBG_IMPORTANT, "helperOpenServers: No '" << shortname << "' processes needed.");
     }
 
     procname = (char *)xmalloc(strlen(shortname) + 3);
@@ -208,7 +217,7 @@ helperOpenServers(helper * hlp)
                         &hIpc);
 
         if (pid < 0) {
-            debugs(84, 1, "WARNING: Cannot run '" << progname << "' process.");
+            debugs(84, DBG_IMPORTANT, "WARNING: Cannot run '" << progname << "' process.");
             continue;
         }
 
@@ -218,6 +227,7 @@ helperOpenServers(helper * hlp)
         srv = cbdataAlloc(helper_server);
         srv->hIpc = hIpc;
         srv->pid = pid;
+        srv->initStats();
         srv->index = k;
         srv->addr = hlp->addr;
         srv->readPipe = new Comm::Connection;
@@ -277,7 +287,7 @@ helperStatefulOpenServers(statefulhelper * hlp)
         return;
 
     if (hlp->childs.concurrency)
-        debugs(84, 0, "ERROR: concurrency= is not yet supported for stateful helpers ('" << hlp->cmdline << "')");
+        debugs(84, DBG_CRITICAL, "ERROR: concurrency= is not yet supported for stateful helpers ('" << hlp->cmdline << "')");
 
     char *progname = hlp->cmdline->key;
 
@@ -290,10 +300,10 @@ helperStatefulOpenServers(statefulhelper * hlp)
     /* figure out haw mant new helpers are needed. */
     int need_new = hlp->childs.needNew();
 
-    debugs(84, 1, "helperOpenServers: Starting " << need_new << "/" << hlp->childs.n_max << " '" << shortname << "' processes");
+    debugs(84, DBG_IMPORTANT, "helperOpenServers: Starting " << need_new << "/" << hlp->childs.n_max << " '" << shortname << "' processes");
 
     if (need_new < 1) {
-        debugs(84, 1, "helperStatefulOpenServers: No '" << shortname << "' processes needed.");
+        debugs(84, DBG_IMPORTANT, "helperStatefulOpenServers: No '" << shortname << "' processes needed.");
     }
 
     char *procname = (char *)xmalloc(strlen(shortname) + 3);
@@ -328,7 +338,7 @@ helperStatefulOpenServers(statefulhelper * hlp)
                               &hIpc);
 
         if (pid < 0) {
-            debugs(84, 1, "WARNING: Cannot run '" << progname << "' process.");
+            debugs(84, DBG_IMPORTANT, "WARNING: Cannot run '" << progname << "' process.");
             continue;
         }
 
@@ -339,8 +349,7 @@ helperStatefulOpenServers(statefulhelper * hlp)
         srv->hIpc = hIpc;
         srv->pid = pid;
         srv->flags.reserved = 0;
-        srv->stats.submits = 0;
-        srv->stats.releases = 0;
+        srv->initStats();
         srv->index = k;
         srv->addr = hlp->addr;
         srv->readPipe = new Comm::Connection;
@@ -384,7 +393,6 @@ helperStatefulOpenServers(statefulhelper * hlp)
     safe_free(procname);
     helperStatefulKickQueue(hlp);
 }
-
 
 void
 helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data)
@@ -502,11 +510,12 @@ helperStats(StoreEntry * sentry, helper * hlp, const char *label)
     storeAppendPrintf(sentry, "avg service time: %d msec\n",
                       hlp->stats.avg_svc_time);
     storeAppendPrintf(sentry, "\n");
-    storeAppendPrintf(sentry, "%7s\t%7s\t%7s\t%11s\t%s\t%7s\t%7s\t%7s\n",
+    storeAppendPrintf(sentry, "%7s\t%7s\t%7s\t%11s\t%11s\t%s\t%7s\t%7s\t%7s\n",
                       "#",
                       "FD",
                       "PID",
                       "# Requests",
+                      "# Replies",
                       "Flags",
                       "Time",
                       "Offset",
@@ -515,11 +524,12 @@ helperStats(StoreEntry * sentry, helper * hlp, const char *label)
     for (dlink_node *link = hlp->servers.head; link; link = link->next) {
         helper_server *srv = (helper_server*)link->data;
         double tt = 0.001 * (srv->requests[0] ? tvSubMsec(srv->requests[0]->dispatch_time, current_time) : tvSubMsec(srv->dispatch_time, srv->answer_time));
-        storeAppendPrintf(sentry, "%7d\t%7d\t%7d\t%11d\t%c%c%c%c\t%7.3f\t%7d\t%s\n",
+        storeAppendPrintf(sentry, "%7d\t%7d\t%7d\t%11" PRIu64 "\t%11" PRIu64 "\t%c%c%c%c\t%7.3f\t%7d\t%s\n",
                           srv->index + 1,
                           srv->readPipe->fd,
                           srv->pid,
                           srv->stats.uses,
+                          srv->stats.replies,
                           srv->stats.pending ? 'B' : ' ',
                           srv->flags.writing ? 'W' : ' ',
                           srv->flags.closing ? 'C' : ' ',
@@ -555,11 +565,12 @@ helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label
     storeAppendPrintf(sentry, "avg service time: %d msec\n",
                       hlp->stats.avg_svc_time);
     storeAppendPrintf(sentry, "\n");
-    storeAppendPrintf(sentry, "%7s\t%7s\t%7s\t%11s\t%6s\t%7s\t%7s\t%7s\n",
+    storeAppendPrintf(sentry, "%7s\t%7s\t%7s\t%11s\t%11s\t%6s\t%7s\t%7s\t%7s\n",
                       "#",
                       "FD",
                       "PID",
                       "# Requests",
+                      "# Replies",
                       "Flags",
                       "Time",
                       "Offset",
@@ -568,11 +579,12 @@ helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label
     for (dlink_node *link = hlp->servers.head; link; link = link->next) {
         helper_stateful_server *srv = (helper_stateful_server *)link->data;
         double tt = 0.001 * tvSubMsec(srv->dispatch_time, srv->flags.busy ? current_time : srv->answer_time);
-        storeAppendPrintf(sentry, "%7d\t%7d\t%7d\t%11d\t%c%c%c%c%c\t%7.3f\t%7d\t%s\n",
+        storeAppendPrintf(sentry, "%7d\t%7d\t%7d\t%11" PRIu64 "\t%11" PRIu64 "\t%c%c%c%c%c\t%7.3f\t%7d\t%s\n",
                           srv->index + 1,
                           srv->readPipe->fd,
                           srv->pid,
                           srv->stats.uses,
+                          srv->stats.replies,
                           srv->flags.busy ? 'B' : ' ',
                           srv->flags.closing ? 'C' : ' ',
                           srv->flags.reserved ? 'R' : ' ',
@@ -680,7 +692,7 @@ helper::~helper()
     /* note, don't free id_name, it probably points to static memory */
 
     if (queue.head)
-        debugs(84, 0, "WARNING: freeing " << id_name << " helper with " << stats.queue_size << " requests queued");
+        debugs(84, DBG_CRITICAL, "WARNING: freeing " << id_name << " helper with " << stats.queue_size << " requests queued");
 }
 
 /* ====================================================================== */
@@ -725,12 +737,16 @@ helperServerFree(helper_server *srv)
         debugs(84, DBG_CRITICAL, "WARNING: " << hlp->id_name << " #" << srv->index + 1 << " exited");
 
         if (hlp->childs.needNew() > 0) {
-            debugs(80, 1, "Too few " << hlp->id_name << " processes are running (need " << hlp->childs.needNew() << "/" << hlp->childs.n_max << ")");
+            debugs(80, DBG_IMPORTANT, "Too few " << hlp->id_name << " processes are running (need " << hlp->childs.needNew() << "/" << hlp->childs.n_max << ")");
 
-            if (hlp->childs.n_active < hlp->childs.n_startup && hlp->last_restart > squid_curtime - 30)
-                fatalf("The %s helpers are crashing too rapidly, need help!\n", hlp->id_name);
+            if (hlp->childs.n_active < hlp->childs.n_startup && hlp->last_restart > squid_curtime - 30) {
+                if (srv->stats.replies < 1)
+                    fatalf("The %s helpers are crashing too rapidly, need help!\n", hlp->id_name);
+                else
+                    debugs(80, DBG_CRITICAL, "ERROR: The " << hlp->id_name << " helpers are crashing too rapidly, need help!");
+            }
 
-            debugs(80, 1, "Starting new helpers");
+            debugs(80, DBG_IMPORTANT, "Starting new helpers");
             helperOpenServers(hlp);
         }
     }
@@ -750,7 +766,7 @@ helperServerFree(helper_server *srv)
     safe_free(srv->requests);
 
     cbdataReferenceDone(srv->parent);
-    cbdataFree(srv);
+    delete srv;
 }
 
 static void
@@ -783,15 +799,19 @@ helperStatefulServerFree(helper_stateful_server *srv)
     if (!srv->flags.shutdown) {
         assert( hlp->childs.n_active > 0);
         -- hlp->childs.n_active;
-        debugs(84, 0, "WARNING: " << hlp->id_name << " #" << srv->index + 1 << " exited");
+        debugs(84, DBG_CRITICAL, "WARNING: " << hlp->id_name << " #" << srv->index + 1 << " exited");
 
         if (hlp->childs.needNew() > 0) {
-            debugs(80, 1, "Too few " << hlp->id_name << " processes are running (need " << hlp->childs.needNew() << "/" << hlp->childs.n_max << ")");
+            debugs(80, DBG_IMPORTANT, "Too few " << hlp->id_name << " processes are running (need " << hlp->childs.needNew() << "/" << hlp->childs.n_max << ")");
 
-            if (hlp->childs.n_active < hlp->childs.n_startup && hlp->last_restart > squid_curtime - 30)
-                fatalf("The %s helpers are crashing too rapidly, need help!\n", hlp->id_name);
+            if (hlp->childs.n_active < hlp->childs.n_startup && hlp->last_restart > squid_curtime - 30) {
+                if (srv->stats.replies < 1)
+                    fatalf("The %s helpers are crashing too rapidly, need help!\n", hlp->id_name);
+                else
+                    debugs(80, DBG_CRITICAL, "ERROR: The " << hlp->id_name << " helpers are crashing too rapidly, need help!");
+            }
 
-            debugs(80, 1, "Starting new helpers");
+            debugs(80, DBG_IMPORTANT, "Starting new helpers");
             helperStatefulOpenServers(hlp);
         }
     }
@@ -812,7 +832,7 @@ helperStatefulServerFree(helper_stateful_server *srv)
 
     cbdataReferenceDone(srv->parent);
 
-    cbdataFree(srv);
+    delete srv;
 }
 
 /// Calls back with a pointer to the buffer with the helper output
@@ -831,6 +851,7 @@ static void helperReturnBuffer(int request_number, helper_server * srv, helper *
             callback(cbdata, msg);
 
         -- srv->stats.pending;
+        ++ srv->stats.replies;
 
         ++ hlp->stats.replies;
 
@@ -845,7 +866,7 @@ static void helperReturnBuffer(int request_number, helper_server * srv, helper *
 
         helperRequestFree(r);
     } else {
-        debugs(84, 1, "helperHandleRead: unexpected reply on channel " <<
+        debugs(84, DBG_IMPORTANT, "helperHandleRead: unexpected reply on channel " <<
                request_number << " from " << hlp->id_name << " #" << srv->index + 1 <<
                " '" << srv->rbuf << "'");
     }
@@ -890,7 +911,7 @@ helperHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t len, com
 
     if (!srv->stats.pending) {
         /* someone spoke without being spoken to */
-        debugs(84, 1, "helperHandleRead: unexpected read from " <<
+        debugs(84, DBG_IMPORTANT, "helperHandleRead: unexpected read from " <<
                hlp->id_name << " #" << srv->index + 1 << ", " << (int)len <<
                " bytes '" << srv->rbuf << "'");
 
@@ -920,7 +941,7 @@ helperHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t len, com
         helperReturnBuffer(i, srv, hlp, msg, t);
     }
 
-    if (Comm::IsConnOpen(srv->readPipe)) {
+    if (Comm::IsConnOpen(srv->readPipe) && !fd_table[srv->readPipe->fd].closing()) {
         int spaceSize = srv->rbuf_sz - srv->roffset - 1;
         assert(spaceSize >= 0);
 
@@ -968,7 +989,6 @@ helperStatefulHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t 
     debugs(84, 5, "helperStatefulHandleRead: " << len << " bytes from " <<
            hlp->id_name << " #" << srv->index + 1);
 
-
     if (flag != COMM_OK || len == 0) {
         srv->closePipesSafely();
         return;
@@ -980,7 +1000,7 @@ helperStatefulHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t 
 
     if (r == NULL) {
         /* someone spoke without being spoken to */
-        debugs(84, 1, "helperStatefulHandleRead: unexpected read from " <<
+        debugs(84, DBG_IMPORTANT, "helperStatefulHandleRead: unexpected read from " <<
                hlp->id_name << " #" << srv->index + 1 << ", " << (int)len <<
                " bytes '" << srv->rbuf << "'");
 
@@ -1000,7 +1020,7 @@ helperStatefulHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t 
         if (r && cbdataReferenceValid(r->data)) {
             r->callback(r->data, srv, srv->rbuf);
         } else {
-            debugs(84, 1, "StatefulHandleRead: no callback data registered");
+            debugs(84, DBG_IMPORTANT, "StatefulHandleRead: no callback data registered");
             called = 0;
         }
 
@@ -1008,6 +1028,10 @@ helperStatefulHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t 
         srv->roffset = 0;
         helperStatefulRequestFree(r);
         srv->request = NULL;
+
+        -- srv->stats.pending;
+        ++ srv->stats.replies;
+
         ++ hlp->stats.replies;
         srv->answer_time = current_time;
         hlp->stats.avg_svc_time =
@@ -1021,7 +1045,7 @@ helperStatefulHandleRead(const Comm::ConnectionPointer &conn, char *buf, size_t 
             helperStatefulReleaseServer(srv);
     }
 
-    if (Comm::IsConnOpen(srv->readPipe)) {
+    if (Comm::IsConnOpen(srv->readPipe) && !fd_table[srv->readPipe->fd].closing()) {
         int spaceSize = srv->rbuf_sz - srv->roffset - 1;
         assert(spaceSize >= 0);
 
@@ -1058,7 +1082,7 @@ Enqueue(helper * hlp, helper_request * r)
 
     /* do this first so idle=N has a chance to grow the child pool before it hits critical. */
     if (hlp->childs.needNew() > 0) {
-        debugs(84, 0, "Starting new " << hlp->id_name << " helpers...");
+        debugs(84, DBG_CRITICAL, "Starting new " << hlp->id_name << " helpers...");
         helperOpenServers(hlp);
         return;
     }
@@ -1074,9 +1098,9 @@ Enqueue(helper * hlp, helper_request * r)
 
     hlp->last_queue_warn = squid_curtime;
 
-    debugs(84, 0, "WARNING: All " << hlp->childs.n_active << "/" << hlp->childs.n_max << " " << hlp->id_name << " processes are busy.");
-    debugs(84, 0, "WARNING: " << hlp->stats.queue_size << " pending requests queued");
-    debugs(84, 0, "WARNING: Consider increasing the number of " << hlp->id_name << " processes in your config file.");
+    debugs(84, DBG_CRITICAL, "WARNING: All " << hlp->childs.n_active << "/" << hlp->childs.n_max << " " << hlp->id_name << " processes are busy.");
+    debugs(84, DBG_CRITICAL, "WARNING: " << hlp->stats.queue_size << " pending requests queued");
+    debugs(84, DBG_CRITICAL, "WARNING: Consider increasing the number of " << hlp->id_name << " processes in your config file.");
 
     if (hlp->stats.queue_size > (int)hlp->childs.n_running * 2)
         fatalf("Too many queued %s requests", hlp->id_name);
@@ -1091,7 +1115,7 @@ StatefulEnqueue(statefulhelper * hlp, helper_stateful_request * r)
 
     /* do this first so idle=N has a chance to grow the child pool before it hits critical. */
     if (hlp->childs.needNew() > 0) {
-        debugs(84, 0, "Starting new " << hlp->id_name << " helpers...");
+        debugs(84, DBG_CRITICAL, "Starting new " << hlp->id_name << " helpers...");
         helperStatefulOpenServers(hlp);
         return;
     }
@@ -1110,9 +1134,9 @@ StatefulEnqueue(statefulhelper * hlp, helper_stateful_request * r)
 
     hlp->last_queue_warn = squid_curtime;
 
-    debugs(84, 0, "WARNING: All " << hlp->childs.n_active << "/" << hlp->childs.n_max << " " << hlp->id_name << " processes are busy.");
-    debugs(84, 0, "WARNING: " << hlp->stats.queue_size << " pending requests queued");
-    debugs(84, 0, "WARNING: Consider increasing the number of " << hlp->id_name << " processes in your config file.");
+    debugs(84, DBG_CRITICAL, "WARNING: All " << hlp->childs.n_active << "/" << hlp->childs.n_max << " " << hlp->id_name << " processes are busy.");
+    debugs(84, DBG_CRITICAL, "WARNING: " << hlp->stats.queue_size << " pending requests queued");
+    debugs(84, DBG_CRITICAL, "WARNING: Consider increasing the number of " << hlp->id_name << " processes in your config file.");
 }
 
 static helper_request *
@@ -1227,7 +1251,6 @@ StatefulGetFirstAvailable(statefulhelper * hlp)
     return NULL;
 }
 
-
 static void
 helperDispatchWriteDone(const Comm::ConnectionPointer &conn, char *buf, size_t len, comm_err_t flag, int xerrno, void *data)
 {
@@ -1240,7 +1263,7 @@ helperDispatchWriteDone(const Comm::ConnectionPointer &conn, char *buf, size_t l
 
     if (flag != COMM_OK) {
         /* Helper server has crashed */
-        debugs(84, 0, "helperDispatch: Helper " << srv->parent->id_name << " #" << srv->index + 1 << " has crashed");
+        debugs(84, DBG_CRITICAL, "helperDispatch: Helper " << srv->parent->id_name << " #" << srv->index + 1 << " has crashed");
         return;
     }
 
@@ -1262,7 +1285,7 @@ helperDispatch(helper_server * srv, helper_request * r)
     unsigned int slot;
 
     if (!cbdataReferenceValid(r->data)) {
-        debugs(84, 1, "helperDispatch: invalid callback data");
+        debugs(84, DBG_IMPORTANT, "helperDispatch: invalid callback data");
         helperRequestFree(r);
         return;
     }
@@ -1276,7 +1299,6 @@ helperDispatch(helper_server * srv, helper_request * r)
 
     assert(ptr);
     *ptr = r;
-    srv->stats.pending += 1;
     r->dispatch_time = current_time;
 
     if (srv->wqueue->isNull())
@@ -1300,6 +1322,7 @@ helperDispatch(helper_server * srv, helper_request * r)
     debugs(84, 5, "helperDispatch: Request sent to " << hlp->id_name << " #" << srv->index + 1 << ", " << strlen(r->buf) << " bytes");
 
     ++ srv->stats.uses;
+    ++ srv->stats.pending;
     ++ hlp->stats.requests;
 }
 
@@ -1310,14 +1333,13 @@ helperStatefulDispatchWriteDone(const Comm::ConnectionPointer &conn, char *buf, 
     /* nothing! */
 }
 
-
 static void
 helperStatefulDispatch(helper_stateful_server * srv, helper_stateful_request * r)
 {
     statefulhelper *hlp = srv->parent;
 
     if (!cbdataReferenceValid(r->data)) {
-        debugs(84, 1, "helperStatefulDispatch: invalid callback data");
+        debugs(84, DBG_IMPORTANT, "helperStatefulDispatch: invalid callback data");
         helperStatefulRequestFree(r);
         helperStatefulReleaseServer(srv);
         return;
@@ -1353,9 +1375,9 @@ helperStatefulDispatch(helper_stateful_server * srv, helper_stateful_request * r
            (int) strlen(r->buf) << " bytes");
 
     ++ srv->stats.uses;
+    ++ srv->stats.pending;
     ++ hlp->stats.requests;
 }
-
 
 static void
 helperKickQueue(helper * hlp)

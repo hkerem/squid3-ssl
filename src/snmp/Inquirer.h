@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -12,7 +10,6 @@
 #include "ipc/Inquirer.h"
 #include "snmp/forward.h"
 #include "snmp/Pdu.h"
-
 
 class CommCloseCbParams;
 

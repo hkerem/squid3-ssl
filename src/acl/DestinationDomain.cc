@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -34,11 +32,12 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/DestinationDomain.h"
 #include "acl/Checklist.h"
 #include "acl/RegexData.h"
 #include "acl/DomainData.h"
+#include "fqdncache.h"
 #include "HttpRequest.h"
 #include "ipcache.h"
 
@@ -70,7 +69,6 @@ DestinationDomainLookup::LookupDone(const char *fqdn, const DnsLookupDetails &de
     checklist->request->recordLookup(details);
     checklist->matchNonBlocking();
 }
-
 
 int
 ACLDestinationDomainStrategy::match (ACLData<MatchType> * &data, ACLFilledChecklist *checklist)

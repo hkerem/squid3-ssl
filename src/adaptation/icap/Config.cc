@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
  *
@@ -32,29 +30,30 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
-
+#include "squid.h"
 #include "ConfigParser.h"
 #include "Store.h"
-#include "Array.h"	// really Vector
+#include "Array.h"
 #include "adaptation/icap/Config.h"
 #include "adaptation/icap/ServiceRep.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
+#include "SquidConfig.h"
 #include "wordlist.h"
 
 Adaptation::Icap::Config Adaptation::Icap::TheConfig;
 
-Adaptation::Icap::Config::Config(): preview_enable(0), preview_size(0),
-        allow206_enable(0),
+Adaptation::Icap::Config::Config() :
+        preview_enable(0), preview_size(0), allow206_enable(0),
         connect_timeout_raw(0), io_timeout_raw(0), reuse_connections(0),
-        client_username_header(NULL), client_username_encode(0), repeat(NULL)
+        client_username_header(NULL), client_username_encode(0), repeat(NULL),
+        repeat_limit(0)
 {
 }
 
 Adaptation::Icap::Config::~Config()
 {
-    // TODO: delete client_username_header?
+    // no need to free client_username_header, it's done in cf_parser.cci:free_all
 }
 
 Adaptation::ServicePointer

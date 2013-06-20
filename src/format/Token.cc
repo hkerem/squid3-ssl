@@ -2,6 +2,8 @@
 #include "format/Config.h"
 #include "format/Token.h"
 #include "format/TokenTableEntry.h"
+#include "globals.h"
+#include "SquidConfig.h"
 #include "Store.h"
 
 const char *Format::log_tags[] = {
@@ -186,6 +188,15 @@ static TokenTableEntry TokenTableIcap[] = {
 };
 #endif
 
+#if USE_SSL
+// SSL (ssl::) tokens
+static TokenTableEntry TokenTableSsl[] = {
+    {"bump_mode", LFT_SSL_BUMP_MODE},
+    {">cert_subject", LFT_SSL_USER_CERT_SUBJECT},
+    {">cert_issuer", LFT_SSL_USER_CERT_ISSUER},
+    {NULL, LFT_NONE}
+};
+#endif
 } // namespace Format
 
 /// Register all components custom format tokens
@@ -201,14 +212,15 @@ Format::Token::Init()
 #if ICAP_CLIENT
     TheConfig.registerTokens(String("icap"),::Format::TokenTableIcap);
 #endif
-
-    // TODO tokens for OpenSSL errors in "ssl::"
+#if USE_SSL
+    TheConfig.registerTokens(String("ssl"),::Format::TokenTableSsl);
+#endif
 }
 
 /// Scans a token table to see if the next token exists there
 /// returns a pointer to next unparsed byte and updates type member if found
-char *
-Format::Token::scanForToken(TokenTableEntry const table[], char *cur)
+const char *
+Format::Token::scanForToken(TokenTableEntry const table[], const char *cur)
 {
     for (TokenTableEntry const *lte = table; lte->configTag != NULL; ++lte) {
         debugs(46, 8, HERE << "compare tokens '" << lte->configTag << "' with '" << cur << "'");
@@ -227,9 +239,9 @@ Format::Token::scanForToken(TokenTableEntry const table[], char *cur)
  * def is for sure null-terminated
  */
 int
-Format::Token::parse(char *def, Quoting *quoting)
+Format::Token::parse(const char *def, Quoting *quoting)
 {
-    char *cur = def;
+    const char *cur = def;
 
     int l;
 
@@ -318,11 +330,16 @@ Format::Token::parse(char *def, Quoting *quoting)
         ++cur;
     }
 
-    if (xisdigit(*cur))
-        widthMin = strtol(cur, &cur, 10);
+    char *endp;
+    if (xisdigit(*cur)) {
+        widthMin = strtol(cur, &endp, 10);
+        cur = endp;
+    }
 
-    if (*cur == '.' && xisdigit(*(++cur)))
-        widthMax = strtol(cur, &cur, 10);
+    if (*cur == '.' && xisdigit(*(++cur))) {
+        widthMax = strtol(cur, &endp, 10);
+        cur = endp;
+    }
 
     if (*cur == '{') {
         char *cp;
@@ -511,28 +528,28 @@ done:
         break;
 
     case LFT_HTTP_SENT_STATUS_CODE_OLD_30:
-        debugs(46, 0, "WARNING: The \"Hs\" formatting code is deprecated. Use the \">Hs\" instead.");
+        debugs(46, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: The \"Hs\" formatting code is deprecated. Use the \">Hs\" instead.");
         type = LFT_HTTP_SENT_STATUS_CODE;
         break;
 
     case LFT_SERVER_LOCAL_IP_OLD_27:
-        debugs(46, 0, "WARNING: The \"oa\" formatting code is deprecated. Use the \"<la\" instead.");
+        debugs(46, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: The \"oa\" formatting code is deprecated. Use the \"<la\" instead.");
         type = LFT_SERVER_LOCAL_IP;
         break;
 
     case LFT_REQUEST_URLPATH_OLD_31:
-        debugs(46, 0, "WARNING: The \"rp\" formatting code is deprecated. Use the \">rp\" instead.");
+        debugs(46, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: The \"rp\" formatting code is deprecated. Use the \">rp\" instead.");
         type = LFT_CLIENT_REQ_URLPATH;
         break;
 
     case LFT_REQUEST_VERSION_OLD_2X:
-        debugs(46, 0, "WARNING: The \">v\" formatting code is deprecated. Use the \">rv\" instead.");
+        debugs(46, DBG_PARSE_NOTE(DBG_IMPORTANT), "WARNING: The \">v\" formatting code is deprecated. Use the \">rv\" instead.");
         type = LFT_REQUEST_VERSION;
         break;
 
 #if !USE_SQUID_EUI
     case LFT_CLIENT_EUI:
-        debugs(46, 0, "WARNING: The \">eui\" formatting code requires EUI features which are disabled in this Squid.");
+        debugs(46, DBG_CRITICAL, "WARNING: The \">eui\" formatting code requires EUI features which are disabled in this Squid.");
         break;
 #endif
 

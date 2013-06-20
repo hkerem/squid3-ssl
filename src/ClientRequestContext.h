@@ -1,18 +1,18 @@
 #ifndef SQUID_CLIENTREQUESTCONTEXT_H
 #define SQUID_CLIENTREQUESTCONTEXT_H
 
-class ACLChecklist;
-class ClientHttpRequest;
-class DnsLookupDetails;
-
-/* for RefCountable */
-#include "RefCount.h"
-/* for CBDATA_CLASS() */
 #include "cbdata.h"
+#include "RefCount.h"
+#include "ipcache.h"
 
 #if USE_ADAPTATION
 #include "adaptation/forward.h"
 #endif
+
+class ACLChecklist;
+class ClientHttpRequest;
+class DnsLookupDetails;
+class ErrorState;
 
 class ClientRequestContext : public RefCountable
 {
@@ -47,7 +47,7 @@ public:
      */
     bool sslBumpAccessCheck();
     /// The callback function for ssl-bump access check list
-    void sslBumpAccessCheckDone(bool doSslBump);
+    void sslBumpAccessCheckDone(const allow_t &answer);
 #endif
 
     ClientHttpRequest *http;
@@ -68,6 +68,8 @@ public:
 #if USE_SSL
     bool sslBumpCheckDone;
 #endif
+    ErrorState *error; ///< saved error page for centralized/delayed processing
+    bool readNextRequest; ///< whether Squid should read after error handling
 
 private:
     CBDATA_CLASS(ClientRequestContext);

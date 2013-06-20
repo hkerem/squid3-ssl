@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  */
 
 #ifndef SQUID_IPC_KIDS_H
@@ -8,7 +6,6 @@
 
 #include "Array.h"
 #include "ipc/Kid.h"
-
 
 /// a collection of kids
 class Kids
@@ -56,6 +53,5 @@ extern Kids TheKids; ///< All kids being maintained
 
 typedef char KidName[64]; ///< Squid process name (e.g., "squid-coord")
 extern KidName TheKidName; ///< current Squid process name
-
 
 #endif /* SQUID_IPC_KIDS_H */

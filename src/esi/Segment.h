@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -38,6 +36,7 @@
  */
 
 #include "cbdata.h"
+#include "defines.h"
 #include "RefCount.h"
 #include "SquidString.h"
 
@@ -59,7 +58,6 @@ public:
     void adsorbList (ESISegment::Pointer from);
     size_t space() const;
 
-
     char buf[HTTP_REQBUF_SZ];
     size_t len; /* how much data has been pushed into this */
     Pointer next;
@@ -74,6 +72,6 @@ private:
     void dumpOne() const;
 };
 
-extern void ESISegmentFreeList (ESISegment::Pointer &head);
+void ESISegmentFreeList (ESISegment::Pointer &head);
 
 #endif /* SQUID_ESISEGMENT_H */

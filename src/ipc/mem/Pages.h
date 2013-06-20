@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  */
 
 #ifndef SQUID_IPC_MEM_PAGES_H
@@ -24,7 +22,6 @@ void PutPage(PageId &page);
 
 /// converts page handler into a temporary writeable shared memory pointer
 char *PagePointer(const PageId &page);
-
 
 /* Limits and statistics */
 

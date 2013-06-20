@@ -79,20 +79,19 @@ public:
 
 // Legacy functions
 #define HttpParserInit(h,b,l) (h)->reset((b),(l))
-extern int HttpParserParseReqLine(HttpParser *hp);
+int HttpParserParseReqLine(HttpParser *hp);
 
 #define MSGDODEBUG 0
 #if MSGDODEBUG
-extern int HttpParserReqSz(HttpParser *);
-extern int HttpParserHdrSz(HttpParser *);
-extern const char * HttpParserHdrBuf(HttpParser *);
-extern int HttpParserRequestLen(HttpParser *hp);
+int HttpParserReqSz(HttpParser *);
+int HttpParserHdrSz(HttpParser *);
+const char * HttpParserHdrBuf(HttpParser *);
+int HttpParserRequestLen(HttpParser *hp);
 #else
 #define HttpParserReqSz(hp)     ( (hp)->req.end - (hp)->req.start + 1 )
 #define HttpParserHdrSz(hp)     ( (hp)->hdr_end - (hp)->hdr_start + 1 )
 #define HttpParserHdrBuf(hp)    ( (hp)->buf + (hp)->hdr_start )
 #define HttpParserRequestLen(hp)        ( (hp)->hdr_end - (hp)->req.start + 1 )
 #endif
-
 
 #endif /*  _SQUID_SRC_HTTPPARSER_H */

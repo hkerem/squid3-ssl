@@ -72,7 +72,6 @@
 #include "rfc1738.h"
 #include "util.h"
 
-
 #if _SQUID_CYGWIN_
 #include <wchar.h>
 int _wcsicmp(const wchar_t *, const wchar_t *);
@@ -96,7 +95,6 @@ int _wcsicmp(const wchar_t *, const wchar_t *);
 #include <lm.h>
 #include <ntsecapi.h>
 
-
 int use_global = 0;
 int use_PDC_only = 0;
 char *program_name;
@@ -105,7 +103,6 @@ char *machinedomain;
 int use_case_insensitive_compare = 0;
 char *DefaultDomain = NULL;
 const char NTV_VALID_DOMAIN_SEPARATOR[] = "\\/";
-
 
 char *
 AllocStrFromLSAStr(LSA_UNICODE_STRING LsaStr)
@@ -128,7 +125,6 @@ AllocStrFromLSAStr(LSA_UNICODE_STRING LsaStr)
     target[len - 1] = '\0';
     return target;
 }
-
 
 char *
 GetDomainName(void)
@@ -230,7 +226,7 @@ wcstrcmparray(const wchar_t * str, const char **array)
         debug("Windows group: %S, Squid group: %S\n", str, wszGroup);
         if ((use_case_insensitive_compare ? _wcsicmp(str, wszGroup) : wcscmp(str, wszGroup)) == 0)
             return 0;
-        array++;
+        ++array;
     }
     return -1;
 }
@@ -296,8 +292,8 @@ Valid_Local_Groups(char *UserName, const char **Groups)
                     result = 1;
                     break;
                 }
-                pTmpBuf++;
-                dwTotalCount++;
+                ++pTmpBuf;
+                ++dwTotalCount;
             }
         }
     } else
@@ -309,7 +305,6 @@ Valid_Local_Groups(char *UserName, const char **Groups)
         NetApiBufferFree(pBuf);
     return result;
 }
-
 
 /* returns 1 on success, 0 on failure */
 int
@@ -364,7 +359,6 @@ Valid_Global_Groups(char *UserName, const char **Groups)
                         sizeof(wszUserName) / sizeof(wszUserName[0]));
     MultiByteToWideChar(CP_ACP, 0, machinedomain,
                         strlen(machinedomain) + 1, wszLocalDomain, sizeof(wszLocalDomain) / sizeof(wszLocalDomain[0]));
-
 
     /* Call the NetServerGetInfo function for local computer, specifying level 101. */
     dwLevel = 101;
@@ -433,8 +427,8 @@ Valid_Global_Groups(char *UserName, const char **Groups)
                         result = 1;
                         break;
                     }
-                    pTmpBuf++;
-                    dwTotalCount++;
+                    ++pTmpBuf;
+                    ++dwTotalCount;
                 }
             }
         } else {
@@ -510,7 +504,6 @@ process_options(int argc, char *argv[])
     }
     return;
 }
-
 
 int
 main(int argc, char *argv[])

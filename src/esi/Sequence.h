@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -36,9 +34,9 @@
 #ifndef SQUID_ESISEQUENCE_H
 #define SQUID_ESISEQUENCE_H
 
-#include "squid-old.h"
 #include "esi/Element.h"
 #include "esi/ElementList.h"
+#include "MemPool.h"
 
 /* esiSequence */
 

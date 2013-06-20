@@ -1,18 +1,21 @@
 #ifndef SQUID_FORWARD_H
 #define SQUID_FORWARD_H
 
+#include "Array.h"
+#include "comm.h"
+#include "comm/Connection.h"
+#include "err_type.h"
+#include "fde.h"
+#include "HttpStatusCode.h"
+#include "ip/Address.h"
+#include "RefCount.h"
+
 /* forward decls */
 
 class AccessLogEntry;
 typedef RefCount<AccessLogEntry> AccessLogEntryPointer;
 class ErrorState;
 class HttpRequest;
-
-#include "comm.h"
-#include "comm/Connection.h"
-#include "fde.h"
-#include "ip/Address.h"
-#include "Array.h"
 
 /**
  * Returns the TOS value that we should be setting on the connection
@@ -25,7 +28,6 @@ tos_t GetTosToServer(HttpRequest * request);
  * connection to the server, based on the ACL.
  */
 nfmark_t GetNfmarkToServer(HttpRequest * request);
-
 
 class FwdState : public RefCountable
 {
@@ -97,7 +99,6 @@ private:
     Comm::ConnectionPointer clientConn;        ///< a possibly open connection to the client.
     time_t start_t;
     int n_tries;
-    int origin_tries;
 
     // AsyncCalls which we set and may need cancelling.
     struct {
@@ -122,5 +123,7 @@ private:
     // NP: keep this last. It plays with private/public
     CBDATA_CLASS2(FwdState);
 };
+
+void getOutgoingAddress(HttpRequest * request, Comm::ConnectionPointer conn);
 
 #endif /* SQUID_FORWARD_H */

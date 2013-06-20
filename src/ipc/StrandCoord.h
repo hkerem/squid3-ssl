@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  */
 
 #ifndef SQUID_IPC_STRAND_COORD_H
@@ -40,8 +38,6 @@ public:
 public:
     StrandCoord strand; ///< registrant coordinates and related details
 };
-
-
 
 } // namespace Ipc;
 

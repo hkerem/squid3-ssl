@@ -2,7 +2,7 @@
  * DEBUG: section 93    Adaptation
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "HttpRequest.h"
 #include "adaptation/ServiceFilter.h"
 #include "adaptation/Service.h"
@@ -50,7 +50,6 @@ Adaptation::Service::wants(const ServiceFilter &filter) const
     // to the bypass && broken() test above. Thus, we want to use it!
     return true;
 }
-
 
 Adaptation::Services &
 Adaptation::AllServices()

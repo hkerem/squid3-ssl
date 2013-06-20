@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 00    Client Database
  * AUTHOR: Duane Wessels
  *
@@ -32,17 +30,26 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "client_db.h"
 #include "event.h"
 #include "format/Token.h"
 #include "ClientInfo.h"
+#include "fqdncache.h"
 #include "ip/Address.h"
+#include "log/access_log.h"
+#include "Mem.h"
 #include "mgr/Registration.h"
+#include "SquidConfig.h"
 #include "SquidMath.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "Store.h"
+#include "tools.h"
 
+#if SQUID_SNMP
+#include "snmp_core.h"
+#endif
 
 static hash_table *client_table = NULL;
 
@@ -72,8 +79,9 @@ static ClientInfo *
 clientdbAdd(const Ip::Address &addr)
 {
     ClientInfo *c;
-    char *buf = new char[MAX_IPSTRLEN];
+    char *buf = static_cast<char*>(xmalloc(MAX_IPSTRLEN)); // becomes hash.key
     c = (ClientInfo *)memAllocate(MEM_CLIENT_INFO);
+    debugs(77, 9, "ClientInfo constructed, this=" << c);
     c->hash.key = addr.NtoA(buf,MAX_IPSTRLEN);
     c->addr = addr;
 #if USE_DELAY_POOLS
@@ -137,7 +145,7 @@ ClientInfo * clientdbGetInfo(const Ip::Address &addr)
 
     c = (ClientInfo *) hash_lookup(client_table, key);
     if (c==NULL) {
-        debugs(77,1,"Client db does not contain information for given IP address "<<(const char*)key);
+        debugs(77, DBG_IMPORTANT,"Client db does not contain information for given IP address "<<(const char*)key);
         return NULL;
     }
     return c;
@@ -255,12 +263,12 @@ clientdbCutoffDenied(const Ip::Address &addr)
     if (p < 95.0)
         return 0;
 
-    debugs(1, 0, "WARNING: Probable misconfigured neighbor at " << key);
+    debugs(1, DBG_CRITICAL, "WARNING: Probable misconfigured neighbor at " << key);
 
-    debugs(1, 0, "WARNING: " << ND << " of the last " << NR <<
+    debugs(1, DBG_CRITICAL, "WARNING: " << ND << " of the last " << NR <<
            " ICP replies are DENIED");
 
-    debugs(1, 0, "WARNING: No replies will be sent for the next " <<
+    debugs(1, DBG_CRITICAL, "WARNING: No replies will be sent for the next " <<
            CUTOFF_SECONDS << " seconds");
 
     c->cutoff.time = squid_curtime;
@@ -355,6 +363,7 @@ clientdbFreeItem(void *data)
     }
 #endif
 
+    debugs(77, 9, "ClientInfo destructed, this=" << c);
     memFree(c, MEM_CLIENT_INFO);
 }
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -9,7 +7,6 @@
 #include "base/TextException.h"
 #include "ipc/TypedMsgHdr.h"
 #include "mgr/IntParam.h"
-
 
 Mgr::IntParam::IntParam():
         QueryParam(QueryParam::ptInt), array()

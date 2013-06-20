@@ -2,7 +2,7 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "adaptation/Answer.h"
 #include "adaptation/icap/Launcher.h"
@@ -10,10 +10,10 @@
 #include "adaptation/icap/ServiceRep.h"
 #include "adaptation/icap/Config.h"
 #include "base/TextException.h"
+#include "globals.h"
 #include "HttpMsg.h"
 #include "HttpRequest.h"
 #include "HttpReply.h"
-
 
 Adaptation::Icap::Launcher::Launcher(const char *aTypeName,
                                      Adaptation::ServicePointer &aService):
@@ -43,8 +43,10 @@ void Adaptation::Icap::Launcher::launchXaction(const char *xkind)
     debugs(93,4, HERE << "launching " << xkind << " xaction #" << theLaunches);
     Adaptation::Icap::Xaction *x = createXaction();
     x->attempts = theLaunches;
-    if (theLaunches > 1)
+    if (theLaunches > 1) {
+        x->clearError();
         x->disableRetries();
+    }
     if (theLaunches >= TheConfig.repeat_limit)
         x->disableRepeats("over icap_retry_limit");
     theXaction = initiateAdaptation(x);

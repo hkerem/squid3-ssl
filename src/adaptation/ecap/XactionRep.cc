@@ -1,7 +1,7 @@
 /*
  * DEBUG: section 93    eCAP Interface
  */
-#include "squid-old.h"
+#include "squid.h"
 #include <libecap/common/area.h>
 #include <libecap/common/delay.h>
 #include <libecap/common/named_values.h>
@@ -17,7 +17,6 @@
 #include "base/TextException.h"
 
 CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Ecap::XactionRep, XactionRep);
-
 
 /// a libecap Visitor for converting adapter transaction options to HttpHeader
 class OptionsExtractor: public libecap::NamedValueVisitor
@@ -464,7 +463,6 @@ Adaptation::Ecap::XactionRep::updateHistory(HttpMsg *adapted)
         adaptedReq->adaptHistoryImport(*request);
 }
 
-
 void
 Adaptation::Ecap::XactionRep::vbDiscard()
 {
@@ -677,7 +675,6 @@ Adaptation::Ecap::XactionRep::status() const
 
     if (vbProductionFinished)
         buf.append(".", 1);
-
 
     buf.Printf(" A%d", static_cast<int>(proxyingAb));
 

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -9,10 +7,11 @@
 #define SQUID_IPC_FORWARDER_H
 
 #include "base/AsyncJob.h"
-#include "mgr/ActionParams.h"
+#include "cbdata.h"
 #include "ipc/Request.h"
-#include <map>
+#include "mgr/ActionParams.h"
 
+#include <map>
 
 namespace Ipc
 {

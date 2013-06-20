@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -36,8 +34,9 @@
 #ifndef SQUID_CONFIGPARSER_H
 #define SQUID_CONFIGPARSER_H
 
-#include "squid-old.h"
+#include "SquidString.h"
 
+class wordlist;
 /**
  * Limit to how long any given config line may be.
  * This affects squid.conf and all included files.
@@ -67,13 +66,18 @@ public:
     static void ParseBool(bool *var);
     static void ParseString(char **var);
     static void ParseString(String *var);
-    static void ParseQuotedString(char **var);
-    static void ParseQuotedString(String *var);
+    /// Parse an unquoted token (no spaces) or a "quoted string" that
+    /// may include spaces. In some contexts, quotes strings may also
+    /// include macros. Quoted strings may escape any character with
+    /// a backslash (\), which is currently only useful for inner
+    /// quotes. TODO: support quoted strings anywhere a token is accepted.
+    static void ParseQuotedString(char **var, bool *wasQuoted = NULL);
+    static void ParseQuotedString(String *var, bool *wasQuoted = NULL);
     static const char *QuoteString(String &var);
     static void ParseWordList(wordlist **list);
     static char * strtokFile();
 };
 
-extern int parseConfigFile(const char *file_name);
+int parseConfigFile(const char *file_name);
 
 #endif /* SQUID_CONFIGPARSER_H */

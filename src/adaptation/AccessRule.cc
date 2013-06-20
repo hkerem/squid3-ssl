@@ -1,12 +1,10 @@
-#include "squid-old.h"
-#include "structs.h"
-
-#include "ConfigParser.h"
+#include "squid.h"
 #include "acl/Gadgets.h"
 #include "adaptation/AccessRule.h"
 #include "adaptation/Service.h"
 #include "adaptation/ServiceGroups.h"
-
+#include "ConfigParser.h"
+#include "Debug.h"
 
 int Adaptation::AccessRule::LastId = 0;
 
@@ -39,7 +37,7 @@ Adaptation::AccessRule::finalize()
     }
 
     if (!group()) {
-        debugs(93,0, "ERROR: Unknown adaptation service or group name: '" <<
+        debugs(93, DBG_CRITICAL, "ERROR: Unknown adaptation service or group name: '" <<
                groupId << "'"); // TODO: fail on failures
     }
 }
@@ -49,7 +47,6 @@ Adaptation::AccessRule::group()
 {
     return FindGroup(groupId);
 }
-
 
 Adaptation::AccessRules &
 Adaptation::AllRules()

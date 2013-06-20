@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 25    MIME Parsing and Internal Icons
  * AUTHOR: Harvest Derived
  *
@@ -33,17 +31,32 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "disk.h"
+#include "fde.h"
+#include "globals.h"
 #include "HttpHdrCc.h"
-#include "Store.h"
-#include "StoreClient.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
-#include "MemObject.h"
-#include "fde.h"
+#include "internal.h"
+#include "Mem.h"
 #include "MemBuf.h"
+#include "mime.h"
+#include "MemObject.h"
+#include "RequestFlags.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "StoreClient.h"
+
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 #define GET_HDR_SZ 1024
+
+/* forward declarations */
+static void mimeFreeMemory(void);
+static char const *mimeGetIcon(const char *fn);
 
 class MimeIcon : public StoreClient
 {
@@ -166,7 +179,6 @@ MimeIcon::_free()
     safe_free (url);
 }
 
-
 char const *
 mimeGetIcon(const char *fn)
 {
@@ -276,7 +288,7 @@ mimeInit(char *filename)
         return;
 
     if ((fp = fopen(filename, "r")) == NULL) {
-        debugs(25, 1, "mimeInit: " << filename << ": " << xstrerror());
+        debugs(25, DBG_IMPORTANT, "mimeInit: " << filename << ": " << xstrerror());
         return;
     }
 
@@ -302,27 +314,27 @@ mimeInit(char *filename)
         xstrncpy(chopbuf, buf, BUFSIZ);
 
         if ((pattern = strtok(chopbuf, w_space)) == NULL) {
-            debugs(25, 1, "mimeInit: parse error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: parse error: '" << buf << "'");
             continue;
         }
 
         if ((type = strtok(NULL, w_space)) == NULL) {
-            debugs(25, 1, "mimeInit: parse error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: parse error: '" << buf << "'");
             continue;
         }
 
         if ((icon = strtok(NULL, w_space)) == NULL) {
-            debugs(25, 1, "mimeInit: parse error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: parse error: '" << buf << "'");
             continue;
         }
 
         if ((encoding = strtok(NULL, w_space)) == NULL) {
-            debugs(25, 1, "mimeInit: parse error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: parse error: '" << buf << "'");
             continue;
         }
 
         if ((mode = strtok(NULL, w_space)) == NULL) {
-            debugs(25, 1, "mimeInit: parse error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: parse error: '" << buf << "'");
             continue;
         }
 
@@ -335,11 +347,11 @@ mimeInit(char *filename)
             else if (!strcmp(option, "+view"))
                 view_option = 1;
             else
-                debugs(25, 1, "mimeInit: unknown option: '" << buf << "' (" << option << ")");
+                debugs(25, DBG_IMPORTANT, "mimeInit: unknown option: '" << buf << "' (" << option << ")");
         }
 
         if (regcomp(&re, pattern, re_flags) != 0) {
-            debugs(25, 1, "mimeInit: regcomp error: '" << buf << "'");
+            debugs(25, DBG_IMPORTANT, "mimeInit: regcomp error: '" << buf << "'");
             continue;
         }
 
@@ -376,7 +388,7 @@ mimeInit(char *filename)
     for (m = MimeTable; m != NULL; m = m->next)
         m->theIcon.load();
 
-    debugs(25, 1, "Loaded Icons.");
+    debugs(25, DBG_IMPORTANT, "Loaded Icons.");
 }
 
 void
@@ -420,7 +432,7 @@ MimeIcon::created (StoreEntry *newEntry)
 
     int n;
 
-    request_flags flags;
+    RequestFlags flags;
 
     struct stat sb;
 
@@ -433,12 +445,12 @@ MimeIcon::created (StoreEntry *newEntry)
     fd = file_open(path, O_RDONLY | O_BINARY);
 
     if (fd < 0) {
-        debugs(25, 0, "mimeLoadIconFile: " << path << ": " << xstrerror());
+        debugs(25, DBG_CRITICAL, "mimeLoadIconFile: " << path << ": " << xstrerror());
         return;
     }
 
     if (fstat(fd, &sb) < 0) {
-        debugs(25, 0, "mimeLoadIconFile: FD " << fd << ": fstat: " << xstrerror());
+        debugs(25, DBG_CRITICAL, "mimeLoadIconFile: FD " << fd << ": fstat: " << xstrerror());
         file_close(fd);
         return;
     }

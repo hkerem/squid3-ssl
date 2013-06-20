@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Comm
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  *
@@ -36,7 +34,6 @@
 #ifndef COMMREAD_H
 #define COMMREAD_H
 
-#include "squid-old.h"
 #include "comm.h"
 #include "CommCalls.h"
 #include "comm/forward.h"
@@ -86,6 +83,5 @@ private:
     void flushReads();
     CbDataListContainer<DeferredRead> deferredReads;
 };
-
 
 #endif /* COMMREAD_H */

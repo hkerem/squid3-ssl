@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 63    Low Level Memory Pool Management
  * AUTHOR: Alex Rousskov, Andres Kroonmaa, Robert Collins
  *
@@ -302,7 +300,7 @@ memPoolGetGlobalStats(MemPoolGlobalStats * stats)
     iter = memPoolIterate();
     while ((pool = memPoolIterateNext(iter))) {
         if (pool->getStats(&pp_stats, 1) > 0)
-            pools_inuse++;
+            ++pools_inuse;
     }
     memPoolIterateDone(&iter);
 

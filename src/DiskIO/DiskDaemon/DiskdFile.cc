@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Squid-side DISKD I/O functions.
  * AUTHOR: Duane Wessels
  *
@@ -33,21 +31,20 @@
  * CopyRight (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
-
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/shm.h>
-
+#include "squid.h"
 #include "DiskdFile.h"
 #include "ConfigOption.h"
 #include "diomsg.h"
-
 #include "DiskdIOStrategy.h"
 #include "DiskIO/IORequestor.h"
 #include "DiskIO/ReadRequest.h"
 #include "DiskIO/WriteRequest.h"
 #include "StatCounters.h"
+
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/shm.h>
+
 CBDATA_CLASS_INIT(DiskdFile);
 
 void *
@@ -143,7 +140,7 @@ DiskdFile::create(int flags, mode_t aMode, RefCount< IORequestor > callback)
         ioCompleted();
         errorOccured = true;
         //        IO->shm.put (shm_offset);
-        debugs(79, 1, "storeDiskdSend CREATE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend CREATE: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
@@ -172,7 +169,7 @@ DiskdFile::read(ReadRequest *aRead)
         ioCompleted();
         errorOccured = true;
         //        IO->shm.put (shm_offset);
-        debugs(79, 1, "storeDiskdSend READ: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend READ: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
@@ -198,7 +195,7 @@ DiskdFile::close()
     if (x < 0) {
         ioCompleted();
         errorOccured = true;
-        debugs(79, 1, "storeDiskdSend CLOSE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend CLOSE: " << xstrerror());
         notifyClient();
         ioRequestor = NULL;
         return;
@@ -335,7 +332,7 @@ DiskdFile::write(WriteRequest *aRequest)
     if (x < 0) {
         ioCompleted();
         errorOccured = true;
-        debugs(79, 1, "storeDiskdSend WRITE: " << xstrerror());
+        debugs(79, DBG_IMPORTANT, "storeDiskdSend WRITE: " << xstrerror());
         //        IO->shm.put (shm_offset);
         notifyClient();
         ioRequestor = NULL;

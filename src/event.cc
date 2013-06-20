@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 41    Event Processing
  * AUTHOR: Henrik Nordstrom
  *
@@ -38,9 +36,10 @@
 #include "mgr/Registration.h"
 #include "Store.h"
 #include "SquidTime.h"
+#include "profiler/Profiler.h"
+#include "tools.h"
 
 /* The list of event processes */
-
 
 static OBJH eventDump;
 static const char *last_event_ran = NULL;
@@ -108,7 +107,6 @@ EventDialer::print(std::ostream &os) const
         os << theArg << (isLockedArg ? "*?" : "");
     os << ')';
 }
-
 
 ev_entry::ev_entry(char const * aName, EVH * aFunction, void * aArgument, double evWhen,
                    int aWeight, bool haveArgument) : name(aName), func(aFunction),

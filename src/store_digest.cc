@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 71    Store Digest Manager
  * AUTHOR: Alex Rousskov
  *
@@ -33,25 +30,35 @@
  *
  */
 
-
 /*
  * TODO: We probably do not track all the cases when
  *       storeDigestNoteStoreReady() must be called; this may prevent
  *       storeDigestRebuild/write schedule to be activated
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
 #include "event.h"
+#include "globals.h"
 #include "mgr/Registration.h"
-#if USE_CACHE_DIGESTS
+#include "store_digest.h"
 
-#include "Store.h"
-#include "HttpRequest.h"
+#if USE_CACHE_DIGESTS
+#include "CacheDigest.h"
 #include "HttpReply.h"
+#include "HttpRequest.h"
+#include "internal.h"
 #include "MemObject.h"
 #include "PeerDigest.h"
+#include "refresh.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "Store.h"
 #include "StoreSearch.h"
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
 
 /*
  * local types
@@ -69,7 +76,6 @@ public:
     int rebuild_count;
     int rewrite_count;
 };
-
 
 typedef struct {
     int del_count;		/* #store entries deleted from store_digest */
@@ -125,13 +131,12 @@ storeDigestInit(void)
     }
 
     store_digest = cacheDigestCreate(cap, Config.digest.bits_per_entry);
-    debugs(71, 1, "Local cache digest enabled; rebuild/rewrite every " <<
+    debugs(71, DBG_IMPORTANT, "Local cache digest enabled; rebuild/rewrite every " <<
            (int) Config.digest.rebuild_period << "/" <<
            (int) Config.digest.rewrite_period << " sec");
 
     memset(&sd_state, 0, sizeof(sd_state));
 #else
-
     store_digest = NULL;
     debugs(71, 3, "Local cache digest is 'off'");
 #endif
@@ -151,6 +156,7 @@ storeDigestNoteStoreReady(void)
 #endif
 }
 
+//TODO: this seems to be dead code. Is it needed?
 void
 storeDigestDel(const StoreEntry * entry)
 {
@@ -173,8 +179,7 @@ storeDigestDel(const StoreEntry * entry)
             debugs(71, 6, "storeDigestDel: deled entry, key: " << entry->getMD5Text());
         }
     }
-
-#endif
+#endif //USE_CACHE_DIGESTS
 }
 
 void
@@ -200,7 +205,7 @@ storeDigestReport(StoreEntry * e)
         storeAppendPrintf(e, "store digest: disabled.\n");
     }
 
-#endif
+#endif //USE_CACHE_DIGESTS
 }
 
 /*
@@ -299,7 +304,7 @@ storeDigestRebuildStart(void *datanotused)
     /* prevent overlapping if rebuild schedule is too tight */
 
     if (sd_state.rebuild_lock) {
-        debugs(71, 1, "storeDigestRebuildStart: overlap detected, consider increasing rebuild period");
+        debugs(71, DBG_IMPORTANT, "storeDigestRebuildStart: overlap detected, consider increasing rebuild period");
         return;
     }
 
@@ -368,12 +373,11 @@ storeDigestRebuildStep(void *datanotused)
         eventAdd("storeDigestRebuildStep", storeDigestRebuildStep, NULL, 0.0, 1);
 }
 
-
 /* starts swap out sequence for the digest */
 static void
 storeDigestRewriteStart(void *datanotused)
 {
-    request_flags flags;
+    RequestFlags flags;
     char *url;
     StoreEntry *e;
 
@@ -381,7 +385,7 @@ storeDigestRewriteStart(void *datanotused)
     /* prevent overlapping if rewrite schedule is too tight */
 
     if (sd_state.rewrite_lock) {
-        debugs(71, 1, "storeDigestRewrite: overlap detected, consider increasing rewrite period");
+        debugs(71, DBG_IMPORTANT, "storeDigestRewrite: overlap detected, consider increasing rewrite period");
         return;
     }
 

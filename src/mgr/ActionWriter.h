@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -11,7 +9,6 @@
 #include "comm/forward.h"
 #include "HttpRequestMethod.h"
 #include "mgr/StoreToCommWriter.h"
-
 
 namespace Mgr
 {

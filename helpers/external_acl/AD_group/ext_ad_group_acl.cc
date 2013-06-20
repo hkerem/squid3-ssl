@@ -112,14 +112,12 @@ int User_Groups_Count = 0;
 wchar_t *My_NameTranslate(wchar_t *, int, int);
 char *Get_WIN32_ErrorMessage(HRESULT);
 
-
 void
 CloseCOM(void)
 {
     if (WIN32_COM_initialized == 1)
         CoUninitialize();
 }
-
 
 HRESULT
 GetLPBYTEtoOctetString(VARIANT * pVar, LPBYTE * ppByte)
@@ -150,7 +148,6 @@ GetLPBYTEtoOctetString(VARIANT * pVar, LPBYTE * ppByte)
 
     return hr;
 }
-
 
 wchar_t *
 Get_primaryGroup(IADs * pUser)
@@ -210,7 +207,6 @@ Get_primaryGroup(IADs * pUser)
     return result;
 }
 
-
 char *
 Get_WIN32_ErrorMessage(HRESULT hr)
 {
@@ -224,7 +220,6 @@ Get_WIN32_ErrorMessage(HRESULT hr)
                   NULL);
     return WIN32_ErrorMessage;
 }
-
 
 wchar_t *
 My_NameTranslate(wchar_t * name, int in_format, int out_format)
@@ -281,7 +276,6 @@ My_NameTranslate(wchar_t * name, int in_format, int out_format)
     return wc;
 }
 
-
 wchar_t *
 GetLDAPPath(wchar_t * Base_DN, int query_mode)
 {
@@ -297,7 +291,6 @@ GetLDAPPath(wchar_t * Base_DN, int query_mode)
 
     return wc;
 }
-
 
 char *
 GetDomainName(void)
@@ -349,7 +342,6 @@ GetDomainName(void)
     return DomainName;
 }
 
-
 int
 add_User_Group(wchar_t * Group)
 {
@@ -358,23 +350,22 @@ add_User_Group(wchar_t * Group)
     if (User_Groups_Count == 0) {
         User_Groups = (wchar_t **) xmalloc(sizeof(wchar_t *));
         *User_Groups = NULL;
-        User_Groups_Count++;
+        ++User_Groups_Count;
     }
     array = User_Groups;
     while (*array) {
         if (wcscmp(Group, *array) == 0)
             return 0;
-        array++;
+        ++array;
     }
     User_Groups = (wchar_t **) xrealloc(User_Groups, sizeof(wchar_t *) * (User_Groups_Count + 1));
     User_Groups[User_Groups_Count] = NULL;
     User_Groups[User_Groups_Count - 1] = (wchar_t *) xmalloc((wcslen(Group) + 1) * sizeof(wchar_t));
     wcscpy(User_Groups[User_Groups_Count - 1], Group);
-    User_Groups_Count++;
+    ++User_Groups_Count;
 
     return 1;
 }
-
 
 /* returns 0 on match, -1 if no match */
 static int
@@ -384,11 +375,10 @@ wccmparray(const wchar_t * str, const wchar_t ** array)
         debug("Windows group: %S, Squid group: %S\n", str, *array);
         if (wcscmp(str, *array) == 0)
             return 0;
-        array++;
+        ++array;
     }
     return -1;
 }
-
 
 /* returns 0 on match, -1 if no match */
 static int
@@ -402,11 +392,10 @@ wcstrcmparray(const wchar_t * str, const char **array)
         debug("Windows group: %S, Squid group: %S\n", str, wszGroup);
         if ((use_case_insensitive_compare ? _wcsicmp(str, wszGroup) : wcscmp(str, wszGroup)) == 0)
             return 0;
-        array++;
+        ++array;
     }
     return -1;
 }
-
 
 HRESULT
 Recursive_Memberof(IADs * pObj)
@@ -487,7 +476,6 @@ Recursive_Memberof(IADs * pObj)
     return hr;
 }
 
-
 static wchar_t **
 build_groups_DN_array(const char **array, char *userdomain)
 {
@@ -519,17 +507,16 @@ build_groups_DN_array(const char **array, char *userdomain)
         MultiByteToWideChar(CP_ACP, 0, Group, -1, wc, wcsize);
         *entry = My_NameTranslate(wc, source_group_format, ADS_NAME_TYPE_1779);
         safe_free(wc);
-        array++;
+        ++array;
         if (*entry == NULL) {
             debug("build_groups_DN_array: cannot get DN for '%s'.\n", Group);
             continue;
         }
-        entry++;
+        ++entry;
     }
     *entry = NULL;
     return wc_array;
 }
-
 
 /* returns 1 on success, 0 on failure */
 int
@@ -593,8 +580,8 @@ Valid_Local_Groups(char *UserName, const char **Groups)
                     result = 1;
                     break;
                 }
-                pTmpBuf++;
-                dwTotalCount++;
+                ++pTmpBuf;
+                ++dwTotalCount;
             }
         }
     } else {
@@ -608,7 +595,6 @@ Valid_Local_Groups(char *UserName, const char **Groups)
         NetApiBufferFree(pBuf);
     return result;
 }
-
 
 /* returns 1 on success, 0 on failure */
 int
@@ -705,7 +691,7 @@ Valid_Global_Groups(char *UserName, const char **Groups)
                 result = 1;
                 break;
             }
-            tmp++;
+            ++tmp;
         }
     } else
         debug("Valid_Global_Groups: ADsGetObject for %S failed, ERROR: %s\n", User_LDAP_path, Get_WIN32_ErrorMessage(hr));
@@ -716,14 +702,14 @@ Valid_Global_Groups(char *UserName, const char **Groups)
     tmp = wszGroups;
     while (*tmp) {
         safe_free(*tmp);
-        tmp++;
+        ++tmp;
     }
     safe_free(wszGroups);
 
     tmp = User_Groups;
     while (*tmp) {
         safe_free(*tmp);
-        tmp++;
+        ++tmp;
     }
     safe_free(User_Groups);
     User_Groups_Count = 0;
@@ -780,7 +766,6 @@ process_options(int argc, char *argv[])
     return;
 }
 
-
 int
 main(int argc, char *argv[])
 {
@@ -823,7 +808,6 @@ main(int argc, char *argv[])
         debug("Warning: running in case insensitive mode !!!\n");
 
     atexit(CloseCOM);
-
 
     /* Main Loop */
     while (fgets(buf, HELPER_INPUT_BUFFER, stdin)) {

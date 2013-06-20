@@ -1,18 +1,19 @@
 /*
- * $Id$
- *
  * DEBUG: section 20    Memory Cache
  *
  */
 
 #include "squid.h"
 #include "base/RunnersRegistry.h"
+#include "HttpReply.h"
 #include "ipc/mem/Page.h"
 #include "ipc/mem/Pages.h"
 #include "MemObject.h"
 #include "MemStore.h"
+#include "mime_header.h"
+#include "SquidConfig.h"
 #include "StoreStats.h"
-#include "HttpReply.h"
+#include "tools.h"
 
 /// shared memory segment path to use for MemStore maps
 static const char *ShmLabel = "cache_mem";
@@ -398,7 +399,6 @@ MemStore::EntryLimit()
     return entryLimit;
 }
 
-
 /// reports our needs for shared memory pages to Ipc::Mem::Pages
 class MemStoreClaimMemoryNeedsRr: public RegisteredRunner
 {
@@ -409,13 +409,11 @@ public:
 
 RunnerRegistrationEntry(rrClaimMemoryNeeds, MemStoreClaimMemoryNeedsRr);
 
-
 void
 MemStoreClaimMemoryNeedsRr::run(const RunnerRegistry &)
 {
     Ipc::Mem::NotePageNeed(Ipc::Mem::PageId::cachePage, MemStore::EntryLimit());
 }
-
 
 /// decides whether to use a shared memory cache or checks its configuration
 class MemStoreCfgRr: public ::RegisteredRunner
@@ -445,7 +443,6 @@ void MemStoreCfgRr::run(const RunnerRegistry &r)
     }
 }
 
-
 /// initializes shared memory segments used by MemStore
 class MemStoreRr: public Ipc::Mem::RegisteredRunner
 {
@@ -463,7 +460,6 @@ private:
 };
 
 RunnerRegistrationEntry(rrAfterConfig, MemStoreRr);
-
 
 void MemStoreRr::run(const RunnerRegistry &r)
 {

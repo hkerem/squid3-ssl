@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 73    HTTP Request
  * AUTHOR: Duane Wessels
  *
@@ -34,22 +31,31 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "AccessLogEntry.h"
+#include "acl/AclSizeLimit.h"
+#include "acl/FilledChecklist.h"
+#include "client_side.h"
 #include "DnsLookupDetails.h"
-#include "HttpRequest.h"
+#include "err_detail_type.h"
+#include "globals.h"
+#include "gopher.h"
+#include "http.h"
 #include "HttpHdrCc.h"
+#include "HttpHeaderRange.h"
+#include "HttpRequest.h"
+#include "log/Config.h"
+#include "MemBuf.h"
+#include "SquidConfig.h"
+#include "Store.h"
+#include "URL.h"
+
 #if USE_AUTH
 #include "auth/UserRequest.h"
 #endif
-#include "HttpHeaderRange.h"
-#include "log/Config.h"
-#include "MemBuf.h"
-#include "Store.h"
 #if ICAP_CLIENT
 #include "adaptation/icap/icap_log.h"
 #endif
-#include "acl/FilledChecklist.h"
-#include "err_detail_type.h"
 
 HttpRequest::HttpRequest() : HttpMsg(hoRequest)
 {
@@ -207,7 +213,6 @@ HttpRequest::clone() const
     copy->hier = hier; // Is it safe to copy? Should we?
 
     copy->errType = errType;
-    copy->errDetail = errDetail;
 
     // XXX: what to do with copy->peer_login?
 
@@ -263,6 +268,7 @@ HttpRequest::inheritProperties(const HttpMsg *aMsg)
 
     // main property is which connection the request was received on (if any)
     clientConnectionManager = aReq->clientConnectionManager;
+
     return true;
 }
 
@@ -318,7 +324,7 @@ HttpRequest::parseFirstLine(const char *start, const char *end)
         ++end;                 // back to space
 
         if (2 != sscanf(ver + 5, "%d.%d", &http_ver.major, &http_ver.minor)) {
-            debugs(73, 1, "parseRequestLine: Invalid HTTP identifier.");
+            debugs(73, DBG_IMPORTANT, "parseRequestLine: Invalid HTTP identifier.");
             return false;
         }
     } else {
@@ -415,27 +421,6 @@ HttpRequest::hdrCacheInit()
     range = header.getRange();
 }
 
-/* request_flags */
-bool
-request_flags::resetTCP() const
-{
-    return reset_tcp != 0;
-}
-
-void
-request_flags::setResetTCP()
-{
-    debugs(73, 9, "request_flags::setResetTCP");
-    reset_tcp = 1;
-}
-
-void
-request_flags::clearResetTCP()
-{
-    debugs(73, 9, "request_flags::clearResetTCP");
-    reset_tcp = 0;
-}
-
 #if ICAP_CLIENT
 Adaptation::Icap::History::Pointer
 HttpRequest::icapHistory() const
@@ -486,27 +471,6 @@ bool
 HttpRequest::multipartRangeRequest() const
 {
     return (range && range->specs.count > 1);
-}
-
-void
-request_flags::destinationIPLookupCompleted()
-{
-    destinationIPLookedUp_ = true;
-}
-
-bool
-request_flags::destinationIPLookedUp() const
-{
-    return destinationIPLookedUp_;
-}
-
-request_flags
-request_flags::cloneAdaptationImmune() const
-{
-    // At the time of writing, all flags where either safe to copy after
-    // adaptation or were not set at the time of the adaptation. If there
-    // are flags that are different, they should be cleared in the clone.
-    return *this;
 }
 
 bool
@@ -618,7 +582,7 @@ HttpRequest::cacheable() const
     // Because it failed verification, or someone bypassed the security tests
     // we cannot cache the reponse for sharing between clients.
     // TODO: update cache to store for particular clients only (going to same Host: and destination IP)
-    if (!flags.hostVerified && (flags.intercepted || flags.spoof_client_ip))
+    if (!flags.hostVerified && (flags.intercepted || flags.spoofClientIp))
         return false;
 
     if (protocol == AnyP::PROTO_HTTP)
@@ -679,7 +643,7 @@ HttpRequest::getRangeOffsetLimit()
     ch.src_addr = client_addr;
     ch.my_addr =  my_addr;
 
-    for (acl_size_t *l = Config.rangeOffsetLimit; l; l = l -> next) {
+    for (AclSizeLimit *l = Config.rangeOffsetLimit; l; l = l -> next) {
         /* if there is no ACL list or if the ACLs listed match use this limit value */
         if (!l->aclList || ch.fastCheck(l->aclList) == ACCESS_ALLOWED) {
             debugs(58, 4, HERE << "rangeOffsetLimit=" << rangeOffsetLimit);
@@ -701,4 +665,12 @@ HttpRequest::canHandle1xx() const
 
     // others must support 1xx control messages
     return true;
+}
+
+ConnStateData *
+HttpRequest::pinnedConnection()
+{
+    if (clientConnectionManager.valid() && clientConnectionManager->pinning.pinned)
+        return clientConnectionManager.get();
+    return NULL;
 }

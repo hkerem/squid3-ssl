@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 77    Delay Pools
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
  * Based upon original delay pools code by
@@ -39,7 +37,6 @@
 #define COMMONPOOL_H
 
 #if USE_DELAY_POOLS
-#include "squid-old.h"
 #include "SquidString.h"
 #include "CompositePoolNode.h"
 

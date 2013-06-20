@@ -1,9 +1,4 @@
 /*
- * $Id$
- *
- * DO NOT MODIFY NEXT 2 LINES:
- * arch-tag: 6803fde1-d5a2-4c29-9034-1c0c9f650eb4
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR:  Robert Collins
  *
@@ -39,11 +34,12 @@
  * They DO NOT perform access control or auditing.
  * See acl.c for access control and client_side.c for auditing */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "auth/Config.h"
 #include "auth/Scheme.h"
 #include "auth/UserRequest.h"
 #include "auth/User.h"
+#include "client_side.h"
 #include "comm/Connection.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
@@ -191,7 +187,6 @@ authenticateAuthUserRequestIPCount(Auth::UserRequest::Pointer auth_user_request)
     assert(auth_user_request->user() != NULL);
     return auth_user_request->user()->ipcount;
 }
-
 
 /*
  * authenticateUserAuthenticated: is this auth_user structure logged in ?

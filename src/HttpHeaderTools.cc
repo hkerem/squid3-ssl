@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 66    HTTP Header Tools
  * AUTHOR: Alex Rousskov
  *
@@ -32,19 +30,35 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
 #include "acl/Gadgets.h"
+#include "client_side_request.h"
+#include "client_side.h"
+#include "comm/Connection.h"
 #include "compat/strtoll.h"
+#include "fde.h"
 #include "HttpHdrContRange.h"
 #include "HttpHeader.h"
+#include "HttpHeaderFieldInfo.h"
 #include "HttpHeaderTools.h"
 #include "HttpRequest.h"
 #include "MemBuf.h"
+#include "SquidConfig.h"
 #include "Store.h"
+#include "StrList.h"
+
+#if USE_SSL
+#include "ssl/support.h"
+#endif
+
+#include <algorithm>
+#include <string>
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static void httpHeaderPutStrvf(HttpHeader * hdr, http_hdr_type id, const char *fmt, va_list vargs);
-
 
 HttpHeaderFieldInfo *
 httpHeaderBuildFieldsInfo(const HttpHeaderFieldAttrs * attrs, int count)
@@ -127,7 +141,6 @@ httpHeaderPutStrvf(HttpHeader * hdr, http_hdr_type id, const char *fmt, va_list 
     mb.clean();
 }
 
-
 /** wrapper arrounf PutContRange */
 void
 httpHeaderAddContRange(HttpHeader * hdr, HttpHdrRangeSpec spec, int64_t ent_len)
@@ -138,7 +151,6 @@ httpHeaderAddContRange(HttpHeader * hdr, HttpHdrRangeSpec spec, int64_t ent_len)
     hdr->putContRange(cr);
     httpHdrContRangeDestroy(cr);
 }
-
 
 /**
  * return true if a given directive is found in at least one of
@@ -167,124 +179,6 @@ httpHeaderHasConnDir(const HttpHeader * hdr, const char *directive)
     list.clean();
 
     return res;
-}
-
-/** returns true iff "m" is a member of the list */
-int
-strListIsMember(const String * list, const char *m, char del)
-{
-    const char *pos = NULL;
-    const char *item;
-    int ilen = 0;
-    int mlen;
-    assert(list && m);
-    mlen = strlen(m);
-
-    while (strListGetItem(list, del, &item, &ilen, &pos)) {
-        if (mlen == ilen && !strncasecmp(item, m, ilen))
-            return 1;
-    }
-
-    return 0;
-}
-
-/** returns true iff "s" is a substring of a member of the list */
-int
-strListIsSubstr(const String * list, const char *s, char del)
-{
-    assert(list && del);
-    return (list->find(s) != String::npos);
-
-    /** \note
-     * Note: the original code with a loop is broken because it uses strstr()
-     * instead of strnstr(). If 's' contains a 'del', strListIsSubstr() may
-     * return true when it should not. If 's' does not contain a 'del', the
-     * implementaion is equavalent to strstr()! Thus, we replace the loop with
-     * strstr() above until strnstr() is available.
-     */
-}
-
-/** appends an item to the list */
-void
-strListAdd(String * str, const char *item, char del)
-{
-    assert(str && item);
-
-    if (str->size()) {
-        char buf[3];
-        buf[0] = del;
-        buf[1] = ' ';
-        buf[2] = '\0';
-        str->append(buf, 2);
-    }
-
-    str->append(item, strlen(item));
-}
-
-/**
- * iterates through a 0-terminated string of items separated by 'del's.
- * white space around 'del' is considered to be a part of 'del'
- * like strtok, but preserves the source, and can iterate several strings at once
- *
- * returns true if next item is found.
- * init pos with NULL to start iteration.
- */
-int
-strListGetItem(const String * str, char del, const char **item, int *ilen, const char **pos)
-{
-    size_t len;
-    /* ',' is always enabled as field delimiter as this is required for
-     * processing merged header values properly, even if Cookie normally
-     * uses ';' as delimiter.
-     */
-    static char delim[3][8] = {
-        "\"?,",
-        "\"\\",
-        " ?,\t\r\n"
-    };
-    int quoted = 0;
-    assert(str && item && pos);
-
-    delim[0][1] = del;
-    delim[2][1] = del;
-
-    if (!*pos) {
-        *pos = str->termedBuf();
-
-        if (!*pos)
-            return 0;
-    }
-
-    /* skip leading whitespace and delimiters */
-    *pos += strspn(*pos, delim[2]);
-
-    *item = *pos;		/* remember item's start */
-
-    /* find next delimiter */
-    do {
-        *pos += strcspn(*pos, delim[quoted]);
-        if (**pos == '"') {
-            quoted = !quoted;
-            *pos += 1;
-        } else if (quoted && **pos == '\\') {
-            *pos += 1;
-            if (**pos)
-                *pos += 1;
-        } else {
-            break;		/* Delimiter found, marking the end of this value */
-        }
-    } while (**pos);
-
-    len = *pos - *item;		/* *pos points to del or '\0' */
-
-    /* rtrim */
-    while (len > 0 && xisspace((*item)[len - 1]))
-        --len;
-
-    if (ilen)
-        *ilen = len;
-
-    return len > 0;
 }
 
 /** handy to printf prefixes of potentially very long buffers */
@@ -326,7 +220,6 @@ httpHeaderParseOffset(const char *start, int64_t * value)
     *value = res;
     return 1;
 }
-
 
 /**
  * Parses a quoted-string field (RFC 2616 section 2.2), complains if
@@ -434,7 +327,7 @@ httpHdrMangle(HttpHeaderEntry * e, HttpRequest * request, int req_or_rep)
     if (!hms)
         return 1;
 
-    const header_mangler *hm = hms->find(*e);
+    const headerMangler *hm = hms->find(*e);
 
     /* mangler or checklist went away. default allow */
     if (!hm || !hm->access_list) {
@@ -478,7 +371,7 @@ httpHdrMangleList(HttpHeader * l, HttpRequest * request, int req_or_rep)
 }
 
 static
-void header_mangler_clean(header_mangler &m)
+void header_mangler_clean(headerMangler &m)
 {
     aclDestroyAccessList(&m.access_list);
     safe_free(m.replacement);
@@ -486,7 +379,7 @@ void header_mangler_clean(header_mangler &m)
 
 static
 void header_mangler_dump_access(StoreEntry * entry, const char *option,
-                                const header_mangler &m, const char *name)
+                                const headerMangler &m, const char *name)
 {
     if (m.access_list != NULL) {
         storeAppendPrintf(entry, "%s ", option);
@@ -496,7 +389,7 @@ void header_mangler_dump_access(StoreEntry * entry, const char *option,
 
 static
 void header_mangler_dump_replacement(StoreEntry * entry, const char *option,
-                                     const header_mangler &m, const char *name)
+                                     const headerMangler &m, const char *name)
 {
     if (m.replacement)
         storeAppendPrintf(entry, "%s %s %s\n", option, name, m.replacement);
@@ -552,7 +445,7 @@ HeaderManglers::dumpReplacement(StoreEntry * entry, const char *name) const
     header_mangler_dump_replacement(entry, name, all, "All");
 }
 
-header_mangler *
+headerMangler *
 HeaderManglers::track(const char *name)
 {
     int id = httpHeaderIdByNameDef(name, strlen(name));
@@ -564,7 +457,7 @@ HeaderManglers::track(const char *name)
             id = HDR_OTHER;
     }
 
-    header_mangler *m = NULL;
+    headerMangler *m = NULL;
     if (id == HDR_ENUM_END) {
         m = &all;
     } else if (id == HDR_BAD_HDR) {
@@ -582,13 +475,13 @@ HeaderManglers::setReplacement(const char *name, const char *value)
 {
     // for backword compatibility, we allow replacements to be configured
     // for headers w/o access rules, but such replacements are ignored
-    header_mangler *m = track(name);
+    headerMangler *m = track(name);
 
     safe_free(m->replacement); // overwrite old value if any
     m->replacement = xstrdup(value);
 }
 
-const header_mangler *
+const headerMangler *
 HeaderManglers::find(const HttpHeaderEntry &e) const
 {
     // a known header with a configured ACL list
@@ -616,3 +509,31 @@ HeaderManglers::find(const HttpHeaderEntry &e) const
     return NULL;
 }
 
+void
+httpHdrAdd(HttpHeader *heads, HttpRequest *request, const AccessLogEntryPointer &al, HeaderWithAclList &headersAdd)
+{
+    ACLFilledChecklist checklist(NULL, request, NULL);
+
+    for (HeaderWithAclList::const_iterator hwa = headersAdd.begin(); hwa != headersAdd.end(); ++hwa) {
+        if (!hwa->aclList || checklist.fastCheck(hwa->aclList) == ACCESS_ALLOWED) {
+            const char *fieldValue = NULL;
+            MemBuf mb;
+            if (hwa->quoted) {
+                if (al != NULL) {
+                    mb.init();
+                    hwa->valueFormat->assemble(mb, al, 0);
+                    fieldValue = mb.content();
+                }
+            } else {
+                fieldValue = hwa->fieldValue.c_str();
+            }
+
+            if (!fieldValue || fieldValue[0] == '\0')
+                fieldValue = "-";
+
+            HttpHeaderEntry *e = new HttpHeaderEntry(hwa->fieldId, hwa->fieldName.c_str(),
+                    fieldValue);
+            heads->addEntry(e);
+        }
+    }
+}

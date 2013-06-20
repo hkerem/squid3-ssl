@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,25 +31,32 @@
 #ifndef SQUID_HTTPREQUEST_H
 #define SQUID_HTTPREQUEST_H
 
+#include "base/CbcPointer.h"
+#include "Debug.h"
+#include "err_type.h"
+#include "HierarchyLogEntry.h"
+#include "HttpMsg.h"
+#include "HttpRequestMethod.h"
+#include "RequestFlags.h"
+
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
 #if USE_ADAPTATION
 #include "adaptation/History.h"
 #endif
 #if ICAP_CLIENT
 #include "adaptation/icap/History.h"
 #endif
-#include "base/CbcPointer.h"
-#include "client_side.h"
 #if USE_SQUID_EUI
 #include "eui/Eui48.h"
 #include "eui/Eui64.h"
 #endif
-#include "HierarchyLogEntry.h"
-#include "HttpMsg.h"
-#include "HttpRequestMethod.h"
+
+class ConnStateData;
 
 /*  Http Request */
-//DEAD?: extern int httpRequestHdrAllowedByName(http_hdr_type id);
-extern void httpRequestPack(void *obj, Packer *p);
+void httpRequestPack(void *obj, Packer *p);
 
 class HttpHdrRange;
 class DnsLookupDetails;
@@ -100,6 +105,7 @@ public:
             debugs(23, 3, "HttpRequest::SetHost() given IP: " << host_addr);
             host_is_numeric = 1;
         }
+        safe_free(canonical); // force its re-build
     };
     inline const char* GetHost(void) const { return host; };
     inline int GetHostIsNumeric(void) const { return host_is_numeric; };
@@ -156,7 +162,7 @@ public:
 
     char *canonical;
 
-    request_flags flags;
+    RequestFlags flags;
 
     HttpHdrRange *range;
 
@@ -228,11 +234,7 @@ public:
 
     static HttpRequest * CreateFromUrl(char * url);
 
-    ConnStateData *pinnedConnection() {
-        if (clientConnectionManager.valid() && clientConnectionManager->pinning.pinned)
-            return clientConnectionManager.get();
-        return NULL;
-    }
+    ConnStateData *pinnedConnection();
 
     /**
      * The client connection manager, if known;

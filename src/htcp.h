@@ -33,8 +33,10 @@
 #if USE_HTCP
 
 #include "HttpHeader.h"
-
+#include "HttpRequestMethod.h"
 #include "ip/forward.h"
+
+class HttpRequest;
 
 /// \ingroup ServerProtocolHTCP
 class HtcpReplyData
@@ -55,14 +57,11 @@ public:
     } cto;
 };
 
-/// \bug redundant typedef
-typedef class HtcpReplyData htcpReplyData;
+/// \ingroup ServerProtocolHTCP
+void neighborsHtcpReply(const cache_key *, HtcpReplyData *, const Ip::Address &);
 
 /// \ingroup ServerProtocolHTCP
-SQUIDCEXTERN void neighborsHtcpReply(const cache_key *, htcpReplyData *, const Ip::Address &);
-
-/// \ingroup ServerProtocolHTCP
-SQUIDCEXTERN void htcpOpenPorts(void);
+void htcpOpenPorts(void);
 
 /**
  * \ingroup ServerProtocolHTCP
@@ -77,16 +76,16 @@ SQUIDCEXTERN void htcpOpenPorts(void);
  * 		Don't wait for a reply or count in stats as sent.
  * \retval -1   Error sending request.
  */
-SQUIDCEXTERN int htcpQuery(StoreEntry * e, HttpRequest * req, peer * p);
+int htcpQuery(StoreEntry * e, HttpRequest * req, CachePeer * p);
 
 /// \ingroup ServerProtocolHTCP
-SQUIDCEXTERN void htcpClear(StoreEntry * e, const char *uri, HttpRequest * req, const HttpRequestMethod &method, peer * p, htcp_clr_reason reason);
+void htcpClear(StoreEntry * e, const char *uri, HttpRequest * req, const HttpRequestMethod &method, CachePeer * p, htcp_clr_reason reason);
 
 /// \ingroup ServerProtocolHTCP
-SQUIDCEXTERN void htcpSocketShutdown(void);
+void htcpSocketShutdown(void);
 
 /// \ingroup ServerProtocolHTCP
-SQUIDCEXTERN void htcpClosePorts(void);
+void htcpClosePorts(void);
 
 #endif /* USE_HTCP */
 

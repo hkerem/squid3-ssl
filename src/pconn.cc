@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 48    Persistent Connections
  * AUTHOR: Duane Wessels
  *
@@ -32,13 +30,16 @@
  *
  */
 
-#include "squid-old.h"
-#include "comm/Connection.h"
-#include "mgr/Registration.h"
-#include "Store.h"
-#include "pconn.h"
+#include "squid.h"
 #include "comm.h"
+#include "comm/Connection.h"
+#include "fd.h"
 #include "fde.h"
+#include "globals.h"
+#include "mgr/Registration.h"
+#include "pconn.h"
+#include "SquidConfig.h"
+#include "Store.h"
 
 #define PCONN_FDS_SZ	8	/* pconn set size, increase for better memcache hit rate */
 
@@ -481,7 +482,7 @@ PconnModule::PconnModule() : pools(NULL), poolCount(0)
 {
     pools = (PconnPool **) xcalloc(MAX_NUM_PCONN_POOLS, sizeof(*pools));
 //TODO: re-link to MemPools. WAS:    pconn_fds_pool = memPoolCreate("pconn_fds", PCONN_FDS_SZ * sizeof(int));
-    debugs(48, 0, "persistent connection module initialized");
+    debugs(48, DBG_CRITICAL, "persistent connection module initialized");
     registerWithCacheManager();
 }
 

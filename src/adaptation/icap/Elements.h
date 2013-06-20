@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -37,7 +35,6 @@
 #include "adaptation/Elements.h"
 
 // ICAP-related things shared by many ICAP classes
-
 
 namespace Adaptation
 {

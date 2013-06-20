@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -19,7 +17,8 @@ Kid::Kid():
         badFailures(0),
         pid(-1),
         startTime(0),
-        isRunning(false)
+        isRunning(false),
+        status(0)
 {
 }
 
@@ -28,7 +27,8 @@ Kid::Kid(const String& kid_name):
         badFailures(0),
         pid(-1),
         startTime(0),
-        isRunning(false)
+        isRunning(false),
+        status(0)
 {
 }
 

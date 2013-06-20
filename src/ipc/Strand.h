@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -52,8 +50,6 @@ private:
     CBDATA_CLASS2(Strand);
 };
 
-
 }
-
 
 #endif /* SQUID_IPC_STRAND_H */

@@ -1,8 +1,4 @@
 #include "squid.h"
-
-//
-// $Id$
-//
 // Author:  Jens-S. V?ckler <voeckler@rvs.uni-hannover.de>
 //
 // File:    socket.hh
@@ -119,7 +115,6 @@ setSocketNoDelay( int sockfd, bool nodelay )
     } else
         return 0;
 }
-
 
 int
 commonCode( int& sockfd, bool nodelay, int sendBufferSize, int recvBufferSize )

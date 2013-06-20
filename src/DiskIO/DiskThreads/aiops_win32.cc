@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 43    Windows AIOPS
  * AUTHOR: Stewart Forster <slf@connect.com.au>
  * AUTHOR: Robert Collins <robertc@squid-cache.org>
@@ -34,19 +32,20 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "squid_windows.h"
 #include "DiskIO/DiskThreads/CommIO.h"
 #include "DiskThreads.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "Store.h"
 
-#include	<stdio.h>
-#include	<sys/stat.h>
-#include	<fcntl.h>
-#include	<errno.h>
-#include	<dirent.h>
-#include	<signal.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <dirent.h>
+#include <signal.h>
 
 #define RIDICULOUS_LENGTH	4096
 
@@ -121,7 +120,6 @@ static void squidaio_poll_queues(void);
 
 static squidaio_thread_t *threads = NULL;
 static int squidaio_initialised = 0;
-
 
 #define AIO_LARGE_BUFS  16384
 #define AIO_MEDIUM_BUFS	AIO_LARGE_BUFS >> 1
@@ -612,7 +610,7 @@ squidaio_queue_request(squidaio_request_t * request)
         if (++filter >= filter_limit) {
             filter_limit += filter;
             filter = 0;
-            debugs(43, 1, "squidaio_queue_request: WARNING - Queue congestion");
+            debugs(43, DBG_IMPORTANT, "squidaio_queue_request: WARNING - Queue congestion");
         }
     }
 
@@ -635,10 +633,10 @@ squidaio_queue_request(squidaio_request_t * request)
 
         if (squid_curtime >= (last_warn + 15) &&
                 squid_curtime >= (high_start + 5)) {
-            debugs(43, 1, "squidaio_queue_request: WARNING - Disk I/O overloading");
+            debugs(43, DBG_IMPORTANT, "squidaio_queue_request: WARNING - Disk I/O overloading");
 
             if (squid_curtime >= (high_start + 15))
-                debugs(43, 1, "squidaio_queue_request: Queue Length: current=" <<
+                debugs(43, DBG_IMPORTANT, "squidaio_queue_request: Queue Length: current=" <<
                        request_queue_len << ", high=" << queue_high <<
                        ", low=" << queue_low << ", duration=" <<
                        (long int) (squid_curtime - high_start));
@@ -651,10 +649,10 @@ squidaio_queue_request(squidaio_request_t * request)
 
     /* Warn if seriously overloaded */
     if (request_queue_len > RIDICULOUS_LENGTH) {
-        debugs(43, 0, "squidaio_queue_request: Async request queue growing uncontrollably!");
-        debugs(43, 0, "squidaio_queue_request: Syncing pending I/O operations.. (blocking)");
+        debugs(43, DBG_CRITICAL, "squidaio_queue_request: Async request queue growing uncontrollably!");
+        debugs(43, DBG_CRITICAL, "squidaio_queue_request: Syncing pending I/O operations.. (blocking)");
         squidaio_sync();
-        debugs(43, 0, "squidaio_queue_request: Synced");
+        debugs(43, DBG_CRITICAL, "squidaio_queue_request: Synced");
     }
 }				/* squidaio_queue_request */
 
@@ -721,7 +719,6 @@ squidaio_cleanup_request(squidaio_request_t * requestp)
     squidaio_request_pool->free(requestp);
 }				/* squidaio_cleanup_request */
 
-
 int
 squidaio_cancel(squidaio_result_t * resultp)
 {
@@ -738,7 +735,6 @@ squidaio_cancel(squidaio_result_t * resultp)
 
     return 1;
 }				/* squidaio_cancel */
-
 
 int
 squidaio_open(const char *path, int oflag, mode_t mode, squidaio_result_t * resultp)
@@ -767,14 +763,12 @@ squidaio_open(const char *path, int oflag, mode_t mode, squidaio_result_t * resu
     return 0;
 }
 
-
 static void
 squidaio_do_open(squidaio_request_t * requestp)
 {
     requestp->ret = open(requestp->path, requestp->oflag, requestp->mode);
     requestp->err = errno;
 }
-
 
 int
 squidaio_read(int fd, char *bufp, size_t bufs, off_t offset, int whence, squidaio_result_t * resultp)
@@ -806,7 +800,6 @@ squidaio_read(int fd, char *bufp, size_t bufs, off_t offset, int whence, squidai
     return 0;
 }
 
-
 static void
 squidaio_do_read(squidaio_request_t * requestp)
 {
@@ -820,7 +813,6 @@ squidaio_do_read(squidaio_request_t * requestp)
 
     requestp->err = errno;
 }
-
 
 int
 squidaio_write(int fd, char *bufp, size_t bufs, off_t offset, int whence, squidaio_result_t * resultp)
@@ -852,7 +844,6 @@ squidaio_write(int fd, char *bufp, size_t bufs, off_t offset, int whence, squida
     return 0;
 }
 
-
 static void
 squidaio_do_write(squidaio_request_t * requestp)
 {
@@ -864,7 +855,6 @@ squidaio_do_write(squidaio_request_t * requestp)
 
     requestp->err = errno;
 }
-
 
 int
 squidaio_close(int fd, squidaio_result_t * resultp)
@@ -888,18 +878,16 @@ squidaio_close(int fd, squidaio_result_t * resultp)
     return 0;
 }
 
-
 static void
 squidaio_do_close(squidaio_request_t * requestp)
 {
     if ((requestp->ret = close(requestp->fd)) < 0) {
-        debugs(43, 0, "squidaio_do_close: FD " << requestp->fd << ", errno " << errno);
+        debugs(43, DBG_CRITICAL, "squidaio_do_close: FD " << requestp->fd << ", errno " << errno);
         close(requestp->fd);
     }
 
     requestp->err = errno;
 }
-
 
 int
 
@@ -929,14 +917,12 @@ squidaio_stat(const char *path, struct stat *sb, squidaio_result_t * resultp)
     return 0;
 }
 
-
 static void
 squidaio_do_stat(squidaio_request_t * requestp)
 {
     requestp->ret = stat(requestp->path, requestp->tmpstatp);
     requestp->err = errno;
 }
-
 
 int
 squidaio_unlink(const char *path, squidaio_result_t * resultp)
@@ -960,7 +946,6 @@ squidaio_unlink(const char *path, squidaio_result_t * resultp)
 
     return 0;
 }
-
 
 static void
 squidaio_do_unlink(squidaio_request_t * requestp)

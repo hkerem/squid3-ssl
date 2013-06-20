@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR:  Robert Collins
  *
@@ -32,9 +30,11 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "auth/Config.h"
 #include "auth/UserRequest.h"
+#include "Debug.h"
+#include "globals.h"
 
 Auth::ConfigVector Auth::TheConfig;
 

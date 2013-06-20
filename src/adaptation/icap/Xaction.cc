@@ -2,27 +2,30 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "acl/FilledChecklist.h"
+#include "adaptation/icap/Config.h"
+#include "adaptation/icap/Launcher.h"
+#include "adaptation/icap/Xaction.h"
+#include "base/TextException.h"
 #include "comm.h"
 #include "comm/Connection.h"
 #include "comm/ConnOpener.h"
 #include "comm/Write.h"
 #include "CommCalls.h"
-#include "HttpMsg.h"
-#include "adaptation/icap/Xaction.h"
-#include "adaptation/icap/Launcher.h"
-#include "adaptation/icap/Config.h"
-#include "base/TextException.h"
-#include "pconn.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
-#include "ipcache.h"
-#include "acl/FilledChecklist.h"
-#include "icap_log.h"
-#include "fde.h"
-#include "SquidTime.h"
 #include "err_detail_type.h"
-
+#include "fde.h"
+#include "forward.h"
+#include "globals.h"
+#include "HttpMsg.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
+#include "icap_log.h"
+#include "ipcache.h"
+#include "Mem.h"
+#include "pconn.h"
+#include "SquidConfig.h"
+#include "SquidTime.h"
 
 //CBDATA_NAMESPACED_CLASS_INIT(Adaptation::Icap, Xaction);
 
@@ -334,7 +337,6 @@ void Adaptation::Icap::Xaction::callException(const std::exception  &e)
     Adaptation::Initiate::callException(e);
 }
 
-
 void Adaptation::Icap::Xaction::callEnd()
 {
     if (doneWithIo()) {
@@ -543,7 +545,6 @@ void Adaptation::Icap::Xaction::tellQueryAborted()
         clearInitiator();
     }
 }
-
 
 void Adaptation::Icap::Xaction::maybeLog()
 {

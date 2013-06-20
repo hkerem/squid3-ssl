@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Markus Moeller
  *
  * Encoders adopted from http://ftp.sunet.se/pub2/gnu/vm/base64-encode.c with adjustments.
@@ -16,7 +14,6 @@
 #include <stdlib.h>
 #endif
 
-
 static void base64_init(void);
 
 static int base64_initialized = 0;
@@ -24,7 +21,6 @@ static int base64_initialized = 0;
 #define BASE64_RESULT_SZ 8192
 int base64_value[BASE64_VALUE_SZ];
 const char base64_code[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
 
 static void
 base64_init(void)

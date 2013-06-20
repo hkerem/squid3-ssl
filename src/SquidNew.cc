@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: none          Memory Allocation
  * AUTHOR: Robert Collins
  *
@@ -35,8 +33,7 @@
 
 #define _SQUID_EXTERNNEW_
 
-#include "squid-old.h"
-
+#include "squid.h"
 
 #ifdef __SUNPRO_CC
 

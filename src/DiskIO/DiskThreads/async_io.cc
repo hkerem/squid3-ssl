@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 32    Asynchronous Disk I/O
  * AUTHOR: Pete Bentley <pete@demon.net>
  * AUTHOR: Stewart Forster <slf@connect.com.au>
@@ -34,7 +32,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "DiskThreads.h"
 #include "Store.h"
 #include "fde.h"
@@ -110,7 +108,7 @@ aioCancel(int fd)
             AIOCB *callback = ctrlp->done_handler;
             void *cbdata;
             ctrlp->done_handler = NULL;
-            debugs(32, 1, "this be aioCancel. Danger ahead!");
+            debugs(32, DBG_IMPORTANT, "this be aioCancel. Danger ahead!");
 
             if (cbdataReferenceValidDone(ctrlp->done_handler_data, &cbdata))
                 callback(fd, cbdata, NULL, -2, -2);
@@ -128,7 +126,6 @@ aioCancel(int fd)
         DiskThreadsIOStrategy::Instance.squidaio_ctrl_pool->freeOne(ctrlp);
     }
 }
-
 
 void
 aioWrite(int fd, off_t offset, char *bufp, size_t len, AIOCB * callback, void *callback_data, FREE * free_func)
@@ -157,7 +154,6 @@ aioWrite(int fd, off_t offset, char *bufp, size_t len, AIOCB * callback, void *c
     squidaio_write(fd, bufp, len, offset, seekmode, &ctrlp->result);
     dlinkAdd(ctrlp, &ctrlp->node, &used_list);
 }				/* aioWrite */
-
 
 void
 aioRead(int fd, off_t offset, size_t len, AIOCB * callback, void *callback_data)

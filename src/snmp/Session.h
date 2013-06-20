@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 49    SNMP Interface
  *
  */
@@ -11,7 +9,6 @@
 #include "ipc/forward.h"
 #include "snmp.h"
 #include "snmp_session.h"
-
 
 namespace Snmp
 {

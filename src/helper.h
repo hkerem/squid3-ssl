@@ -33,10 +33,10 @@
 #ifndef SQUID_HELPER_H
 #define SQUID_HELPER_H
 
-#include "squid-old.h"
 #include "base/AsyncCall.h"
 #include "cbdata.h"
 #include "comm/forward.h"
+#include "dlink.h"
 #include "ip/Address.h"
 #include "HelperChildConfig.h"
 
@@ -47,7 +47,15 @@ typedef void HLPSCB(void *, void *lastserver, char *buf);
 class helper
 {
 public:
-    inline helper(const char *name) : cmdline(NULL), id_name(name), eom('\n') {}
+    inline helper(const char *name) :
+            cmdline(NULL),
+            id_name(name),
+            ipc_type(0),
+            last_queue_warn(0),
+            last_restart(0),
+            eom('\n') {
+        memset(&stats, 0, sizeof(stats));
+    }
     ~helper();
 
 public:
@@ -76,7 +84,7 @@ private:
 class statefulhelper : public helper
 {
 public:
-    inline statefulhelper(const char *name) : helper(name) {};
+    inline statefulhelper(const char *name) : helper(name), datapool(NULL), IsAvailable(NULL), OnEmptyQueue(NULL) {};
     inline ~statefulhelper() {};
 
 public:
@@ -88,7 +96,7 @@ private:
     CBDATA_CLASS2(statefulhelper);
 };
 
-/*
+/**
  * Fields shared between stateless and stateful helper servers.
  */
 class HelperServerBase
@@ -130,7 +138,16 @@ public:
         unsigned int reserved:1;
     } flags;
 
+    struct {
+        uint64_t uses;     //< requests sent to this helper
+        uint64_t replies;  //< replies received from this helper
+        uint64_t pending;  //< queued lookups waiting to be sent to this helper
+        uint64_t releases; //< times release() has been called on this helper (if stateful)
+    } stats;
+    void initStats();
 };
+
+class MemBuf;
 
 class helper_server : public HelperServerBase
 {
@@ -140,11 +157,6 @@ public:
 
     helper *parent;
     helper_request **requests;
-
-    struct {
-        int uses;
-        unsigned int pending;
-    } stats;
 
 private:
     CBDATA_CLASS2(helper_server);
@@ -161,11 +173,6 @@ public:
     statefulhelper *parent;
     helper_stateful_request *request;
 
-    struct {
-        int uses;
-        int submits;
-        int releases;
-    } stats;
     void *data;			/* State data used by the calling routines */
 
 private:
@@ -200,16 +207,15 @@ public:
 MEMPROXY_CLASS_INLINE(helper_stateful_request);
 
 /* helper.c */
-SQUIDCEXTERN void helperOpenServers(helper * hlp);
-SQUIDCEXTERN void helperStatefulOpenServers(statefulhelper * hlp);
-SQUIDCEXTERN void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
-SQUIDCEXTERN void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver);
-SQUIDCEXTERN void helperStats(StoreEntry * sentry, helper * hlp, const char *label = NULL);
-SQUIDCEXTERN void helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label = NULL);
-SQUIDCEXTERN void helperShutdown(helper * hlp);
-SQUIDCEXTERN void helperStatefulShutdown(statefulhelper * hlp);
-SQUIDCEXTERN void helperStatefulReleaseServer(helper_stateful_server * srv);
-SQUIDCEXTERN void *helperStatefulServerGetData(helper_stateful_server * srv);
-
+void helperOpenServers(helper * hlp);
+void helperStatefulOpenServers(statefulhelper * hlp);
+void helperSubmit(helper * hlp, const char *buf, HLPCB * callback, void *data);
+void helperStatefulSubmit(statefulhelper * hlp, const char *buf, HLPSCB * callback, void *data, helper_stateful_server * lastserver);
+void helperStats(StoreEntry * sentry, helper * hlp, const char *label = NULL);
+void helperStatefulStats(StoreEntry * sentry, statefulhelper * hlp, const char *label = NULL);
+void helperShutdown(helper * hlp);
+void helperStatefulShutdown(statefulhelper * hlp);
+void helperStatefulReleaseServer(helper_stateful_server * srv);
+void *helperStatefulServerGetData(helper_stateful_server * srv);
 
 #endif /* SQUID_HELPER_H */

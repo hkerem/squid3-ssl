@@ -1,10 +1,7 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
-
 
 #include "squid.h"
 #include "comm.h"
@@ -13,7 +10,6 @@
 #include "comm/Write.h"
 #include "base/TextException.h"
 #include "ipc/UdsOp.h"
-
 
 Ipc::UdsOp::UdsOp(const String& pathAddr):
         AsyncJob("Ipc::UdsOp"),
@@ -68,7 +64,6 @@ void Ipc::UdsOp::noteTimeout(const CommTimeoutCbParams &)
     timedout(); // our kid handles communication timeout
 }
 
-
 struct sockaddr_un
 Ipc::PathToAddress(const String& pathAddr) {
     assert(pathAddr.size() != 0);
@@ -78,7 +73,6 @@ Ipc::PathToAddress(const String& pathAddr) {
     xstrncpy(unixAddr.sun_path, pathAddr.termedBuf(), sizeof(unixAddr.sun_path));
     return unixAddr;
 }
-
 
 CBDATA_NAMESPACED_CLASS_INIT(Ipc, UdsSender);
 
@@ -130,7 +124,6 @@ void Ipc::UdsSender::timedout()
     debugs(54, 5, HERE);
     mustStop("timedout");
 }
-
 
 void Ipc::SendMessage(const String& toAddress, const TypedMsgHdr &message)
 {

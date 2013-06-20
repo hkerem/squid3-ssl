@@ -1,6 +1,6 @@
 #define SQUID_UNIT_TEST 1
 
-#include "squid-old.h"
+#include "squid.h"
 #include <cppunit/TestAssert.h>
 
 #include "Mem.h"
@@ -12,7 +12,6 @@
 #endif
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testHttpRequestMethod );
-
 
 /*
  * We should be able to make an HttpRequestMethod straight from a string.

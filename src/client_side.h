@@ -1,6 +1,6 @@
 /*
- * $Id$
- *
+ * DEBUG: section 33    Client-side Routines
+ * AUTHOR: Duane Wessels
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -33,22 +33,30 @@
 #ifndef SQUID_CLIENTSIDE_H
 #define SQUID_CLIENTSIDE_H
 
-#if USE_AUTH
-#include "auth/UserRequest.h"
-#endif
 #include "base/AsyncJob.h"
 #include "BodyPipe.h"
 #include "comm.h"
 #include "CommCalls.h"
+#include "HttpRequest.h"
 #include "HttpControlMsg.h"
 #include "HttpParser.h"
 #include "RefCount.h"
 #include "StoreIOBuffer.h"
+#if USE_AUTH
+#include "auth/UserRequest.h"
+#endif
+#if USE_SSL
+#include "ssl/support.h"
+#endif
 
 class ConnStateData;
 class ClientHttpRequest;
 class clientStreamNode;
 class ChunkedCodingParser;
+namespace AnyP
+{
+class PortCfg;
+} // namespace Anyp
 
 /**
  * Badly named.
@@ -144,7 +152,6 @@ protected:
     void wroteControlMsg(const Comm::ConnectionPointer &conn, char *bufnotused, size_t size, comm_err_t errflag, int xerrno);
 
 private:
-    CBDATA_CLASS(ClientSocketContext);
     void prepareReply(HttpReply * rep);
     void packChunk(const StoreIOBuffer &bodyData, MemBuf &mb);
     void packRange(StoreIOBuffer const &, MemBuf * mb);
@@ -156,11 +163,17 @@ private:
 
     bool mayUseConnection_; /* This request may use the connection. Don't read anymore requests for now */
     bool connRegistered_;
+
+    CBDATA_CLASS(ClientSocketContext);
 };
 
-
 class ConnectionDetail;
-
+#if USE_SSL
+namespace Ssl
+{
+class ServerBump;
+}
+#endif
 /**
  * Manages a connection to a client.
  *
@@ -250,7 +263,8 @@ public:
         int port;               /* port of pinned connection */
         bool pinned;             /* this connection was pinned */
         bool auth;               /* pinned for www authentication */
-        struct peer *peer;             /* peer the connection goes via */
+        bool zeroReply; ///< server closed w/o response (ERR_ZERO_SIZE_OBJECT)
+        CachePeer *peer;             /* CachePeer the connection goes via */
         AsyncCall::Pointer closeHandler; /*The close handler for pinned server side connection*/
     } pinning;
 
@@ -281,23 +295,23 @@ public:
     /**
      * Correlate the current ConnStateData object with the pinning_fd socket descriptor.
      */
-    void pinConnection(const Comm::ConnectionPointer &pinServerConn, HttpRequest *request, struct peer *peer, bool auth);
+    void pinConnection(const Comm::ConnectionPointer &pinServerConn, HttpRequest *request, CachePeer *peer, bool auth);
     /**
-     * Decorrelate the ConnStateData object from its pinned peer
+     * Decorrelate the ConnStateData object from its pinned CachePeer
      */
     void unpinConnection();
     /**
      * Checks if there is pinning info if it is valid. It can close the server side connection
      * if pinned info is not valid.
      \param request   if it is not NULL also checks if the pinning info refers to the request client side HttpRequest
-     \param peer      if it is not NULL also check if the peer is the pinning peer
+     \param CachePeer      if it is not NULL also check if the CachePeer is the pinning CachePeer
      \return          The details of the server side connection (may be closed if failures were present).
      */
-    const Comm::ConnectionPointer validatePinnedConnection(HttpRequest *request, const struct peer *peer);
+    const Comm::ConnectionPointer validatePinnedConnection(HttpRequest *request, const CachePeer *peer);
     /**
-     * returts the pinned peer if exists, NULL otherwise
+     * returts the pinned CachePeer if exists, NULL otherwise
      */
-    struct peer *pinnedPeer() const {return pinning.peer;}
+    CachePeer *pinnedPeer() const {return pinning.peer;}
     bool pinnedAuth() const {return pinning.auth;}
 
     // pining related comm callbacks
@@ -312,22 +326,47 @@ public:
     virtual bool doneAll() const { return BodyProducer::doneAll() && false;}
     virtual void swanSong();
 
+    /// Changes state so that we close the connection and quit after serving
+    /// the client-side-detected error response instead of getting stuck.
+    void quitAfterError(HttpRequest *request); // meant to be private
+
 #if USE_SSL
+    /// called by FwdState when it is done bumping the server
+    void httpsPeeked(Comm::ConnectionPointer serverConnection);
+
     /// Start to create dynamic SSL_CTX for host or uses static port SSL context.
-    bool getSslContextStart();
+    void getSslContextStart();
     /**
      * Done create dynamic ssl certificate.
      *
      * \param[in] isNew if generated certificate is new, so we need to add this certificate to storage.
      */
-    bool getSslContextDone(SSL_CTX * sslContext, bool isNew = false);
+    void getSslContextDone(SSL_CTX * sslContext, bool isNew = false);
     /// Callback function. It is called when squid receive message from ssl_crtd.
     static void sslCrtdHandleReplyWrapper(void *data, char *reply);
     /// Proccess response from ssl_crtd.
     void sslCrtdHandleReply(const char * reply);
 
-    bool switchToHttps(const char *host);
+    void switchToHttps(HttpRequest *request, Ssl::BumpMode bumpServerMode);
     bool switchedToHttps() const { return switchedToHttps_; }
+    Ssl::ServerBump *serverBump() {return sslServerBump;}
+    inline void setServerBump(Ssl::ServerBump *srvBump) {
+        if (!sslServerBump)
+            sslServerBump = srvBump;
+        else
+            assert(sslServerBump == srvBump);
+    }
+    /// Fill the certAdaptParams with the required data for certificate adaptation
+    /// and create the key for storing/retrieve the certificate to/from the cache
+    void buildSslCertGenerationParams(Ssl::CertificateProperties &certProperties);
+    /// Called when the client sends the first request on a bumped connection.
+    /// Returns false if no [delayed] error should be written to the client.
+    /// Otherwise, writes the error to the client and returns true. Also checks
+    /// for SQUID_X509_V_ERR_DOMAIN_MISMATCH on bumped requests.
+    bool serveDelayedError(ClientSocketContext *context);
+
+    Ssl::BumpMode sslBumpMode; ///< ssl_bump decision (Ssl::bumpEnd if n/a).
+
 #else
     bool switchedToHttps() const { return false; }
 #endif
@@ -347,25 +386,38 @@ private:
     HttpParser parser_;
 
     // XXX: CBDATA plays with public/private and leaves the following 'private' fields all public... :(
-    CBDATA_CLASS2(ConnStateData);
 
+#if USE_SSL
     bool switchedToHttps_;
+    /// The SSL server host name appears in CONNECT request or the server ip address for the intercepted requests
+    String sslConnectHostOrIp; ///< The SSL server host name as passed in the CONNECT request
+    String sslCommonName; ///< CN name for SSL certificate generation
+    String sslBumpCertKey; ///< Key to use to store/retrieve generated certificate
+
+    /// HTTPS server cert. fetching state for bump-ssl-server-first
+    Ssl::ServerBump *sslServerBump;
+    Ssl::CertSignAlgorithm signAlgorithm; ///< The signing algorithm to use
+#endif
 
     /// the reason why we no longer write the response or nil
     const char *stoppedSending_;
     /// the reason why we no longer read the request or nil
     const char *stoppedReceiving_;
 
-    String sslHostName; ///< Host name for SSL certificate generation
     AsyncCall::Pointer reader; ///< set when we are reading
     BodyPipe::Pointer bodyPipe; // set when we are reading request body
-};
 
-/* convenience class while splitting up body handling */
-/* temporary existence only - on stack use expected */
+    CBDATA_CLASS2(ConnStateData);
+};
 
 void setLogUri(ClientHttpRequest * http, char const *uri, bool cleanUrl = false);
 
 const char *findTrailingHTTPVersion(const char *uriAndHTTPVersion, const char *end = NULL);
+
+int varyEvaluateMatch(StoreEntry * entry, HttpRequest * req);
+
+void clientOpenListenSockets(void);
+void clientHttpConnectionsClose(void);
+void httpRequestFree(void *);
 
 #endif /* SQUID_CLIENTSIDE_H */

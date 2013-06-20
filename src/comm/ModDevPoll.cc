@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Socket Functions
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -54,10 +52,11 @@
 
 #if USE_DEVPOLL
 
-#include "squid-old.h"
 #include "comm/Loops.h"
+#include "fd.h"
 #include "fde.h"
 #include "mgr/Registration.h"
+#include "profiler/Profiler.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "StatHist.h"
@@ -66,6 +65,9 @@
 #if HAVE_SYS_DEVPOLL_H
 /* Solaris /dev/poll support, see "man -s 7D poll" */
 #include <sys/devpoll.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
 #endif
 #if HAVE_LIMITS_H
 #include <limits.h>
@@ -100,7 +102,6 @@ static struct {
     int size; /**< maximum number of elements in array */
 } devpoll_update;
 
-
 /* STATIC VARIABLES */
 static int devpoll_fd; /**< handle to /dev/poll device */
 static int max_poll_time = 1000; /**< maximum milliseconds to spend in poll */
@@ -111,7 +112,6 @@ static int dpoll_nfds; /**< maximum number of poll results */
 
 /* PROTOTYPES */
 static void commDevPollRegisterWithCacheManager(void);
-
 
 /* PRIVATE FUNCTIONS */
 /** \brief Write batched file descriptor event changes to poll device
@@ -174,14 +174,12 @@ comm_update_fd(int fd, int events)
     devpoll_update.pfds[devpoll_update.cur].revents = 0;
 }
 
-
 static void commIncomingStats(StoreEntry *sentry)
 {
     storeAppendPrintf(sentry, "Total number of devpoll loops: %ld\n", statCounter.select_loops);
     storeAppendPrintf(sentry, "Histogram of returned filedescriptors\n");
     statCounter.select_fds_hist.dump(sentry, statHistIntDumper);
 }
-
 
 static void
 commDevPollRegisterWithCacheManager(void)
@@ -194,7 +192,6 @@ commDevPollRegisterWithCacheManager(void)
         1
     );
 }
-
 
 /* PUBLIC FUNCTIONS */
 
@@ -319,7 +316,6 @@ Comm::SetSelect(int fd, unsigned int type, PF * handler, void *client_data, time
         F->timeout = squid_curtime + timeout;
 }
 
-
 /** \brief Clear polling of file handle (both read and write)
  *
  * @param fd file descriptor to clear polling on
@@ -330,7 +326,6 @@ Comm::ResetSelect(int fd)
     SetSelect(fd, COMM_SELECT_WRITE, NULL, NULL, 0);
     SetSelect(fd, COMM_SELECT_READ, NULL, NULL, 0);
 }
-
 
 /** \brief Do poll and trigger callback functions as appropriate
  *
@@ -388,7 +383,7 @@ Comm::DoSelect(int msec)
 
     PROF_start(comm_handle_ready_fd);
 
-    for (i = 0; i < num; i++) {
+    for (i = 0; i < num; ++i) {
         int fd = (int)do_poll.dp_fds[i].fd;
         F = &fd_table[fd];
         debugs(

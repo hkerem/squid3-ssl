@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 85    Client-side Request Routines
  * AUTHOR: Robert Collins
  *
@@ -33,6 +31,8 @@
  *
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
+
+#include "Store.h"
 
 StoreEntry *
 ClientHttpRequest::storeEntry() const

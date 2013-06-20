@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 74    HTTP Message
  * AUTHOR: Alex Rousskov
  *
@@ -33,9 +31,14 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
+#include "HttpHeaderTools.h"
 #include "HttpMsg.h"
 #include "MemBuf.h"
+#include "mime_header.h"
+#include "profiler/Profiler.h"
+#include "SquidConfig.h"
 
 HttpMsg::HttpMsg(http_hdr_owner_type owner): header(owner),
         cache_control(NULL), hdr_sz(0), content_length(0), protocol(AnyP::PROTO_NONE),
@@ -164,7 +167,7 @@ bool HttpMsg::parse(MemBuf *buf, bool eof, http_status *error)
 
     // TODO: move to httpReplyParseStep()
     if (hdr_len > Config.maxReplyHeaderSize || (hdr_len <= 0 && (size_t)buf->contentSize() > Config.maxReplyHeaderSize)) {
-        debugs(58, 1, "HttpMsg::parse: Too large reply header (" << hdr_len << " > " << Config.maxReplyHeaderSize);
+        debugs(58, DBG_IMPORTANT, "HttpMsg::parse: Too large reply header (" << hdr_len << " > " << Config.maxReplyHeaderSize);
         *error = HTTP_HEADER_TOO_LARGE;
         return false;
     }
@@ -196,7 +199,7 @@ bool HttpMsg::parse(MemBuf *buf, bool eof, http_status *error)
     debugs(58, 9, "HttpMsg::parse success (" << hdr_len << " bytes) near '" << buf->content() << "'");
 
     if (hdr_sz != (int)hdr_len) {
-        debugs(58, 1, "internal HttpMsg::parse vs. headersEnd error: " <<
+        debugs(58, DBG_IMPORTANT, "internal HttpMsg::parse vs. headersEnd error: " <<
                hdr_sz << " != " << hdr_len);
         hdr_sz = (int)hdr_len; // because old http.cc code used hdr_len
     }

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -33,7 +31,7 @@
  * Copyright (c) 2003, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "acl/SourceIp.h"
 #include "acl/FilledChecklist.h"
 
@@ -48,8 +46,6 @@ ACLSourceIP::match(ACLChecklist *checklist)
 {
     return ACLIP::match(Filled(checklist)->src_addr);
 }
-
-
 
 ACL *
 ACLSourceIP::clone() const

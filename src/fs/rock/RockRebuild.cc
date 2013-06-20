@@ -1,14 +1,22 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Disk IO Routines
  */
 
 #include "squid.h"
+#include "disk.h"
 #include "fs/rock/RockRebuild.h"
 #include "fs/rock/RockSwapDir.h"
 #include "fs/rock/RockDbCell.h"
+#include "globals.h"
+#include "md5.h"
+#include "tools.h"
+#include "typedefs.h"
 #include "SquidTime.h"
+#include "store_rebuild.h"
+
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 CBDATA_NAMESPACED_CLASS_INIT(Rock, Rebuild);
 

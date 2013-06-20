@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -35,8 +33,11 @@
 #define SQUID_EXTERNALACL_H
 
 #include "acl/Checklist.h"
-
 class external_acl;
+class StoreEntry;
+
+/** \todo CLEANUP: kill this typedef. */
+typedef struct _external_acl_data external_acl_data;
 
 class ExternalACLLookup : public ACLChecklist::AsyncState
 {
@@ -45,13 +46,14 @@ public:
     static ExternalACLLookup *Instance();
     virtual void checkForAsync(ACLChecklist *)const;
 
+    // If possible, starts an asynchronous lookup of an external ACL.
+    // Otherwise, asserts (or bails if background refresh is requested).
+    static void Start(ACLChecklist *checklist, external_acl_data *acl, bool bg);
+
 private:
     static ExternalACLLookup instance_;
     static void LookupDone(void *data, void *result);
 };
-
-/** \todo CLEANUP: kill this typedef. */
-typedef struct _external_acl_data external_acl_data;
 
 #include "acl/Acl.h"
 
@@ -61,8 +63,7 @@ class ACLExternal : public ACL
 public:
     MEMPROXY_CLASS(ACLExternal);
 
-    static void ExternalAclLookup(ACLChecklist * ch, ACLExternal *, EAH * callback, void *callback_data);
-
+    static void ExternalAclLookup(ACLChecklist * ch, ACLExternal *);
 
     ACLExternal(char const *);
     ACLExternal(ACLExternal const &);
@@ -91,5 +92,13 @@ protected:
 };
 
 MEMPROXY_CLASS_INLINE(ACLExternal);
+
+void parse_externalAclHelper(external_acl **);
+void dump_externalAclHelper(StoreEntry * sentry, const char *name, const external_acl *);
+void free_externalAclHelper(external_acl **);
+typedef void EAH(void *data, void *result);
+void externalAclLookup(ACLChecklist * ch, void *acl_data, EAH * handler, void *data);
+void externalAclInit(void);
+void externalAclShutdown(void);
 
 #endif /* SQUID_EXTERNALACL_H */

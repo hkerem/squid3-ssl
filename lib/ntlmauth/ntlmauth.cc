@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * AUTHOR: Francesco Chemolli <kinkie@kame.usr.dsi.unimi.it>
  * AUTHOR: Guido Serassio: <guido.serassio@acmeconsulting.it>
  * AUTHOR: Amos Jeffries <squid3@treenet.co.nz>
@@ -137,7 +135,7 @@ ntlm_fetch_string(const ntlmhdr *packet, const int32_t packet_size, const strhdr
         unsigned short *s = (unsigned short *)rv.str;
         rv.str = d = buf;
 
-        for (l >>= 1; l; s++, l--) {
+        for (l >>= 1; l; ++s, --l) {
             unsigned short c = le16toh(*s);
             if (c > 254 || c == '\0') {
                 fprintf(stderr, "ntlmssp: bad unicode: %04x\n", c);
@@ -145,18 +143,18 @@ ntlm_fetch_string(const ntlmhdr *packet, const int32_t packet_size, const strhdr
             }
             *d = c;
             ++d;
-            rv.l++;
+            ++rv.l;
         }
     } else {
         /* ASCII/OEM string */
         char *sc = rv.str;
 
-        for (; l>=0; sc++, l--) {
+        for (; l>=0; ++sc, --l) {
             if (*sc == '\0' || !xisprint(*sc)) {
                 fprintf(stderr, "ntlmssp: bad ascii: %04x\n", *sc);
                 return rv;
             }
-            rv.l++;
+            ++rv.l;
         }
     }
 
@@ -186,13 +184,11 @@ ntlm_add_to_payload(const ntlmhdr *packet_hdr,
     (*payload_length) += toadd_length;
 }
 
-
 /* ************************************************************************* */
 /* Negotiate Packet functions */
 /* ************************************************************************* */
 
 // ?
-
 
 /* ************************************************************************* */
 /* Challenge Packet functions */
@@ -210,7 +206,7 @@ ntlm_make_nonce(char *nonce)
     int r = (int) rand();
     r = (hash ^ r) + r;
 
-    for (i = 0; i < NTLM_NONCE_LEN; i++) {
+    for (i = 0; i < NTLM_NONCE_LEN; ++i) {
         nonce[i] = r;
         r = (r >> 2) ^ r;
     }

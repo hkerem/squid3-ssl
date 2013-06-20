@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * AUTHOR: Benno Rice
  *
  * SQUID Internet Object Cache  http://squid.nlanr.net/Squid/
@@ -35,6 +33,7 @@
 #ifndef SQUID_SSL_SUPPORT_H
 #define SQUID_SSL_SUPPORT_H
 
+#include "CbDataList.h"
 #include "ssl/gadgets.h"
 
 #if HAVE_OPENSSL_SSL_H
@@ -56,20 +55,29 @@
  */
 
 // Custom SSL errors; assumes all official errors are positive
+#define SQUID_X509_V_ERR_CERT_CHANGE -3
 #define SQUID_ERR_SSL_HANDSHAKE -2
 #define SQUID_X509_V_ERR_DOMAIN_MISMATCH -1
 // All SSL errors range: from smallest (negative) custom to largest SSL error
-#define SQUID_SSL_ERROR_MIN SQUID_ERR_SSL_HANDSHAKE
+#define SQUID_SSL_ERROR_MIN SQUID_X509_V_ERR_CERT_CHANGE
 #define SQUID_SSL_ERROR_MAX INT_MAX
+
+namespace AnyP
+{
+class PortCfg;
+};
 
 namespace Ssl
 {
 /// Squid defined error code (<0),  an error code returned by SSL X509 api, or SSL_ERROR_NONE
 typedef int ssl_error_t;
+
+typedef CbDataList<Ssl::ssl_error_t> Errors;
+
 } //namespace Ssl
 
 /// \ingroup ServerProtocolSSLAPI
-SSL_CTX *sslCreateServerContext(const char *certfile, const char *keyfile, int version, const char *cipher, const char *options, const char *flags, const char *clientCA, const char *CAfile, const char *CApath, const char *CRLfile, const char *dhpath, const char *context);
+SSL_CTX *sslCreateServerContext(AnyP::PortCfg &port);
 
 /// \ingroup ServerProtocolSSLAPI
 SSL_CTX *sslCreateClientContext(const char *certfile, const char *keyfile, int version, const char *cipher, const char *options, const char *flags, const char *CAfile, const char *CApath, const char *CRLfile);
@@ -82,7 +90,6 @@ int ssl_write_method(int, const char *, int);
 
 /// \ingroup ServerProtocolSSLAPI
 void ssl_shutdown_method(SSL *ssl);
-
 
 /// \ingroup ServerProtocolSSLAPI
 const char *sslGetUserEmail(SSL *ssl);
@@ -106,23 +113,82 @@ namespace Ssl
 {
 /**
   \ingroup ServerProtocolSSLAPI
-  * Decide on the kind of certificate and generate a CA- or self-signed one
-*/
-SSL_CTX *generateSslContext(char const *host, Ssl::X509_Pointer const & signedX509, Ssl::EVP_PKEY_Pointer const & signedPkey);
+ * Supported ssl-bump modes
+ */
+enum BumpMode {bumpNone = 0, bumpClientFirst, bumpServerFirst, bumpEnd};
+
+/**
+ \ingroup  ServerProtocolSSLAPI
+ * Short names for ssl-bump modes
+ */
+extern const char *BumpModeStr[];
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Return the short name of the ssl-bump mode "bm"
+ */
+inline const char *bumpMode(int bm)
+{
+    return (0 <= bm && bm < Ssl::bumpEnd) ? Ssl::BumpModeStr[bm] : NULL;
+}
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Parses the SSL flags.
+ */
+long parse_flags(const char *flags);
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Parses the SSL options.
+ */
+long parse_options(const char *options);
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Load a CRLs list stored in a file
+ */
+STACK_OF(X509_CRL) *loadCrl(const char *CRLFile, long &flags);
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Load DH params from file
+ */
+DH *readDHParams(const char *dhfile);
+
+/**
+ \ingroup ServerProtocolSSLAPI
+ * Compute the Ssl::ContextMethod (SSL_METHOD) from SSL version
+ */
+ContextMethod contextMethod(int version);
 
 /**
   \ingroup ServerProtocolSSLAPI
-  * Check date of certificate signature. If there is out of date error fucntion
-  * returns false, true otherwise.
+  * Generate a certificate to be used as untrusted signing certificate, based on a trusted CA
+*/
+bool generateUntrustedCert(X509_Pointer & untrustedCert, EVP_PKEY_Pointer & untrustedPkey, X509_Pointer const & cert, EVP_PKEY_Pointer const & pkey);
+
+/**
+  \ingroup ServerProtocolSSLAPI
+  * Decide on the kind of certificate and generate a CA- or self-signed one
+*/
+SSL_CTX * generateSslContext(CertificateProperties const &properties, AnyP::PortCfg &port);
+
+/**
+  \ingroup ServerProtocolSSLAPI
+  * Check if the certificate of the given context is still valid
+  \param sslContext The context to check
+  \param properties Check if the context certificate matches the given properties
+  \return true if the contexts certificate is valid, false otherwise
  */
-bool verifySslCertificateDate(SSL_CTX * sslContext);
+bool verifySslCertificate(SSL_CTX * sslContext,  CertificateProperties const &properties);
 
 /**
   \ingroup ServerProtocolSSLAPI
   * Read private key and certificate from memory and generate SSL context
   * using their.
  */
-SSL_CTX * generateSslContextUsingPkeyAndCertFromMemory(const char * data);
+SSL_CTX * generateSslContextUsingPkeyAndCertFromMemory(const char * data, AnyP::PortCfg &port);
 
 /**
   \ingroup ServerProtocolSSLAPI
@@ -149,6 +215,15 @@ void readCertChainAndPrivateKeyFromFiles(X509_Pointer & cert, EVP_PKEY_Pointer &
    \return   1 if any of the certificate CN matches, 0 if none matches.
  */
 int matchX509CommonNames(X509 *peer_cert, void *check_data, int (*check_func)(void *check_data,  ASN1_STRING *cn_data));
+
+/**
+   \ingroup ServerProtocolSSLAPI
+   * Check if the certificate is valid for a server
+   \param cert  The X509 cert to check.
+   \param server The server name.
+   \return   true if the certificate is valid for the server or false otherwise.
+ */
+bool checkX509ServerValidity(X509 *cert, const char *server);
 
 /**
    \ingroup ServerProtocolSSLAPI

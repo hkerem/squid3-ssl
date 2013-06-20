@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 46    Access Log
  * AUTHOR: Duane Wessels
  *
@@ -32,32 +30,34 @@
  *
  */
 
-
-#include "squid-old.h"
+#include "squid.h"
 #include "AccessLogEntry.h"
-
-// Store.h Required by configuration directives parsing/dumping only
-#include "Store.h"
-
-#include "errorpage.h"
-#include "err_detail_type.h"
 #include "acl/Checklist.h"
+#include "CachePeer.h"
+#include "err_detail_type.h"
 #include "errorpage.h"
-#if USE_SQUID_EUI
-#include "eui/Eui48.h"
-#include "eui/Eui64.h"
-#endif
+#include "errorpage.h"
 #include "format/Token.h"
+#include "globals.h"
 #include "hier_code.h"
 #include "HttpReply.h"
 #include "HttpRequest.h"
+#include "log/access_log.h"
 #include "log/Config.h"
+#include "log/CustomLog.h"
 #include "log/File.h"
 #include "log/Formats.h"
 #include "MemBuf.h"
 #include "mgr/Registration.h"
 #include "rfc1738.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
+#include "Store.h"
+
+#if USE_SQUID_EUI
+#include "eui/Eui48.h"
+#include "eui/Eui64.h"
+#endif
 
 #if HEADERS_LOG
 static Logfile *headerslog = NULL;
@@ -91,7 +91,7 @@ static void fvdbRegisterWithCacheManager();
 int LogfileStatus = LOG_DISABLE;
 
 void
-accessLogLogTo(customlog* log, AccessLogEntry::Pointer &al, ACLChecklist * checklist)
+accessLogLogTo(CustomLog* log, AccessLogEntry::Pointer &al, ACLChecklist * checklist)
 {
 
     if (al->url == NULL)
@@ -204,7 +204,7 @@ accessLogLog(AccessLogEntry::Pointer &al, ACLChecklist * checklist)
 void
 accessLogRotate(void)
 {
-    customlog *log;
+    CustomLog *log;
 #if USE_FORW_VIA_DB
 
     fvdbClear();
@@ -226,7 +226,7 @@ accessLogRotate(void)
 void
 accessLogClose(void)
 {
-    customlog *log;
+    CustomLog *log;
 
     for (log = Config.Log.accesslogs; log; log = log->next) {
         if (log->logfile) {
@@ -301,7 +301,7 @@ accessLogRegisterWithCacheManager(void)
 void
 accessLogInit(void)
 {
-    customlog *log;
+    CustomLog *log;
 
     accessLogRegisterWithCacheManager();
 
@@ -362,7 +362,7 @@ accessLogInit(void)
         if (mcast_miss_fd < 0)
             fatal("Cannot open Multicast Miss Stream Socket");
 
-        debugs(46, 1, "Multicast Miss Stream Socket opened on FD " << mcast_miss_fd);
+        debugs(46, DBG_IMPORTANT, "Multicast Miss Stream Socket opened on FD " << mcast_miss_fd);
 
         mcastSetTtl(mcast_miss_fd, Config.mcast_miss.ttl);
 

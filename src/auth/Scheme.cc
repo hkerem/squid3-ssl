@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 29    Authenticator
  * AUTHOR: Robert Collins
  *
@@ -33,10 +31,11 @@
  * Copyright (c) 2004, Robert Collins <robertc@squid-cache.org>
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "auth/Scheme.h"
 #include "auth/Gadgets.h"
 #include "auth/Config.h"
+#include "globals.h"
 
 Vector<Auth::Scheme::Pointer> *Auth::Scheme::_Schemes = NULL;
 

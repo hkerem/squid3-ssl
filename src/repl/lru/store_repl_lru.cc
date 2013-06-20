@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: none          LRU Removal Policy
  * AUTHOR: Henrik Nordstrom
  *
@@ -33,7 +31,7 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "Store.h"
 #include "MemObject.h"
 #include "SquidTime.h"

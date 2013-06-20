@@ -1,7 +1,8 @@
 /*
  * DEBUG: section 93    eCAP Interface
  */
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
 #include <list>
 #include <libecap/adapter/service.h>
 #include <libecap/common/options.h>
@@ -41,7 +42,6 @@ public:
 } // namespace Ecap
 } // namespace Adaptation
 
-
 Adaptation::Ecap::ConfigRep::ConfigRep(const Master &aMaster): master(aMaster)
 {
 }
@@ -75,8 +75,6 @@ Adaptation::Ecap::ConfigRep::visitEachOption(libecap::NamedValueVisitor &visitor
     for (MECI i = master.extensions.begin(); i != master.extensions.end(); ++i)
         visitor.visit(Name(i->first), Area::FromTempString(i->second));
 }
-
-
 
 Adaptation::Ecap::ServiceRep::ServiceRep(const ServiceConfigPointer &cfg):
         /*AsyncJob("Adaptation::Ecap::ServiceRep"),*/ Adaptation::Service(cfg),
@@ -264,7 +262,7 @@ Adaptation::Ecap::CheckUnusedAdapterServices(const Adaptation::Services& cfgs)
             found = (*cfged)->cfg().uri == (*loaded)->uri().c_str();
         }
         if (!found)
-            debugs(93, 1, "Warning: loaded eCAP service has no matching " <<
+            debugs(93, DBG_IMPORTANT, "Warning: loaded eCAP service has no matching " <<
                    "ecap_service config option: " << (*loaded)->uri());
     }
 }

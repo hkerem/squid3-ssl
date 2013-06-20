@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -10,7 +8,6 @@
 
 #include "mgr/Action.h"
 #include "mgr/ActionCreator.h"
-
 
 namespace Mgr
 {
@@ -37,7 +34,6 @@ protected:
 private:
     OBJH *handler; ///< legacy function that collects and dumps info
 };
-
 
 /// creates FunAction using ActionCreator API
 class FunActionCreator: public ActionCreator

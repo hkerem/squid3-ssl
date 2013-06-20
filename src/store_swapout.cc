@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapout Functions
  * AUTHOR: Duane Wessels
  *
@@ -33,15 +31,18 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "cbdata.h"
 #include "StoreClient.h"
+#include "globals.h"
 #include "Store.h"
 /* FIXME: Abstract the use of this more */
 #include "mem_node.h"
 #include "MemObject.h"
+#include "SquidConfig.h"
 #include "SwapDir.h"
 #include "StatCounters.h"
+#include "store_log.h"
 #include "swap_log_op.h"
 
 static void storeSwapOutStart(StoreEntry * e);
@@ -178,7 +179,6 @@ doPages(StoreEntry *anEntry)
     } while (true);
 }
 
-
 /* This routine is called every time data is sent to the client side.
  * It's overhead is therefor, significant.
  */
@@ -220,7 +220,7 @@ StoreEntry::swapOut()
 #if SIZEOF_OFF_T <= 4
 
     if (mem_obj->endOffset() > 0x7FFF0000) {
-        debugs(20, 0, "WARNING: preventing off_t overflow for " << url());
+        debugs(20, DBG_CRITICAL, "WARNING: preventing off_t overflow for " << url());
         abort();
         return;
     }

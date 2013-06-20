@@ -12,8 +12,6 @@
  * 			- added squid_ prefix for uniqueness
  * 			  so we can use it where OS copy is broken.
  *
- * Squid VCS $Id$
- *
  *  Original License and code follows.
  */
 
@@ -87,7 +85,7 @@ squid_strnstr(const char *s, const char *find, size_t slen)
             if (len > slen)
                 return (NULL);
         } while (strncmp(s, find, len) != 0);
-        s--;
+        --s;
     }
     return s;
 }

@@ -30,6 +30,7 @@
  * Hosted at http://sourceforge.net/projects/squidkerbauth
  */
 #include "squid.h"
+#include "rfc1738.h"
 #include "compat/getaddrinfo.h"
 #include "compat/getnameinfo.h"
 
@@ -135,7 +136,7 @@ gethost_name(void)
     hres_list = hres;
     count = 0;
     while (hres_list) {
-        count++;
+        ++count;
         hres_list = hres_list->ai_next;
     }
     rc = getnameinfo(hres->ai_addr, hres->ai_addrlen, hostname,
@@ -205,8 +206,6 @@ check_gss_err(OM_uint32 major_status, OM_uint32 minor_status,
     }
     return (0);
 }
-
-
 
 int
 main(int argc, char *const argv[])
@@ -422,7 +421,6 @@ main(int argc, char *const argv[])
                                               GSS_C_NO_CHANNEL_BINDINGS,
                                               &client_name, NULL, &output_token, &ret_flags, NULL, NULL);
 
-
         if (output_token.length) {
             spnegoToken = (const unsigned char *) output_token.value;
             spnegoTokenLength = output_token.length;
@@ -461,10 +459,10 @@ main(int argc, char *const argv[])
                 *p = '\0';
             }
             fprintf(stdout, "AF %s %s\n", token, user);
-            debug((char *) "%s| %s: DEBUG: AF %s %s\n", LogTime(), PROGRAM, token, user);
+            debug((char *) "%s| %s: DEBUG: AF %s %s\n", LogTime(), PROGRAM, token, rfc1738_escape(user));
             if (log)
                 fprintf(stderr, "%s| %s: INFO: User %s authenticated\n", LogTime(),
-                        PROGRAM, user);
+                        PROGRAM, rfc1738_escape(user));
             goto cleanup;
         } else {
             if (check_gss_err(major_status, minor_status, "gss_accept_sec_context()", log))
@@ -496,10 +494,10 @@ main(int argc, char *const argv[])
                 *p = '\0';
             }
             fprintf(stdout, "AF %s %s\n", "AA==", user);
-            debug((char *) "%s| %s: DEBUG: AF %s %s\n", LogTime(), PROGRAM, "AA==", user);
+            debug((char *) "%s| %s: DEBUG: AF %s %s\n", LogTime(), PROGRAM, "AA==", rfc1738_escape(user));
             if (log)
                 fprintf(stderr, "%s| %s: INFO: User %s authenticated\n", LogTime(),
-                        PROGRAM, user);
+                        PROGRAM, rfc1738_escape(user));
 
         }
 cleanup:

@@ -42,30 +42,29 @@
 #include "squid.h"
 
 #if USE_DELAY_POOLS
-#include "squid-old.h"
-#include "mgr/Registration.h"
-#include "DelaySpec.h"
-#include "DelayPools.h"
-#include "event.h"
-#include "StoreClient.h"
-#include "Store.h"
-#include "MemObject.h"
-#include "client_side_request.h"
-#include "ConfigParser.h"
-#include "DelayId.h"
 #include "Array.h"
-#include "SquidString.h"
-#include "SquidTime.h"
+#include "client_side_request.h"
+#include "comm/Connection.h"
 #include "CommonPool.h"
 #include "CompositePoolNode.h"
-#include "DelayPool.h"
-#include "DelayVector.h"
-#include "NullDelayId.h"
+#include "ConfigParser.h"
 #include "DelayBucket.h"
-#include "DelayUser.h"
+#include "DelayId.h"
+#include "DelayPool.h"
+#include "DelayPools.h"
+#include "DelaySpec.h"
 #include "DelayTagged.h"
+#include "DelayUser.h"
+#include "DelayVector.h"
+#include "event.h"
 #include "ip/Address.h"
-#include "comm/Connection.h"
+#include "MemObject.h"
+#include "mgr/Registration.h"
+#include "NullDelayId.h"
+#include "SquidString.h"
+#include "SquidTime.h"
+#include "StoreClient.h"
+#include "Store.h"
 
 /// \ingroup DelayPoolsInternal
 long DelayPools::MemoryUsed = 0;
@@ -556,7 +555,6 @@ DelayPools::Init()
     RegisterWithCacheManager();
 }
 
-
 void
 DelayPools::InitDelayData()
 {
@@ -672,7 +670,7 @@ void
 DelayPools::pools(unsigned short newPools)
 {
     if (pools()) {
-        debugs(3, 0, "parse_delay_pool_count: multiple delay_pools lines, aborting all previous delay_pools config");
+        debugs(3, DBG_CRITICAL, "parse_delay_pool_count: multiple delay_pools lines, aborting all previous delay_pools config");
         FreePools();
     }
 
@@ -893,7 +891,6 @@ ClassCNetPool::makeKey(Ip::Address &src_addr) const
     src_addr.GetInAddr(net);
     return ( (ntohl(net.s_addr) >> 8) & 0xff);
 }
-
 
 ClassCHostPool::ClassCHostPool()
 {

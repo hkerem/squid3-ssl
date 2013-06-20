@@ -1,6 +1,3 @@
-/*
- * $Id$
- */
 #ifndef SQUID_SNMP_UTIL_H
 #define SQUID_SNMP_UTIL_H
 
@@ -11,12 +8,10 @@ extern "C" {
     /* call a function at regular intervals (in seconds): */
     extern void snmp_alarm(int ival, void (*handler) (void));
 
-
     /* service for filedescriptors: */
 
     extern void fd_add(int fd, void (*func) (int fd));
     extern void fd_service(void);
-
 
     /* ---------------------------------------------------------------------- */
 
@@ -25,7 +20,6 @@ extern "C" {
      *
      * Copyright (c) 1997 FT/CNET/DES/GRL Olivier Montanuy
      */
-
 
     /* Function to safely copy a string, and ensure the last
      * character is always '\0'. */

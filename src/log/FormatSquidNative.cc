@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 46    Access Log - Squid format
  * AUTHOR: Duane Wessels
  *
@@ -36,8 +34,11 @@
 #include "AccessLogEntry.h"
 #include "format/Quoting.h"
 #include "format/Token.h"
+#include "globals.h"
+#include "HttpRequest.h"
 #include "log/File.h"
 #include "log/Formats.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 
 void
@@ -45,7 +46,12 @@ Log::Format::SquidNative(const AccessLogEntry::Pointer &al, Logfile * logfile)
 {
     char hierHost[MAX_IPSTRLEN];
 
-    const char *user = ::Format::QuoteUrlEncodeUsername(al->cache.authuser);
+    const char *user = NULL;
+
+#if USE_AUTH
+    if (al->request && al->request->auth_user_request != NULL)
+        user = ::Format::QuoteUrlEncodeUsername(al->request->auth_user_request->username());
+#endif
 
     if (!user)
         user = ::Format::QuoteUrlEncodeUsername(al->cache.extuser);

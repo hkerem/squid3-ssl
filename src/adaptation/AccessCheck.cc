@@ -1,17 +1,17 @@
-#include "squid-old.h"
-#include "structs.h"
-
-#include "ConfigParser.h"
-#include "HttpRequest.h"
-#include "HttpReply.h"
+#include "squid.h"
 #include "acl/FilledChecklist.h"
+#include "adaptation/AccessCheck.h"
+#include "adaptation/AccessRule.h"
+#include "adaptation/Config.h"
 #include "adaptation/Initiator.h"
 #include "adaptation/Service.h"
 #include "adaptation/ServiceGroups.h"
-#include "adaptation/AccessRule.h"
-#include "adaptation/Config.h"
-#include "adaptation/AccessCheck.h"
+#include "base/AsyncJobCalls.h"
 #include "base/TextException.h"
+#include "ConfigParser.h"
+#include "globals.h"
+#include "HttpReply.h"
+#include "HttpRequest.h"
 
 /** \cond AUTODOCS-IGNORE */
 cbdata_type Adaptation::AccessCheck::CBDATA_AccessCheck = CBDATA_UNKNOWN;
@@ -141,7 +141,7 @@ Adaptation::AccessCheck::AccessCheckCallbackWrapper(allow_t answer, void *data)
     debugs(93, 8, HERE << "callback answer=" << answer);
     AccessCheck *ac = (AccessCheck*)data;
 
-    /** \todo AYJ 2008-06-12: If answer == ACCESS_REQ_PROXY_AUTH
+    /** \todo AYJ 2008-06-12: If answer == ACCESS_AUTH_REQUIRED
      * we should be kicking off an authentication before continuing
      * with this request. see bug 2400 for details.
      */

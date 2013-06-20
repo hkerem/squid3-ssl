@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Storage Manager Swapfile Metadata
  * AUTHOR: Kostas Anagnostakis
  *
@@ -33,10 +31,12 @@
  *
  */
 
-#include "squid-old.h"
-#include "StoreMetaMD5.h"
-#include "Store.h"
+#include "squid.h"
+#include "int.h"
+#include "md5.h"
 #include "MemObject.h"
+#include "Store.h"
+#include "StoreMetaMD5.h"
 
 bool
 StoreMetaMD5::validLength(int len) const
@@ -59,7 +59,7 @@ StoreMetaMD5::checkConsistency(StoreEntry *e) const
         debugs(20, 2, "\t" << e->getMD5Text());
 
         if (isPowTen(++md5_mismatches))
-            debugs(20, 1, "WARNING: " << md5_mismatches << " swapin MD5 mismatches");
+            debugs(20, DBG_IMPORTANT, "WARNING: " << md5_mismatches << " swapin MD5 mismatches");
 
         return false;
     }

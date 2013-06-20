@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 90    HTTP Cache Control Header
  * AUTHOR: Alex Rousskov
  *         Robert Collins (Surrogate-Control is derived from
@@ -36,11 +34,15 @@
  *
  */
 
-#include "squid-old.h"
-#include "Store.h"
-#include "HttpHeader.h"
-#include "HttpHeaderStat.h"
+#include "squid.h"
 #include "HttpHdrSc.h"
+#include "HttpHeader.h"
+#include "HttpHeaderFieldInfo.h"
+#include "HttpHeaderFieldStat.h"
+#include "HttpHeaderStat.h"
+#include "HttpHeaderTools.h"
+#include "Store.h"
+#include "StrList.h"
 
 #if HAVE_MAP
 #include <map>
@@ -77,7 +79,6 @@ int operator - (http_hdr_sc_type const &anSc, http_hdr_sc_type const &anSc2)
 {
     return (int)anSc - (int)anSc2;
 }
-
 
 /* module initialization */
 
@@ -248,7 +249,6 @@ HttpHdrSc::~HttpHdrSc()
         }
     }
 }
-
 
 HttpHdrSc::HttpHdrSc(const HttpHdrSc &sc)
 {

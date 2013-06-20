@@ -3,12 +3,12 @@
 
 #include <cppunit/TestAssert.h>
 
-#include "testEvent.h"
-#include "event.h"
 #include "base/AsyncCallQueue.h"
 #include "CapturingStoreEntry.h"
+#include "event.h"
 #include "Mem.h"
-
+#include "stat.h"
+#include "testEvent.h"
 
 CPPUNIT_TEST_SUITE_REGISTRATION( testEvent );
 
@@ -29,7 +29,6 @@ testEvent::testCreate()
 {
     EventScheduler scheduler = EventScheduler();
 }
-
 
 /* Helper for tests - an event which records the number of calls it received. */
 

@@ -1,9 +1,10 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "adaptation/icap/Config.h"
 #include "adaptation/icap/Options.h"
 #include "base/TextException.h"
 #include "HttpReply.h"
 #include "SquidTime.h"
+#include "StrList.h"
 #include "wordlist.h"
 
 Adaptation::Icap::Options::Options(): error("unconfigured"),
@@ -153,7 +154,6 @@ void Adaptation::Icap::Options::cfgTransferList(const HttpHeader *h, TransferLis
 
     list.report(5, "Adaptation::Icap::Options::cfgTransferList: ");
 }
-
 
 /* Adaptation::Icap::Options::TransferList */
 

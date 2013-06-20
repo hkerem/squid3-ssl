@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 45    Callback Data Registry
  * ORIGINAL AUTHOR: Duane Wessels
  * Modified by Moez Mahfoudh (08/12/2000)
@@ -56,6 +54,10 @@
 #include "Stack.h"
 #endif
 #include "Generic.h"
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
 
 #if WITH_VALGRIND
 #define HASHED_CBDATA 1
@@ -203,7 +205,6 @@ cbdata_hash(const void *p, unsigned int mod)
     return ((unsigned long) p >> 8) % mod;
 }
 #endif
-
 
 cbdata::~cbdata()
 {

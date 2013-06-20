@@ -1,7 +1,8 @@
-#include "squid-old.h"
+#include "squid.h"
 #include "ErrorDetail.h"
 #include "errorpage.h"
 #include "ErrorDetailManager.h"
+#include "mime_header.h"
 
 void Ssl::errorDetailInitialize()
 {
@@ -85,7 +86,6 @@ void Ssl::ErrorDetailsManager::Shutdown()
     delete TheDetailsManager;
     TheDetailsManager = NULL;
 }
-
 
 Ssl::ErrorDetailsManager::ErrorDetailsManager()
 {

@@ -47,6 +47,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude/init.m4 \
 	$(top_srcdir)/acinclude/krb5.m4 $(top_srcdir)/acinclude/pam.m4 \
 	$(top_srcdir)/acinclude/pkg.m4 \
 	$(top_srcdir)/acinclude/lib-checks.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_compile_stdcxx_0x.m4 \
+	$(top_srcdir)/acinclude/ax_cxx_0x_types.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -122,7 +124,7 @@ DEFAULT_HOSTS = @DEFAULT_HOSTS@
 DEFAULT_LOG_DIR = @DEFAULT_LOG_DIR@
 DEFAULT_PID_FILE = @DEFAULT_PID_FILE@
 DEFAULT_SWAP_DIR = @DEFAULT_SWAP_DIR@
-DEFS = @DEFS@ -DDEFAULT_PREFIX=\"$(prefix)\"
+DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DIGEST_AUTH_HELPERS = @DIGEST_AUTH_HELPERS@
 DISK_LIBS = @DISK_LIBS@

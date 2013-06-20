@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -14,7 +12,6 @@
 #include "ipc/TypedMsgHdr.h"
 #include "MemBuf.h"
 #include <algorithm>
-
 
 CBDATA_NAMESPACED_CLASS_INIT(Ipc, Inquirer);
 

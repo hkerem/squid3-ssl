@@ -234,7 +234,6 @@ public:
      */
     bool ApplyMask(const unsigned int cidr, int mtype);
 
-
     /** Return the ASCII equivalent of the address
      *  Semantically equivalent to the IPv4 inet_ntoa()
      *  eg. 127.0.0.1 (IPv4) or ::1 (IPv6)
@@ -382,7 +381,6 @@ private:
     static const struct in6_addr v6_noaddr;
 };
 
-
 inline std::ostream &
 operator << (std::ostream &os, const Address &ipa)
 {
@@ -404,6 +402,6 @@ public:
 
 } // namespace Ip
 
-extern void parse_IpAddress_list_token(Ip::Address_list **, char *);
+void parse_IpAddress_list_token(Ip::Address_list **, char *);
 
 #endif /* _SQUID_IP_IPADDRESS_H */

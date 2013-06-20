@@ -158,7 +158,6 @@ free_hostname_list(struct hstruct **hlist, int nhosts)
         hp[i].host = NULL;
     }
 
-
     if (hp)
         xfree(hp);
     hp = NULL;
@@ -189,7 +188,7 @@ get_hostname_list(struct main_args *margs, struct hstruct **hlist, int nhosts, c
     hres_list = hres;
     count = 0;
     while (hres_list) {
-        count++;
+        ++count;
         hres_list = hres_list->ai_next;
     }
     hres_list = hres;
@@ -202,7 +201,7 @@ get_hostname_list(struct main_args *margs, struct hstruct **hlist, int nhosts, c
             *hlist = hp;
             return (nhosts);
         }
-        count++;
+        ++count;
         debug((char *) "%s| %s: DEBUG: Resolved address %d of %s to %s\n", LogTime(), PROGRAM, count, name, host);
 
         hp = (struct hstruct *) xrealloc(hp, sizeof(struct hstruct) * (nhosts + 1));
@@ -210,7 +209,7 @@ get_hostname_list(struct main_args *margs, struct hstruct **hlist, int nhosts, c
         hp[nhosts].port = -1;
         hp[nhosts].priority = -1;
         hp[nhosts].weight = -1;
-        nhosts++;
+        ++nhosts;
 
         hres_list = hres_list->ai_next;
     }
@@ -251,7 +250,7 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
             hp[nhosts].port = -1;
             hp[nhosts].priority = -2;
             hp[nhosts].weight = -2;
-            nhosts++;
+            ++nhosts;
         } else if ( !ls->domain || !strcasecmp(ls->domain, "") ) {
             debug((char *) "%s| %s: DEBUG: Found lserver@domain %s@%s\n", LogTime(), PROGRAM, ls->lserver, ls->domain?ls->domain:"NULL");
             hp = (struct hstruct *) xrealloc(hp, sizeof(struct hstruct) * (nhosts + 1));
@@ -259,7 +258,7 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
             hp[nhosts].port = -1;
             hp[nhosts].priority = -2;
             hp[nhosts].weight = -2;
-            nhosts++;
+            ++nhosts;
 
         }
         ls = ls->next;
@@ -298,10 +297,10 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
             if ((len = res_search(service, ns_c_in, ns_t_srv, (u_char *) buffer, PACKETSZ_MULT * NS_PACKETSZ)) < 0) {
                 error((char *) "%s| %s: ERROR: Error while resolving service record %s with res_search\n", LogTime(), PROGRAM, service);
                 nsError(h_errno, service);
-                goto cleanup;
+                goto finalise;
             }
         } else {
-            goto cleanup;
+            goto finalise;
         }
     }
     if (len > PACKETSZ_MULT * NS_PACKETSZ) {
@@ -310,70 +309,70 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
         if ((len = res_search(service, ns_c_in, ns_t_srv, (u_char *) buffer, len)) < 0) {
             error((char *) "%s| %s: ERROR: Error while resolving service record %s with res_search\n", LogTime(), PROGRAM, service);
             nsError(h_errno, service);
-            goto cleanup;
+            goto finalise;
         }
         if (len > olen) {
             error((char *) "%s| %s: ERROR: Reply to big: buffer: %d reply length: %d\n", LogTime(), PROGRAM, olen, len);
-            goto cleanup;
+            goto finalise;
         }
     }
     p = buffer;
     p += 6 * NS_INT16SZ;	/* Header(6*16bit) = id + flags + 4*section count */
     if (p > buffer + len) {
         error((char *) "%s| %s: ERROR: Message to small: %d < header size\n", LogTime(), PROGRAM, len);
-        goto cleanup;
+        goto finalise;
     }
     if ((size = dn_expand(buffer, buffer + len, p, name, sysconf(_SC_HOST_NAME_MAX))) < 0) {
         error((char *) "%s| %s: ERROR: Error while expanding query name with dn_expand:  %s\n", LogTime(), PROGRAM, strerror(errno));
-        goto cleanup;
+        goto finalise;
     }
     p += size;			/* Query name */
     p += 2 * NS_INT16SZ;	/* Query type + class (2*16bit) */
     if (p > buffer + len) {
         error((char *) "%s| %s: ERROR: Message to small: %d < header + query name,type,class \n", LogTime(), PROGRAM, len);
-        goto cleanup;
+        goto finalise;
     }
     while (p < buffer + len) {
         if ((size = dn_expand(buffer, buffer + len, p, name, sysconf(_SC_HOST_NAME_MAX))) < 0) {
             error((char *) "%s| %s: ERROR: Error while expanding answer name with dn_expand:  %s\n", LogTime(), PROGRAM, strerror(errno));
-            goto cleanup;
+            goto finalise;
         }
         p += size;		/* Resource Record name */
         if (p > buffer + len) {
             error((char *) "%s| %s: ERROR: Message to small: %d < header + query name,type,class + answer name\n", LogTime(), PROGRAM, len);
-            goto cleanup;
+            goto finalise;
         }
         NS_GET16(type, p);	/* RR type (16bit) */
         p += NS_INT16SZ + NS_INT32SZ;	/* RR class + ttl (16bit+32bit) */
         if (p > buffer + len) {
             error((char *) "%s| %s: ERROR: Message to small: %d < header + query name,type,class + answer name + RR type,class,ttl\n", LogTime(), PROGRAM, len);
-            goto cleanup;
+            goto finalise;
         }
         NS_GET16(rdlength, p);	/* RR data length (16bit) */
 
         if (type == ns_t_srv) {	/* SRV record */
             if (p > buffer + len) {
                 error((char *) "%s| %s: ERROR: Message to small: %d < header + query name,type,class + answer name + RR type,class,ttl + RR data length\n", LogTime(), PROGRAM, len);
-                goto cleanup;
+                goto finalise;
             }
             NS_GET16(priority, p);	/* Priority (16bit) */
             if (p > buffer + len) {
                 error((char *) "%s| %s: ERROR: Message to small: %d <  SRV RR + priority\n", LogTime(), PROGRAM, len);
-                goto cleanup;
+                goto finalise;
             }
             NS_GET16(weight, p);	/* Weight (16bit) */
             if (p > buffer + len) {
                 error((char *) "%s| %s: ERROR: Message to small: %d <  SRV RR + priority + weight\n", LogTime(), PROGRAM, len);
-                goto cleanup;
+                goto finalise;
             }
             NS_GET16(port, p);	/* Port (16bit) */
             if (p > buffer + len) {
                 error((char *) "%s| %s: ERROR: Message to small: %d <  SRV RR + priority + weight + port\n", LogTime(), PROGRAM, len);
-                goto cleanup;
+                goto finalise;
             }
             if ((size = dn_expand(buffer, buffer + len, p, host, NS_MAXDNAME)) < 0) {
                 error((char *) "%s| %s: ERROR: Error while expanding SRV RR name with dn_expand:  %s\n", LogTime(), PROGRAM, strerror(errno));
-                goto cleanup;
+                goto finalise;
             }
             debug((char *) "%s| %s: DEBUG: Resolved SRV %s record to %s\n", LogTime(), PROGRAM, service, host);
             hp = (struct hstruct *) xrealloc(hp, sizeof(struct hstruct) * (nh + 1));
@@ -381,14 +380,14 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
             hp[nh].port = port;
             hp[nh].priority = priority;
             hp[nh].weight = weight;
-            nh++;
+            ++nh;
             p += size;
         } else {
             p += rdlength;
         }
         if (p > buffer + len) {
             error((char *) "%s| %s: ERROR: Message to small: %d <  SRV RR + priority + weight + port + name\n", LogTime(), PROGRAM, len);
-            goto cleanup;
+            goto finalise;
         }
     }
     if (p != buffer + len) {
@@ -397,10 +396,10 @@ get_ldap_hostname_list(struct main_args *margs, struct hstruct **hlist, int nh, 
 #else
         error((char *) "%s| %s: ERROR: Inconsistence message length: %d!=0\n", LogTime(), PROGRAM, buffer + len - p);
 #endif
-        goto cleanup;
+        goto finalise;
     }
 
-cleanup:
+finalise:
     nhosts = get_hostname_list(margs, &hp, nh, domain);
 
     debug("%s| %s: DEBUG: Adding %s to list\n", LogTime(), PROGRAM, domain);
@@ -410,24 +409,25 @@ cleanup:
     hp[nhosts].port = -1;
     hp[nhosts].priority = -2;
     hp[nhosts].weight = -2;
-    nhosts++;
+    ++nhosts;
 
+cleanup:
     /* Remove duplicates */
-    for (i = 0; i < nhosts; i++) {
-        for (j = i + 1; j < nhosts; j++) {
+    for (i = 0; i < nhosts; ++i) {
+        for (j = i + 1; j < nhosts; ++j) {
             if (!strcasecmp(hp[i].host, hp[j].host)) {
                 if (hp[i].port == hp[j].port ||
                         (hp[i].port == -1 && hp[j].port == 389) ||
                         (hp[i].port == 389 && hp[j].port == -1)) {
                     xfree(hp[j].host);
-                    for (k = j + 1; k < nhosts; k++) {
+                    for (k = j + 1; k < nhosts; ++k) {
                         hp[k - 1].host = hp[k].host;
                         hp[k - 1].port = hp[k].port;
                         hp[k - 1].priority = hp[k].priority;
                         hp[k - 1].weight = hp[k].weight;
                     }
-                    j--;
-                    nhosts--;
+                    --j;
+                    --nhosts;
                     hp = (struct hstruct *) xrealloc(hp, sizeof(struct hstruct) * (nhosts + 1));
                 }
             }
@@ -439,7 +439,7 @@ cleanup:
 
     if (debug_enabled) {
         debug((char *) "%s| %s: DEBUG: Sorted ldap server names for domain %s:\n", LogTime(), PROGRAM, domain);
-        for (i = 0; i < nhosts; i++) {
+        for (i = 0; i < nhosts; ++i) {
             debug((char *) "%s| %s: DEBUG: Host: %s Port: %d Priority: %d Weight: %d\n", LogTime(), PROGRAM, hp[i].host, hp[i].port, hp[i].priority, hp[i].weight);
         }
     }

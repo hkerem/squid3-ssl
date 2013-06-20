@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 86    ESI processing
  * AUTHOR: Robert Collins
  *
@@ -36,7 +34,6 @@
 #ifndef SQUID_ELEMENTLIST_H
 #define SQUID_ELEMENTLIST_H
 
-#include "squid-old.h"
 #include "esi/Element.h"
 
 class ElementList
@@ -62,6 +59,5 @@ private:
     ElementList(ElementList const &);
     ElementList &operator=(ElementList const&);
 };
-
 
 #endif /* SQUID_ELEMENTLIST_H */

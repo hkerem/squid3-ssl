@@ -1,7 +1,4 @@
-
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager Objects
  * AUTHOR: Duane Wessels
  *
@@ -35,6 +32,7 @@
 
 #include "squid.h"
 #include "base/TextException.h"
+#include "mgr/ActionPasswordList.h"
 #include "CacheManager.h"
 #include "comm/Connection.h"
 #include "Debug.h"
@@ -50,12 +48,14 @@
 #include "mgr/Forwarder.h"
 #include "mgr/FunAction.h"
 #include "mgr/QueryParams.h"
-#include "protos.h" /* rotate_logs() */
+#include "protos.h"
+#include "tools.h"
+#include "SquidConfig.h"
 #include "SquidTime.h"
 #include "Store.h"
 #include "wordlist.h"
-#include <algorithm>
 
+#include <algorithm>
 
 /// \ingroup CacheManagerInternal
 #define MGR_PASSWD_SZ 128
@@ -76,7 +76,6 @@ public:
 private:
     Handler *handler;
 };
-
 
 /// Registers new profiles, ignoring attempts to register a duplicate
 void
@@ -461,12 +460,12 @@ CacheManager::ActionProtection(const Mgr::ActionProfile::Pointer &profile)
 }
 
 /*
- \ingroup CacheManagerInternal
+ * \ingroup CacheManagerInternal
  * gets from the global Config the password the user would need to supply
  * for the action she queried
  */
 char *
-CacheManager::PasswdGet(cachemgr_passwd * a, const char *action)
+CacheManager::PasswdGet(Mgr::ActionPasswordList * a, const char *action)
 {
     wordlist *w;
 

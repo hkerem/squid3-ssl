@@ -1,6 +1,3 @@
-/*
- * $Id$
- */
 #ifndef SQUID_RADIX_H
 #define	SQUID_RADIX_H
 
@@ -137,7 +134,6 @@ struct squid_radix_node_head {
 
     struct squid_radix_node rnh_nodes[3];	/* empty tree for common case */
 };
-
 
 SQUIDCEXTERN void squid_rn_init (void);
 

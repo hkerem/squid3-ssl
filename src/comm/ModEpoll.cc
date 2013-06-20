@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 05    Socket Functions
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
@@ -55,10 +53,11 @@
 
 #if USE_EPOLL
 
-#include "squid-old.h"
 #include "comm/Loops.h"
 #include "fde.h"
+#include "globals.h"
 #include "mgr/Registration.h"
+#include "profiler/Profiler.h"
 #include "SquidTime.h"
 #include "StatCounters.h"
 #include "StatHist.h"
@@ -69,6 +68,9 @@
 #if HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
 #endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
 
 static int kdpfd;
 static int max_poll_time = 1000;
@@ -77,10 +79,8 @@ static struct epoll_event *pevents;
 
 static void commEPollRegisterWithCacheManager(void);
 
-
 /* XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX */
 /* Public functions */
-
 
 /*
  * This is a needed exported function which will be called to initialise
@@ -212,7 +212,6 @@ Comm::ResetSelect(int fd)
     SetSelect(fd, 0, NULL, NULL, 0);
 }
 
-
 static void commIncomingStats(StoreEntry * sentry);
 
 static void
@@ -283,7 +282,7 @@ Comm::DoSelect(int msec)
 
     PROF_start(comm_handle_ready_fd);
 
-    for (i = 0, cevents = pevents; i < num; i++, cevents++) {
+    for (i = 0, cevents = pevents; i < num; ++i, ++cevents) {
         fd = cevents->data.fd;
         F = &fd_table[fd];
         debugs(5, DEBUG_EPOLL ? 0 : 8, HERE << "got FD " << fd << " events=" <<

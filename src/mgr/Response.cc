@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 16    Cache Manager API
  *
  */
@@ -13,7 +11,6 @@
 #include "mgr/ActionCreator.h"
 #include "mgr/ActionProfile.h"
 #include "mgr/Response.h"
-
 
 Mgr::Response::Response(unsigned int aRequestId, Action::Pointer anAction):
         Ipc::Response(aRequestId), action(anAction)

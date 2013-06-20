@@ -1,7 +1,5 @@
 
 /*
- * $Id$
- *
  * DEBUG: section 20    Swap Dir base object
  * AUTHOR: Robert Collins
  *
@@ -33,7 +31,9 @@
  *
  */
 
-#include "squid-old.h"
+#include "squid.h"
+#include "Debug.h"
+#include "defines.h"
 #include "StoreIOState.h"
 
 void *

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 54    Interprocess Communication
  *
  */
@@ -8,14 +6,15 @@
 #include "squid.h"
 #include "base/TextException.h"
 #include "compat/shm.h"
+#include "Debug.h"
+#include "fatal.h"
 #include "ipc/mem/Segment.h"
-#include "protos.h"
+#include "tools.h"
 
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
 
 // test cases change this
 const char *Ipc::Mem::Segment::BasePath = DEFAULT_STATEDIR;

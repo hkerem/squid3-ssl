@@ -2,7 +2,7 @@
  * DEBUG: section 93    ICAP (RFC 3507) Client
  */
 
-#include "squid-old.h"
+#include "squid.h"
 #include "base/AsyncCall.h"
 #include "base/AsyncJob.h"
 #include "base/AsyncJobCalls.h"
@@ -21,7 +21,8 @@ AsyncJob::Pointer AsyncJob::Start(AsyncJob *j)
     return job;
 }
 
-AsyncJob::AsyncJob(const char *aTypeName): typeName(aTypeName), inCall(NULL)
+AsyncJob::AsyncJob(const char *aTypeName) :
+        stopReason(NULL), typeName(aTypeName), inCall(NULL)
 {
     debugs(93,5, "AsyncJob constructed, this=" << this <<
            " type=" << typeName << " [" << id << ']');
@@ -162,5 +163,4 @@ const char *AsyncJob::status() const
 
     return buf.content();
 }
-
 

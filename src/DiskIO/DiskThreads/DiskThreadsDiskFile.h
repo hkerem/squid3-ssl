@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 79    Disk IO Routines
  * AUTHOR: Robert Collins
  *
@@ -83,11 +81,12 @@ private:
     static AIOCB OpenDone;
     void openDone(int fd, const char *buf, int aio_return, int aio_errno);
     RefCount<IORequestor> ioRequestor;
-    CBDATA_CLASS(DiskThreadsDiskFile);
     void doClose();
 
     void readDone(int fd, const char *buf, int len, int errflag, RefCount<ReadRequest> request);
     void writeDone(int fd, int errflag, size_t len, RefCount<WriteRequest> request);
+
+    CBDATA_CLASS(DiskThreadsDiskFile);
 };
 
 #include "DiskIO/ReadRequest.h"

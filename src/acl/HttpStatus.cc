@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * DEBUG: section 28    Access Control
  * AUTHOR: Duane Wessels
  *
@@ -35,15 +33,16 @@
  */
 
 #include "squid.h"
-#if _SQUID_CYGWIN_
-#include <squid_windows.h>
-#endif
-#include "squid-old.h"
-
 #include "acl/HttpStatus.h"
 #include "acl/FilledChecklist.h"
+#include "cache_cf.h"
+#include "Debug.h"
 #include "HttpReply.h"
 #include "wordlist.h"
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
 
 static void aclParseHTTPStatusList(SplayNode<acl_httpstatus_data *> **curlist);
 static int aclHTTPStatusCompare(acl_httpstatus_data * const &a, acl_httpstatus_data * const &b);
@@ -76,15 +75,13 @@ int acl_httpstatus_data::compare(acl_httpstatus_data* const& a, acl_httpstatus_d
         char bufb[8];
         a->toStr(bufa, sizeof(bufa));
         b->toStr(bufb, sizeof(bufb));
-        debugs(28, 0, "WARNING: '" << bufa << "' is a subrange of '" << bufb << "'");
-        debugs(28, 0, "WARNING: because of this '" << bufa << "' is ignored to keep splay tree searching predictable");
-        debugs(28, 0, "WARNING: You should probably remove '" << bufb << "' from the ACL named '" << AclMatchedName << "'");
+        debugs(28, DBG_CRITICAL, "WARNING: '" << bufa << "' is a subrange of '" << bufb << "'");
+        debugs(28, DBG_CRITICAL, "WARNING: because of this '" << bufa << "' is ignored to keep splay tree searching predictable");
+        debugs(28, DBG_CRITICAL, "WARNING: You should probably remove '" << bufb << "' from the ACL named '" << AclMatchedName << "'");
     }
 
     return ret;
 }
-
-
 
 ACL *
 ACLHTTPStatus::clone() const
@@ -134,7 +131,6 @@ aclParseHTTPStatusData(const char *t)
 
     return new acl_httpstatus_data(status, INT_MAX);
 }
-
 
 void
 ACLHTTPStatus::parse()

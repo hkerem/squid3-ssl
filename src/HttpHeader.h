@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  *
  * SQUID Web Proxy Cache          http://www.squid-cache.org/
  * ----------------------------------------------------------
@@ -34,18 +32,17 @@
 #define SQUID_HTTPHEADER_H
 
 /* because we pass a spec by value */
-#include "HttpHeaderRange.h"
-/* HttpHeader holds a HttpHeaderMask */
 #include "HttpHeaderMask.h"
-
+#include "MemPool.h"
+#include "SquidString.h"
 
 /* class forward declarations */
-class HttpHdrContRange;
 class HttpHdrCc;
-class HttpHdrSc;
+class HttpHdrContRange;
 class HttpHdrRange;
-class String;
-
+class HttpHdrSc;
+class Packer;
+class StoreEntry;
 
 /* constant attributes of http header fields */
 
@@ -181,12 +178,14 @@ typedef enum {
     hoEnd
 } http_hdr_owner_type;
 
-struct _HttpHeaderFieldAttrs {
+// currently a POD
+class HttpHeaderFieldAttrs
+{
+public:
     const char *name;
     http_hdr_type id;
     field_type type;
 };
-
 
 /** Iteration for headers; use HttpHeaderPos as opaque type, do not interpret */
 typedef ssize_t HttpHeaderPos;
@@ -247,6 +246,8 @@ public:
     bool getList(http_hdr_type id, String *s) const;
     String getStrOrList(http_hdr_type id) const;
     String getByName(const char *name) const;
+    /// sets value and returns true iff a [possibly empty] named field is there
+    bool getByNameIfPresent(const char *name, String &value) const;
     String getByNameListMember(const char *name, const char *member, const char separator) const;
     String getListMember(http_hdr_type id, const char *member, const char separator) const;
     int has(http_hdr_type id) const;
@@ -293,11 +294,10 @@ private:
     HttpHeaderEntry *findLastEntry(http_hdr_type id) const;
 };
 
-
-extern int httpHeaderParseQuotedString(const char *start, const int len, String *val);
-SQUIDCEXTERN int httpHeaderHasByNameListMember(const HttpHeader * hdr, const char *name, const char *member, const char separator);
-SQUIDCEXTERN void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMask * denied_mask);
-SQUIDCEXTERN void httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count);
+int httpHeaderParseQuotedString(const char *start, const int len, String *val);
+int httpHeaderHasByNameListMember(const HttpHeader * hdr, const char *name, const char *member, const char separator);
+void httpHeaderUpdate(HttpHeader * old, const HttpHeader * fresh, const HttpHeaderMask * denied_mask);
+void httpHeaderCalcMask(HttpHeaderMask * mask, http_hdr_type http_hdr_type_enums[], size_t count);
 
 inline bool
 HttpHeader::chunked() const
@@ -305,5 +305,8 @@ HttpHeader::chunked() const
     return has(HDR_TRANSFER_ENCODING) &&
            hasListMember(HDR_TRANSFER_ENCODING, "chunked", ',');
 }
+
+void httpHeaderInitModule(void);
+void httpHeaderCleanModule(void);
 
 #endif /* SQUID_HTTPHEADER_H */
