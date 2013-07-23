@@ -1,4 +1,4 @@
-AC_INIT([Squid Web Proxy],[3.3.5],[http://bugs.squid-cache.org/],[squid])
+AC_INIT([Squid Web Proxy],[3.3.8],[http://bugs.squid-cache.org/],[squid])
 AC_PREREQ(2.61)
 AC_CONFIG_HEADERS([include/autoconf.h])
 AC_CONFIG_AUX_DIR(cfgaux)
@@ -185,7 +185,8 @@ AM_CONDITIONAL(ENABLE_WIN32SPECIFIC,
                [test "x$squid_host_os" = "xmingw" -o "x$squid_host_os" = "xcygwin"])
 AM_CONDITIONAL(USE_IPC_WIN32,[test "x$squid_host_os" = "xmingw"])
 
-if test "x$squid_host_os" = "xmingw"; then
+case "$squid_host_os" in
+mingw)
   AC_PATH_PROG(WIN32_PSAPI, psapi.dll, none)
   CFLAGS="$CFLAGS -mthreads"
   CXXFLAGS="$CXXFLAGS -mthreads"
@@ -198,7 +199,16 @@ if test "x$squid_host_os" = "xmingw"; then
   fi
   MINGW_LIBS="-lmingwex"
   AC_SUBST(MINGW_LIBS)
-fi
+  ;;
+freebsd)
+    # FreeBSD places local libraries and packages in /usr/local
+    CFLAGS="$CFLAGS -I/usr/local/include"
+    CXXFLAGS="$CXXFLAGS -I/usr/local/include"
+    LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-R/usr/local/lib"
+    ;;
+*)
+    ;;
+esac
 
 dnl Substitutions
 AC_DEFINE_UNQUOTED(CONFIG_HOST_TYPE, "$host",[Host type from configure])
@@ -318,12 +328,6 @@ dnl Using the latest MinGW (gcc 3.4.5 + mingw-runtime 3.13) cannot build with
 dnl -Werror -Wmissing-prototypes -Wmissing-declarations
 dnl TODO: check if the problem will be present in any other newer MinGW release.
     SQUID_CFLAGS="$squid_cv_cc_option_wall -Wpointer-arith -Wwrite-strings -Wcomments"
-    ;;
-  freebsd)
-    # FreeBSD places local libraries and packages in /usr/local
-    CFLAGS="$CFLAGS -I/usr/local/include"
-    CXXFLAGS="$CXXFLAGS -I/usr/local/include"
-    LDFLAGS="$LDFLAGS -L/usr/local/lib -Wl,-R/usr/local/lib"
     ;;
   *)
     SQUID_CFLAGS="$squid_cv_cc_option_wall -Wpointer-arith -Wwrite-strings -Wmissing-prototypes -Wmissing-declarations -Wcomments"
@@ -1262,6 +1266,7 @@ AC_SUBST(SSLLIB)
 
 if test "x$with_openssl" = "xyes"; then
 SQUID_CHECK_OPENSSL_GETCERTIFICATE_WORKS
+SQUID_CHECK_OPENSSL_CONST_SSL_METHOD
 SQUID_CHECK_OPENSSL_TXTDB
 fi
 

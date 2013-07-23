@@ -1,4 +1,29 @@
 
+Changes to squid-3.3.8 (13 Jul 2013):
+
+	- Bug 3869: assertion failed: MemBuf.cc:272: size < capacity
+	- Improved handling of port values in Host: header validation
+
+Changes to squid-3.3.7 (11 Jul 2013):
+
+	- Bug 3297: Fix openSSL related build failures
+	- Fix build on FreeBSD 9.x platform with clang
+	- Protect against buffer overrun in DNS query generation
+
+Changes to squid-3.3.6 (01 Jul 2013):
+
+	- Bug 3854: pt1: compile errors on AIX
+	- Bug 3802: Fix wrong check inside Format::Format::assemble
+	- Bug 3762: remove bogus WARNING in cache.log
+	- Bug 3717: assertion failed with dstdom_regex with IP based URL
+	- Bug 1991: kqueue causes SSL to hang
+	- Ask for SSL key password when started with -N but without sslpassword_program
+	- Make sure %<tt includes all [failed] connection attempts
+	- Support HTTP reply ACLs in icap_log and log_icap
+	- Fix incorrect external_acl_type codes
+	- Fix ICAP logging request headers and segmentation faults
+	- ... and some documentation polish
+
 Changes to squid-3.3.5 (20 May 2013):
 
 	- Bug 3851: Delay Pool class 5 tag:levels displayed incorrectly in cache manager
@@ -89,6 +114,18 @@ Changes to squid-3.3.0.1 (21 Oct 2012):
 	- ... and many portability fixes for MacOS X, Windows and others
 	- ... and many compile error fixes
 	- ... and a very large amount of code polish for faster compilation
+
+Changes to squid-3.2.13 (13 Jul 2013):
+
+	- Bug 3869: assertion failed: MemBuf.cc:272: size < capacity
+	- Improved handling of port values in Host: header validation
+
+Changes to squid-3.2.12 (11 Jul 2013):
+
+	- Protect against buffer overrun in DNS query generation
+	- Avoid !closing assertions when helpers call comm_read during reconfigure.
+	- Fix several minor memory leaks during reconfigure
+	- Remove origin_tries limiter on forwarding and permit large max_forward_tries values
 
 Changes to squid-3.2.11 (30 Apr 2013):
 

@@ -1214,11 +1214,19 @@
 /* "Define to 1 if the TXT_DB uses OPENSSL_PSTRING data member" */
 #undef SQUID_SSLTXTDB_PSTRINGDATA
 
+/* "Define to 1 to use squid workaround for buggy versions of
+   sk_OPENSSL_PSTRING_value" */
+#undef SQUID_STACKOF_PSTRINGDATA_HACK
+
 /* TCP receive buffer size */
 #undef SQUID_TCP_SO_RCVBUF
 
 /* TCP send buffer size */
 #undef SQUID_TCP_SO_SNDBUF
+
+/* "Define to 1 if the SSL_CTX_new and similar openSSL API functions require
+   'const SSL_METHOD *'" */
+#undef SQUID_USE_CONST_SSL_METHOD
 
 /* "Define to 1 to use squid workaround for SSL_get_certificate" */
 #undef SQUID_USE_SSLGETCERTIFICATE_HACK
